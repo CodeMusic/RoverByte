@@ -2,7 +2,7 @@ from openai import OpenAI
 import time
 import shutil
 import os
-
+import json
 """
 This file contains the OpenAI helper class for the roverbyte.
 """
@@ -61,7 +61,20 @@ class OpenAiHelper():
 
 
         self.client = OpenAI(api_key=api_key, timeout=timeout)
-        self.thread = self.client.beta.threads.create()
+
+        # load the thread id from a config file
+        if os.path.exists('config.json'):
+            with open('config.json', 'r') as f:
+                config = json.load(f)
+                self.thread_id = config['thread_id']
+                # we still need to load form openid
+                self.thread = self.client.beta.threads.retrieve(self.thread_id)
+        else:
+            self.thread = self.client.beta.threads.create()
+            # save the thread id in a config file
+            with open('config.json', 'w') as f:
+                json.dump({'thread_id': self.thread.id}, f)
+
         self.run = self.client.beta.threads.runs.create_and_poll(
             thread_id=self.thread.id,
             assistant_id=assistant_id,

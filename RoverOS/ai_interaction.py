@@ -20,14 +20,14 @@ class AIInteraction:
         self.setup_recognizer()
 
     def setup_recognizer(self):
-        self.recognizer.dynamic_energy_adjustment_damping = 0.15 # Faster adaptation to background noise for varying environments
-        self.recognizer.dynamic_energy_ratio = 1.4 # Slightly more sensitive to consider softer speech as valid
-        self.recognizer.energy_threshold = 100 # Lower threshold for easier detection of speech in quieter environments
-        self.recognizer.dynamic_energy_threshold = True  # Keep dynamic threshold adjustment for adaptability
-        self.recognizer.pause_threshold = 0.7   # Shorter pause threshold for more natural conversation flow
+        self.recognizer.dynamic_energy_adjustment_damping = 0.1 # Reduce damping for quicker adaptation to sound changes
+        self.recognizer.dynamic_energy_ratio = 1.2 # Lower ratio to better detect short commands
+        self.recognizer.energy_threshold = 50 # Lower threshold for better detection of quiet speech
+        self.recognizer.dynamic_energy_threshold = True # Keep dynamic threshold adjustment for adaptability
+        self.recognizer.pause_threshold = 1.0 # Increase pause threshold to prevent cutting off speech
         self.recognizer.operation_timeout = None # No timeout to allow for thoughtful responses
-        self.recognizer.phrase_threshold = 0.4 # Slightly lower to catch shorter phrases or commands
-        self.recognizer.non_speaking_duration = 0.4 # Shorter duration to be more responsive in conversation
+        self.recognizer.phrase_threshold = 0.3 # Lower phrase threshold to better catch short commands
+        self.recognizer.non_speaking_duration = 0.8 # Increase duration to prevent premature cut-offs
 
     def listen_for_audio(self):
         with sr.Microphone(chunk_size=8192) as source:
@@ -60,11 +60,16 @@ class AIInteraction:
         gray_print(f'chat takes: {time.time() - st:.3f} s')
         return response
 
-    def text_to_speech(self, text):
+    def text_to_speech(self, text, voice=''):
+        
+        responseVoice = TTS_VOICE
+        if voice != '':
+            responseVoice = voice
+
         st = time.time()
         _time = time.strftime("%y-%m-%d_%H-%M-%S", time.localtime())
         _tts_f = f"./tts/{_time}_raw.wav"
-        status = self.openai_helper.text_to_speech(text, _tts_f, TTS_VOICE, response_format='wav')
+        status = self.openai_helper.text_to_speech(text, _tts_f, responseVoice, response_format='wav')
         if status:
             tts_file = f"./tts/{_time}_{VOLUME_DB}dB.wav"
             status = sox_volume(_tts_f, tts_file, VOLUME_DB)
@@ -93,8 +98,8 @@ class AIInteraction:
         
         return result
 
-    def generate_speech(self, text):
-        status, tts_file = self.text_to_speech(text)
+    def generate_speech(self, text, voice=''):
+        status, tts_file = self.text_to_speech(text, voice)
         return tts_file if status else None
 
     def clear_conversation(self):

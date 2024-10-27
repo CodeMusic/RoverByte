@@ -72,10 +72,8 @@ def main():
     _color, _day = get_color_of_the_week()
     _color_hex = get_color_of_the_week_hex()
     _invert_color_hex = inverted_color_hex()
-    TTS_VOICE = 'nova' # alloy, echo, fable, onyx, nova, and shimmer
-    tts_file = ai.generate_speech(f"Launching RoverOS... RoverByte is waking up!")
-    TTS_VOICE = 'echo'
-    tts_file2 = ai.generate_speech(f"I am online, and ready to help on this {_color} {_day}!")
+    tts_file = ai.generate_speech(f"Launching RoverOS... RoverByte is waking up!", 'nova')
+    tts_file2 = ai.generate_speech(f"I am online, and ready to help on this {_color} {_day}!")  
     if tts_file:
         dog.dog.speak_block(tts_file)
         gray_print(f"Speech generated: {tts_file}")
@@ -110,47 +108,10 @@ def main():
     action_cooldown = 1  # 1 second cooldown between actions
 
     while True:
-        # Check for touch events
-        current_time = time.time()
-        touch_state = dog.dog.dual_touch.read()
-        print(touch_state);
-        
-        if touch_state != 'N':
-            #and (current_time - last_action_time) > action_cooldown:
-            print(f"Touch sensor activated: {touch_state}")
-            last_action_time = current_time
-            
-            #if len(dog.dog.head_action_buffer) < 2:
-            angs = head_nod()
-            dog.dog.head_move(angs, immediately=False, speed=80)
-            dog.action_flow.run('wag_tail')
-                
-            try:
-                dog.set_rgb_mode('listen', color="#8A2BE2", bps=0.35, brightness=0.8)
-            except AttributeError:
-                print("RGB strip functionality not available")
-        
-       # elif touch_state == 'N' and dog.action_flow.current_action != 'sit':
-       #     dog.set_rgb_mode('breath', 'pink')
-       #     dog.action_flow.run('sit')  # Return to sit position when not touched
-        
         # Handle input
         if INPUT_MODE == 'voice':
             voice_input = handle_voice_input(dog, ai, _color_hex)
             if voice_input:
-                touch_state = dog.dog.dual_touch.read()
-                print(touch_state);
-                
-                if touch_state != 'N':
-                    #and (current_time - last_action_time) > action_cooldown:
-                    print(f"Touch sensor activated: {touch_state}")
-                    last_action_time = current_time
-                    
-                    #if len(dog.dog.head_action_buffer) < 2:
-                    angs = head_nod()
-                    dog.dog.head_move(angs, immediately=False, speed=80)
-                    dog.action_flow.run('wag_tail')
-
                 action_performed = process_voice_command(voice_input, ai, dog)
                 if not action_performed:
                     # If no action was performed, process as before
@@ -162,7 +123,7 @@ def main():
         else:
             raise ValueError("Invalid input mode")
 
-        print()  # new line
+        print() 
 
 def handle_voice_input(dog, ai, color_hex):
     gray_print("listening ...")
@@ -209,14 +170,56 @@ def process_input(dog, ai, input_text):
 
     dog.action_flow.run('sit')  # return to sit position
 
+def cleanup():
+    print("\nShutting down RoverOS gracefully...")
+    try:
+        if WITH_IMG:
+            print("Closing camera...")
+            Vilib.camera_close()
+        
+        print("Stopping all actions...")
+        dog = RoverControl()
+        # Stop any ongoing actions
+        dog.action_flow.stop()
+        dog.dog.body_stop()
+        dog.dog.head_stop()
+        dog.dog.tail_stop()
+        
+        # Return to neutral position
+        print("Returning to neutral position...")
+        dog.action_flow.run('sit')
+        dog.dog.wait_all_done()
+        
+        # Turn off RGB
+        print("Turning off RGB strip...")
+        try:
+            dog.dog.rgb_strip.close()
+        except:
+            pass
+        
+        # Close audio
+        print("Closing audio systems...")
+        try:
+            dog.dog.sound_direction.close()
+            dog.dog.sound_effect.close()
+        except:
+            pass
+        
+        # Final cleanup
+        print("Closing RoverControl...")
+        dog.close()
+        
+    except Exception as e:
+        print(f"\033[31mError during cleanup: {e}\033[m")
+    
+    print("Shutdown complete.")
+
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        pass
+        print("\nReceived shutdown signal (Ctrl+C)")
     except Exception as e:
         print(f"\033[31mERROR: {e}\033[m")
     finally:
-        if WITH_IMG:
-            Vilib.camera_close()
-        RoverControl().close()
+        cleanup()
