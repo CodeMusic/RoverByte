@@ -8,7 +8,8 @@ from utils import gray_print, redirect_error_2_null, cancel_redirect_error, get_
 from ai_interaction import AIInteraction
 from rover_control import RoverControl
 from math import sin
-from voice_commands import process_voice_command
+from voice_commands import VOICE_COMMANDS
+
 
 
 """
@@ -42,6 +43,24 @@ def head_nod():
         p = round(20*sin(i*0.314) + 10, 2)
         angs.append([y, r, p])
     return angs
+
+def process_voice_command(text, ai, dog):
+    command = text.lower()
+    if command in VOICE_COMMANDS:
+        action = VOICE_COMMANDS[command]
+        dog.action_flow.run(action)
+        return True
+    else:
+        # If not a direct command, pass to AI
+        ai_response = ai.generate_response(text)
+        # Check if AI response contains an action
+        for cmd in VOICE_COMMANDS.values():
+            if cmd in ai_response.lower():
+                dog.action_flow.run(cmd)
+                return True
+        # If no action in AI response, just speak the response
+        dog.speak(ai_response)
+        return False
 
 def main():
     ai = AIInteraction()

@@ -47,21 +47,3 @@ VOICE_COMMANDS = {
     "pray": "pray",
     "butt up": "butt_up",
 }
-
-def process_voice_command(text, ai, dog):
-    command = text.lower()
-    if command in VOICE_COMMANDS:
-        action = VOICE_COMMANDS[command]
-        dog.action_flow.run(action)
-        return True
-    else:
-        # If not a direct command, pass to AI
-        ai_response = ai.generate_response(text)
-        # Check if AI response contains an action
-        for cmd in VOICE_COMMANDS.values():
-            if cmd in ai_response.lower():
-                dog.action_flow.run(cmd)
-                return True
-        # If no action in AI response, just speak the response
-        dog.speak(ai_response)
-        return False

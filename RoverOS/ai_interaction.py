@@ -2,7 +2,6 @@ import speech_recognition as sr
 from openai_helper import OpenAiHelper
 from config import OPENAI_API_KEY, OPENAI_ASSISTANT_ID, TTS_VOICE, VOLUME_DB, LANGUAGE
 from utils import sox_volume, gray_print
-from voice_commands import VOICE_COMMANDS
 import time
 import re
 import ast
