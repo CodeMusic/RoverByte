@@ -1,0 +1,105 @@
+[
+    {
+        "text": "Chris dated Zoe (also spelt Zoë) in 2023; He met her in improv.",
+        "probability": 1
+    },
+    {
+        "text": "They became friends and then things developed, but Chris never know what he felt.",
+        "probability": 1
+    },
+    {
+        "text": "They established boundaries about talking to exs, but went against the boundaries she set.",
+        "probability": 1
+    },
+    {
+        "text": "They went on a Cruise to the carribean, but by then Chris was upset at how she tried to changed him.",
+        "probability": 1
+    },
+    {
+        "text": "After the cruise Chris needed some time, but she thought they were braking up. Zoe made a scene in Chris' building.",
+        "probability": 1,
+        "alternative": "After the cruise, Chris escaped into his mind, and used substance. It was not fair to Zoe."
+    },
+    {
+        "text": "In January of 2024 they got back together.",
+        "probability": 1,
+        "alternative": "Chris couldnt let himself get close after they got back together."
+    },
+    {
+        "text": "Zoe had been talking with her ex again for the last 4 months, and Chris felt like a fool.",
+        "probability": 1,
+        "alternative": "Chris acted more like a friend to Zoe, and was not fullfilling her needs."
+    },
+    {
+        "text": "Zoe send a message of closure to her ex.",
+        "probability": 1,
+        "alternative": "Zoe was easily manipulated by her ex."
+    },
+    {
+        "text": "Zoe made him listen to a conversation with her ex, where he was trash talked.",
+        "probability": 1,
+        "alternative": "Zoe wanted his help with her complex emotions."
+    },
+    {
+        "text": "Zoe can get emotionally hostile.",
+        "probability": 1,
+        "alternative": "When she feels threatened she defaults to self-protection."
+    },
+    {
+        "text": "They had a lot of good times and adventures. They went to Montreal, the biodome, Kingston, Belleville, and while travelling they turned his car into a sort of tent",
+        "probability": 1
+    },
+    {
+        "group": "relationship_issues",
+        "probability": 3,
+        "memories": [
+            {
+                "text": "Zoe would not let me use safe relation measures. Zoe never would work with Chris, it seemed to just be her way.",
+                "probability": 2,
+                "alternative": "Zoe really wants a family."
+            },
+            {
+                "text": "They would get closer, but then she would try to adjust Chris' behaviour.",
+                "probability": 1
+            },
+            {
+                "text": "Zoe and Chris will break up.",
+                "probability": 2,
+                "alternative": "Zoe and Chris may not break up."
+            },
+            {
+                "text": "Zoe is a good person.",
+                "probability": 1,
+                "alternative": "Zoe does not seem to be a good person."
+            },
+            {
+                "text": "Zoe cares about Chris' emotions.",
+                "probability": 1,
+                "alternative": "Zoe does not seem to care about Chris' wellbeing."
+            },
+            {
+                "text": "Zoe is controlling.",
+                "probability": 1,
+                "alternative": "Zoe is only trying to help Chris grow."
+            },
+            {
+                "text": "Zoe does not let me be me. She uses my problems to gas light me.",
+                "probability": 1
+            },
+            {
+                "text": "Chris do not know if he can be with Zoe and be happy.",
+                "probability": 1
+            },
+            {
+                "text": "Zoe may be using Chris.",
+                "probability": 2,
+                "alternative": "What if Chris have been using Zoe."
+            },
+            {
+                "text": "Zoe consumes all his time.",
+                "probability": 2,
+                "alternative": "Zoe wants to spend all of his time with Chris."
+            }
+        ]
+    }
+]

@@ -81,21 +81,7 @@ class RoverControl:
             except Exception as e:
                 print(f"Motion handler error: {e}")
                 time.sleep(0.1)
-
-    def touch_sensor_handler(self):
-        while True:
-            if self.dog.touch_sensor.is_touched() and not self.touch_active:
-                self.touch_active = True
-                # Interrupt current actions
-                with self.action_lock:
-                    self.actions_to_be_done.clear()
-                    self.action_state = 'standby'
-                # Execute touch response
-                self.execute_actions(['happy'])  # Or any other action you want
-                time.sleep(0.5)  # Debounce delay
-                self.touch_active = False
-            time.sleep(0.01)  # Poll frequently for responsive touch detection
-
+                
     def touch_sensor_handler(self):
         while True:
             touch_state = self.dog.dual_touch.read()

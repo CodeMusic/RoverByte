@@ -1,0 +1,42 @@
+[
+    {
+        "text": "Dave is Chris' Dad.",
+        "probability": 1
+    },
+    {
+        "text": "Dad was a travelling salesman.",
+        "probability": 1
+    },
+    {
+        "text": "Dad worked for Skidoo, and then Caterpillar Construction.",
+        "probability": 2
+    },
+    {
+        "text": "Dad always supports Chris, and nurtures his confidence.",
+        "probability": 1
+    },
+    {
+        "text": "Dad just retired (now working again), and is looking for an outlet of his time.",
+        "probability": 2
+    },
+    {
+        "text": "Dad loves to laugh, and is a good public speaker.",
+        "probability": 2
+    },
+    {
+        "text": "Chris loves his Dad.",
+        "probability": 1
+    },
+    {
+        "text": "Dad enjoys beer.",
+        "probability": 3
+    },
+    {
+        "text": "Dad likes to observe people.",
+        "probability": 2
+    },
+    {
+        "text": "Dad is good with money and success focused.",
+        "probability": 2
+    }
+]

@@ -1,12 +1,14 @@
 import datetime
 import subprocess
 import sys
+import shutil
+import time
 
 """
 This file contains utility functions for the roverbyte.
 """
 
-def gray_print(text):
+def grey_print(text):
     print(f'\033[1;30m{text}\033[0m')
 
 def hex_to_color(hex_string):
@@ -63,3 +65,42 @@ def redirect_error_2_null():
 def cancel_redirect_error(stderr_backup):
     sys.stderr.close()
     sys.stderr = stderr_backup
+
+    # utils
+# =================================================================
+def chat_print(label, message):
+    width = shutil.get_terminal_size().columns
+    msg_len = len(message)
+    line_len = width - 27
+
+    # --- normal print ---
+    print(f'{time.time():.3f} {label:>6} >>> {message}')
+    return
+
+    # --- table mode ---
+    if width < 38 or msg_len <= line_len:
+        print(f'{time.time():.3f} {label:>6} >>> {message}')
+    else:
+        texts = []
+
+        # words = message.split()
+        # print(words)
+        # current_line = ""
+        # for word in words:
+        #     if len(current_line) + len(word) + 1 <= line_len:
+        #         current_line += word + " "
+        #     else:
+        #         texts.append(current_line)
+        #         current_line = ""
+
+        # if current_line:
+        #     texts.append(current_line)
+
+        for i in range(0, len(message), line_len):
+            texts.append(message[i:i+line_len])
+
+        for i, text in enumerate(texts):
+            if i == 0:
+                print(f'{time.time():.3f} {label:>6} >>> {text}')
+            else:
+                print(f'{"":>26} {text}')

@@ -1,7 +1,7 @@
 import speech_recognition as sr
-from openai_helper import OpenAiHelper
+from openai_helper import OpenAIHelper  
 from config import OPENAI_API_KEY, OPENAI_ASSISTANT_ID, TTS_VOICE, VOLUME_DB, LANGUAGE
-from utils import sox_volume, gray_print
+from utils import sox_volume, grey_print
 import time
 import re
 import ast
@@ -14,10 +14,27 @@ It provides a layer of abstraction over the OpenAI API, and the speech recogniti
 """
 
 class AIInteraction:
-    def __init__(self):
-        self.openai_helper = OpenAiHelper(OPENAI_API_KEY, OPENAI_ASSISTANT_ID, 'RoverByte')
+    def __init__(self, assistant_config: dict = None):
+        # Default to RoverByte if no config provided
+        if assistant_config is None:
+            assistant_config = {
+                'name': 'RoverByte',
+                'api_key': OPENAI_API_KEY,
+                'assistant_id': OPENAI_ASSISTANT_ID,
+                'voice': TTS_VOICE,
+                'language': LANGUAGE
+            }
+        
+        self.assistant_config = assistant_config
+        self.openai_helper = OpenAIHelper(
+            api_key=self.assistant_config['api_key'],
+            assistant_id=self.assistant_config['assistant_id'],
+            assistant_name=self.assistant_config['name']
+        )
         self.recognizer = sr.Recognizer()
         self.setup_recognizer()
+
+
 
     def setup_recognizer(self):
         self.recognizer.dynamic_energy_adjustment_damping = 0.1 # Reduce damping for quicker adaptation to sound changes
@@ -37,13 +54,13 @@ class AIInteraction:
     def speech_to_text(self, audio, language):
         st = time.time()
         result = self.openai_helper.stt(audio, language=language)
-        gray_print(f"stt takes: {time.time() - st:.3f} s")
+        grey_print(f"stt takes: {time.time() - st:.3f} s")
         return result
 
     def dialogue(self, text):
         st = time.time()
         response = self.openai_helper.dialogue(text)
-        gray_print(f'chat takes: {time.time() - st:.3f} s')
+        grey_print(f'chat takes: {time.time() - st:.3f} s')
         return response
     
     def generate_response(self, user_input):
@@ -51,13 +68,13 @@ class AIInteraction:
             response = self.openai_helper.chat_with_gpt(user_input)
             return response
         except Exception as e:
-            gray_print(f"Woof! Error generating AI response: {e}")
+            grey_print(f"Woof! Error generating AI response: {e}")
             return "Arf! Sorry, my circuits are a bit tangled. Could you try asking again? Woof!"
 
     def dialogue_with_img(self, text, img_path):
         st = time.time()
         response = self.openai_helper.dialogue_with_img(text, img_path)
-        gray_print(f'chat takes: {time.time() - st:.3f} s')
+        grey_print(f'chat takes: {time.time() - st:.3f} s')
         return response
 
     def text_to_speech(self, text, voice=''):
@@ -73,7 +90,7 @@ class AIInteraction:
         if status:
             tts_file = f"./tts/{_time}_{VOLUME_DB}dB.wav"
             status = sox_volume(_tts_f, tts_file, VOLUME_DB)
-            gray_print(f'tts takes: {time.time() - st:.3f} s')
+            grey_print(f'tts takes: {time.time() - st:.3f} s')
             return status, tts_file
         return False, None
 

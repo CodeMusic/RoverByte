@@ -1,0 +1,34 @@
+[
+    {
+        "text": "David is Chris' brother.",
+        "probability": 1
+    },
+    {
+        "text": "Chris always looked up to David, they drifted apart at times, but always reconnect.",
+        "probability": 2
+    },
+    {
+        "text": "David influences me to be a better person.",
+        "probability": 1
+    },
+    {
+        "text": "David and Chris have gone on many snowmobile adventures.",
+        "probability": 3
+    },
+    {
+        "text": "David had a fiancée, but after they broke up he moved to Ottawa with me.",
+        "probability": 3
+    },
+    {
+        "text": "David and Chris lived together for a period while Chris was in school.",
+        "probability": 2
+    },
+    {
+        "text": "David is a good person.",
+        "probability": 1
+    },
+    {
+        "text": "David worked for Primus, and then in sales at Apple.",
+        "probability": 2
+    }
+]

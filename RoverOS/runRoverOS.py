@@ -4,7 +4,7 @@ import time
 import cv2
 from vilib import Vilib
 from config import INPUT_MODE, WITH_IMG, LANGUAGE, TTS_VOICE, VOLUME_DB
-from utils import gray_print, redirect_error_2_null, cancel_redirect_error, get_color_of_the_week, get_color_of_the_week_hex, inverted_color_hex
+from utils import grey_print, redirect_error_2_null, cancel_redirect_error, get_color_of_the_week, get_color_of_the_week_hex, inverted_color_hex
 from ai_interaction import AIInteraction
 from rover_control import RoverControl
 from math import sin
@@ -46,21 +46,44 @@ def head_nod():
 
 def process_voice_command(text, ai, dog):
     command = text.lower()
-    if command in VOICE_COMMANDS:
-        action = VOICE_COMMANDS[command]
-        dog.action_flow.run(action)
-        return True
-    else:
+    commandSafe = command.replace('.', '').replace(',', '').replace('!', '').replace('?', '')
+    processed = False
+    is_hey_rover = commandSafe.startswith('hey rover') or commandSafe.startswith('hey roverbyte') 
+
+    if is_hey_rover:
+        commandSafe = commandSafe.replace('hey rover', '').replace('hey roverbyte', '')
+        if commandSafe in VOICE_COMMANDS:
+            action = VOICE_COMMANDS[commandSafe]
+            dog.action_flow.run(action)
+            processed = True
+        elif commandSafe.startswith('channel'):
+            personToChannel = commandSafe.replace('channel', '')
+            tts_file = ai.generate_speech(f"Channeling {personToChannel}...")
+            if tts_file:
+                dog.dog.speak_block(tts_file)
+                grey_print(f"Speech generated: {tts_file}")
+            else:
+                grey_print("Failed to generate speech (tts_file)")
+            processed = True
+        else:
+            dog.speak("Sorry, I don't know that command.")
+            processed = False
+
+    if not processed:
         # If not a direct command, pass to AI
         ai_response = ai.generate_response(text)
+        ai_response_clean = ai_response.lower().replace('[', '').replace(']', '').replace('"', '').replace(',', '').replace('.', '').replace('!', '').replace('?', '').strip()
         # Check if AI response contains an action
         for cmd in VOICE_COMMANDS.values():
-            if cmd in ai_response.lower():
-                dog.action_flow.run(cmd)
-                return True
+            if cmd in ai_response_clean:
+                dog.action_flow.run(cmd)    
+                processed = True
         # If no action in AI response, just speak the response
-        dog.speak(ai_response)
-        return False
+        #if not processed:
+        #    dog.speak(ai_response)
+
+        return processed
+    
 
 def main():
     ai = AIInteraction()
@@ -76,9 +99,9 @@ def main():
     tts_file2 = ai.generate_speech(f"I am online, and ready to help on this {_color} {_day}!")  
     if tts_file:
         dog.dog.speak_block(tts_file)
-        gray_print(f"Speech generated: {tts_file}")
+        grey_print(f"Speech generated: {tts_file}")
     else:
-        gray_print("Failed to generate speech (tts_file)")
+        grey_print("Failed to generate speech (tts_file)")
 
     #stretch
     dog.action_flow.run('stretch')
@@ -92,9 +115,9 @@ def main():
     
     if tts_file2:
         dog.dog.speak_block(tts_file2)
-        gray_print(f"Speech generated: {tts_file2}")
+        grey_print(f"Speech generated: {tts_file2}")
     else:
-        gray_print("Failed to generate speech (tts_file2)")
+        grey_print("Failed to generate speech (tts_file2)")
 
     if WITH_IMG:
         Vilib.camera_start(vflip=False, hflip=False)
@@ -126,7 +149,7 @@ def main():
         print() 
 
 def handle_voice_input(dog, ai, color_hex):
-    gray_print("listening ...")
+    grey_print("listening ...")
     dog.set_action_state('standby')
     dog.set_rgb_mode('listen', color_hex)
 
@@ -151,10 +174,10 @@ def process_input(dog, ai, input_text):
 
     st = time.time()
     response = ai.dialogue_with_img(input_text, img_path)
-    gray_print(f'chat takes: {time.time() - st:.3f} s')
+    grey_print(f'chat takes: {time.time() - st:.3f} s')
 
     response_list = ai.parse_response(response)
-    gray_print(f'response_list: {response_list}')
+    grey_print(f'response_list: {response_list}')
 
     for item in response_list:
         if item['key'] == 'action':
@@ -180,14 +203,13 @@ def cleanup():
         print("Stopping all actions...")
         dog = RoverControl()
         # Stop any ongoing actions
-        dog.action_flow.stop()
         dog.dog.body_stop()
         dog.dog.head_stop()
         dog.dog.tail_stop()
         
         # Return to neutral position
         print("Returning to neutral position...")
-        dog.action_flow.run('sit')
+        dog.action_flow.run('lie')
         dog.dog.wait_all_done()
         
         # Turn off RGB
@@ -207,7 +229,6 @@ def cleanup():
         
         # Final cleanup
         print("Closing RoverControl...")
-        dog.close()
         
     except Exception as e:
         print(f"\033[31mError during cleanup: {e}\033[m")

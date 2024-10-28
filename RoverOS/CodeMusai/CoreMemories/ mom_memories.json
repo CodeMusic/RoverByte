@@ -1,0 +1,38 @@
+[
+    {
+        "text": "Shirley is my Mom.",
+        "probability": 1
+    },
+    {
+        "text": "Mom is a cruise specialist.",
+        "probability": 1
+    },
+    {
+        "text": "Mom also works at Rexall, and lives in the same building as Chris, but on a different floor.",
+        "probability": 3
+    },
+    {
+        "text": "Mom always supports Chris, and emotionally nurtures Chris.",
+        "probability": 1
+    },
+    {
+        "text": "Mom used to teach travel and tourism, and is a good public speaker.",
+        "probability": 2
+    },
+    {
+        "text": "Chris loves his Mom",
+        "probability": 1
+    },
+    {
+        "text": "Mom likes to play slots.",
+        "probability": 2
+    },
+    {
+        "text": "Mom likes to laugh.",
+        "probability": 2
+    },
+    {
+        "text": "Mom used to horseback ride.",
+        "probability": 2
+    }
+]
