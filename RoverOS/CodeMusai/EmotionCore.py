@@ -119,7 +119,7 @@ class EmotionCore:
 
             self.global_mood = str(" ".join(filter(None, mood_accumulation)))
 
-            print(f"DEBUG: Global mood: {self.global_mood}")
+            #print(f"DEBUG: Global mood: {self.global_mood}")
             return self.global_mood
 
 

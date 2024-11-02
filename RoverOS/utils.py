@@ -8,6 +8,11 @@ import time
 This file contains utility functions for the roverbyte.
 """
 
+ENABLE_DEBUG_PRINT = True
+def debug_print(text):
+    if ENABLE_DEBUG_PRINT:
+        print(f'DEBUG Log: \033[1;30m{text}\033[0m')
+
 def grey_print(text):
     print(f'\033[1;30m{text}\033[0m')
 

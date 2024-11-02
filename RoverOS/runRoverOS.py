@@ -4,12 +4,11 @@ import time
 import cv2
 from vilib import Vilib
 from config import INPUT_MODE, WITH_IMG, LANGUAGE, TTS_VOICE, VOLUME_DB
-from utils import grey_print, redirect_error_2_null, cancel_redirect_error, get_color_of_the_week, get_color_of_the_week_hex, inverted_color_hex
+from utils import debug_print, grey_print, redirect_error_2_null, cancel_redirect_error, get_color_of_the_week, get_color_of_the_week_hex, inverted_color_hex
 from ai_interaction import AIInteraction
 from rover_control import RoverControl
 from math import sin
 from voice_commands import VOICE_COMMANDS
-
 
 
 """
@@ -32,7 +31,7 @@ c_error_handler = ERROR_HANDLER_FUNC(py_error_handler)
 asound = ctypes.CDLL(ctypes.util.find_library('asound'))
 asound.snd_lib_error_set_handler(c_error_handler)
 # ----------------------------------------------------------------
-
+ENABLE_VOICE = True
 def head_nod():
     y = 0
     r = 0
@@ -83,71 +82,7 @@ def process_voice_command(text, ai, dog):
         #    dog.speak(ai_response)
 
         return processed
-    
-
-def main():
-    ai = AIInteraction()
-    dog = RoverControl()
-
-    dog.dog.rgb_strip.close()
-    dog.action_flow.change_status(dog.action_flow.STATUS_SIT)
-
-    _color, _day = get_color_of_the_week()
-    _color_hex = get_color_of_the_week_hex()
-    _invert_color_hex = inverted_color_hex()
-    tts_file = ai.generate_speech(f"Launching RoverOS... RoverByte is waking up!", 'nova')
-    tts_file2 = ai.generate_speech(f"I am online, and ready to help on this {_color} {_day}!")  
-    if tts_file:
-        dog.dog.speak_block(tts_file)
-        grey_print(f"Speech generated: {tts_file}")
-    else:
-        grey_print("Failed to generate speech (tts_file)")
-
-    #stretch
-    dog.action_flow.run('stretch')
-    #dog.wait_all_done()
-    dog.action_flow.run('sit')
-    #dog.wait_all_done()
-    dog.action_flow.run('bark')
-    #dog.wait_all_done()
-    dog.action_flow.run('wag_tail')
-    #dog.wait_all_done()
-    
-    if tts_file2:
-        dog.dog.speak_block(tts_file2)
-        grey_print(f"Speech generated: {tts_file2}")
-    else:
-        grey_print("Failed to generate speech (tts_file2)")
-
-    if WITH_IMG:
-        Vilib.camera_start(vflip=False, hflip=False)
-        Vilib.display(local=False, web=True)
-        while not Vilib.flask_start:
-            time.sleep(0.01)
-        time.sleep(0.5)
-        print('\n')
-
-    last_action_time = 0
-    action_cooldown = 1  # 1 second cooldown between actions
-
-    while True:
-        # Handle input
-        if INPUT_MODE == 'voice':
-            voice_input = handle_voice_input(dog, ai, _color_hex)
-            if voice_input:
-                action_performed = process_voice_command(voice_input, ai, dog)
-                if not action_performed:
-                    # If no action was performed, process as before
-                    process_input(dog, ai, voice_input)
-        elif INPUT_MODE == 'keyboard':
-            keyboard_input = handle_keyboard_input(dog, _invert_color_hex)
-            if keyboard_input:
-                process_input(dog, ai, keyboard_input)
-        else:
-            raise ValueError("Invalid input mode")
-
-        print() 
-
+ 
 def handle_voice_input(dog, ai, color_hex):
     grey_print("listening ...")
     dog.set_action_state('standby')
@@ -227,17 +162,108 @@ def cleanup():
         except:
             pass
         
+        # ensure the API server is stopped
+        os.system("sudo pkill -f uvicorn")
+        os.system("sudo fuser -k 2345/tcp")
         # Final cleanup
         print("Closing RoverControl...")
         
     except Exception as e:
         print(f"\033[31mError during cleanup: {e}\033[m")
     
-    print("Shutdown complete.")
+    print("Shutdown complete.")   
+
+def runExperienceLoop():
+    """Main function to run the RoverOS experience loop"""
+    try:
+        debug_print("Starting RoverOS initialization...")
+        debug_print("Creating AI interaction management system...")
+        ai = AIInteraction()
+        
+        debug_print("Creating dog controller...")
+        dog = RoverControl()
+        
+        debug_print("About to generate wake-up speech...")
+        tts_file = ai.generate_speech(f"Launching RoverOS... RoverByte is waking up!", 'nova')
+        dog.dog.speak_block(tts_file)
+        debug_print(f"Generated TTS file: {tts_file}")
+        
+        debug_print("Starting API server...")
+        ai.start_server(dog)
+
+        debug_print("Closing RGB strip...")
+        dog.dog.rgb_strip.close()
+        
+        debug_print("Setting action flow to sit...")
+        dog.action_flow.change_status(dog.action_flow.STATUS_SIT)
+
+        _color, _day = get_color_of_the_week()
+        _color_hex = get_color_of_the_week_hex()
+        _invert_color_hex = inverted_color_hex()
+        tts_file = ai.generate_speech(f"Launching RoverOS... RoverByte is waking up!", 'nova')
+        tts_file2 = ai.generate_speech(f"I am online, and ready to help on this {_color} {_day}!")  
+        if tts_file:
+            dog.dog.speak_block(tts_file)
+            grey_print(f"Speech generated: {tts_file}")
+        else:
+            grey_print("Failed to generate speech (tts_file)")
+
+        #stretch
+        dog.action_flow.run('stretch')
+        dog.wait_all_done()
+        dog.action_flow.run('sit')
+        dog.wait_all_done()
+        dog.action_flow.run('bark')
+        dog.wait_all_done()
+        dog.action_flow.run('wag_tail')
+        dog.wait_all_done()
+        
+        if tts_file2:
+            dog.dog.speak_block(tts_file2)
+            grey_print(f"Speech generated: {tts_file2}")
+        else:
+            grey_print("Failed to generate speech (tts_file2)")
+
+        if WITH_IMG:
+            Vilib.camera_start(vflip=False, hflip=False)
+            Vilib.display(local=False, web=True)
+            while not Vilib.flask_start:
+                time.sleep(0.01)
+            time.sleep(0.5)
+            print('\n')
+
+        last_action_time = 0
+        action_cooldown = 1  # 1 second cooldown between actions
+        ENABLE_VOICE = False
+        while True:
+            # Handle input
+            if ENABLE_VOICE and INPUT_MODE == 'voice':
+                voice_input = handle_voice_input(dog, ai, _color_hex)
+                if voice_input:
+                    action_performed = process_voice_command(voice_input, ai, dog)
+                    if not action_performed:
+                        # If no action was performed, process as before
+                        process_input(dog, ai, voice_input)
+            elif INPUT_MODE == 'keyboard':
+                keyboard_input = handle_keyboard_input(dog, _invert_color_hex)
+                if keyboard_input:
+                    process_input(dog, ai, keyboard_input)
+            else:
+                #API Mode Only
+                time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("\nReceived shutdown signal (Ctrl+C)")
+    except Exception as e:
+        print(f"\033[31mCritical ERROR: {e}\033[m")
+    finally:
+        ai.stop_server()
+        cleanup()   
+    
+
 
 if __name__ == "__main__":
     try:
-        main()
+        runExperienceLoop()
     except KeyboardInterrupt:
         print("\nReceived shutdown signal (Ctrl+C)")
     except Exception as e:

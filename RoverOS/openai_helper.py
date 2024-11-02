@@ -1,5 +1,5 @@
 from openai import OpenAI
-from utils import grey_print
+from utils import grey_print, debug_print
 from config import SAVED_OWNER_NAME 
 import os
 import json
@@ -8,6 +8,15 @@ from CodeMusai.EmotionCore import EmotionCore
 from utils import chat_print
 from config import SAVED_OWNER_NAME
 import time
+from fastapi import FastAPI, HTTPException, Request, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import List, Optional, Callable
+import uvicorn
+import multiprocessing
+import asyncio
+import random
+
 """
 This file contains the OpenAI helper class for the roverbyte.
 """
@@ -164,6 +173,7 @@ class OpenAIHelper:
     def dialogue(self, msg: str):
         """Handle dialogue with context"""  
         try:
+            debug_print(f"Processing dialogue: {msg}")
             chat_print("user", msg)
             
             # Create the message first
@@ -351,3 +361,14 @@ class AssistantContextManager:
         full_context = " ".join(context_parts)
         grey_print(f"Built context with {len(context_parts)} parts")
         return full_context
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    model: str = "codemusai-gpt-model"
+    messages: List[ChatMessage]
+    max_tokens: Optional[int] = 512
+    temperature: Optional[float] = 0.1
+    stream: Optional[bool] = False

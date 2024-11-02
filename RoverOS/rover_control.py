@@ -2,6 +2,7 @@ from pidog import Pidog
 from action_flow import *
 import threading
 import time
+from utils import grey_print, debug_print
 
 """
 This file contains the RoverControl abstraction for the roverbyte pidog libraries.
@@ -41,6 +42,7 @@ class RoverControl:
                 
                 # Picked up (acceleration opposite to gravity)
                 if ax < -18000:  # More than 1G downward
+                    debug_print("Picked up")
                     self.dog.body_stop()
                     if not self.up_flag:
                         self.up_flag = True
@@ -58,6 +60,7 @@ class RoverControl:
 
                 # Lifted up (acceleration same direction as gravity)
                 if ax > -13000:  # Less than 1G downward
+                    debug_print("Lifted up")
                     self.dog.body_stop()
                     if self.up_flag and not self.motion_active:
                         self.motion_active = True
@@ -86,6 +89,7 @@ class RoverControl:
         while True:
             touch_state = self.dog.dual_touch.read()
             if touch_state != 'N':  # Any touch detected
+                debug_print("Touch detected")
                 # Interrupt current actions
                 with self.action_lock:
                     self.actions_to_be_done.clear()

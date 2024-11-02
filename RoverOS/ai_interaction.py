@@ -1,7 +1,8 @@
 import speech_recognition as sr
-from openai_helper import OpenAIHelper  
+from openai_helper import OpenAIHelper
+from api_server import OpenAIHelperServer  
 from config import OPENAI_API_KEY, OPENAI_ASSISTANT_ID, TTS_VOICE, VOLUME_DB, LANGUAGE
-from utils import sox_volume, grey_print
+from utils import sox_volume, grey_print, debug_print
 import time
 import re
 import ast
@@ -33,8 +34,31 @@ class AIInteraction:
         )
         self.recognizer = sr.Recognizer()
         self.setup_recognizer()
+        self.server = None
 
 
+    def start_server(self, dog_controller=None):
+        """Start the API server without blocking sensor handlers"""
+        try:
+            debug_print("Initializing API server...")
+            if not hasattr(self, 'server') or self.server is None:
+                self.server = OpenAIHelperServer(self.openai_helper, dog_controller, self)
+                self.server.start()
+                debug_print("API server started successfully")
+            else:
+                debug_print("Server already running")
+        except Exception as e:
+            debug_print(f"Error starting server: {e}")
+
+    def stop_server(self):
+        """Stop the API server"""
+        try:
+            if hasattr(self, 'server') and self.server:
+                self.server.stop()
+                self.server = None
+                debug_print("API server stopped")
+        except Exception as e:
+            debug_print(f"Error stopping server: {e}")
 
     def setup_recognizer(self):
         self.recognizer.dynamic_energy_adjustment_damping = 0.1 # Reduce damping for quicker adaptation to sound changes
@@ -95,6 +119,7 @@ class AIInteraction:
         return False, None
 
     def parse_response(self, response): #Parse the response from the AI into speech and action sections for execution
+        debug_print(f"Parsing response: {response}")
         parts = re.split(r'(\[.*?\])', response)
         result = []
         for part in parts:
@@ -116,6 +141,7 @@ class AIInteraction:
         return result
 
     def generate_speech(self, text, voice=''):
+        debug_print(f"Generating speech for: {text}")
         status, tts_file = self.text_to_speech(text, voice)
         return tts_file if status else None
 
@@ -130,4 +156,8 @@ class AIInteraction:
             self.openai_helper.load_conversation(file_path)
             return True
         return False
+
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        self.stop_server()
     
