@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Body
+from fastapi import FastAPI, HTTPException, Request, Body, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -18,6 +18,8 @@ import os
 import psutil
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import tempfile
+import base64
 
 # Setup logging with controlled verbosity
 logging.basicConfig(
@@ -48,6 +50,10 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.7
     max_tokens: Optional[int] = None
 
+class TTSRequest(BaseModel):
+    text: str
+    language: Optional[str] = "en"
+
 # Helper Class for Interactions
 class RoverInteraction:
     def __init__(self, openai_helper, dog_controller, ai_interaction):
@@ -57,6 +63,7 @@ class RoverInteraction:
         self.thread_pool = ThreadPoolExecutor(max_workers=3)
         self.active_threads = []
         self.thread_lock = threading.Lock()
+        self.speech_lock = threading.Lock()  # Add speech lock
         debug_print("RoverInteraction initialized")
         
         # Verify dog controller
@@ -66,13 +73,14 @@ class RoverInteraction:
             debug_print("WARNING: Dog controller not available")
 
     def _play_speech(self, tts_file: str):
-        """Play speech in thread"""
+        """Play speech in thread with lock"""
         try:
-            debug_print(f"Playing speech file: {tts_file}")
-            if hasattr(self.dog_controller, 'dog'):
-                self.dog_controller.dog.speak_block(tts_file)
-            else:
-                debug_print("Dog controller not available")
+            with self.speech_lock:  # Only one speech at a time
+                debug_print(f"Playing speech file: {tts_file}")
+                if hasattr(self.dog_controller, 'dog'):
+                    self.dog_controller.dog.speak_block(tts_file)
+                else:
+                    debug_print("Dog controller not available")
         except Exception as e:
             debug_print(f"Speech playback error: {e}")
 
@@ -382,6 +390,34 @@ class OpenAIHelperServer:
                 ],
                 "uptime": time.time() - self._start_time
             }
+
+        @self.app.post("/rover/tts")
+        async def text_to_speech(request: TTSRequest):
+            try:
+                # Get speech from OpenAI
+                response = self.openai_helper.client.audio.speech.create(
+                    model="tts-1",
+                    voice="alloy",
+                    input=request.text
+                )
+                
+                # Convert binary audio to base64 string
+                audio_base64 = base64.b64encode(response.content).decode('utf-8')
+                
+                # Return in MakeBlock's format
+                return {
+                    "code": 200,  # Success code
+                    "data": {
+                        "audio": audio_base64
+                    },
+                    "message": ""
+                }
+            except Exception as e:
+                return {
+                    "code": 50000,  # Error code
+                    "data": {},
+                    "message": str(e)
+                }
 
     def start(self):
         """Start the API server"""
