@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Body, Response
+from fastapi import FastAPI, HTTPException, Request, Body, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -20,6 +20,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 import tempfile
 import base64
+import openai
 
 # Setup logging with controlled verbosity
 logging.basicConfig(
@@ -52,6 +53,10 @@ class ChatCompletionRequest(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str
+    language: Optional[str] = "en"
+
+class STTRequest(BaseModel):
+    audio: str  # Base64 encoded audio data
     language: Optional[str] = "en"
 
 # Helper Class for Interactions
@@ -415,6 +420,45 @@ class OpenAIHelperServer:
             except Exception as e:
                 return {
                     "code": 50000,  # Error code
+                    "data": {},
+                    "message": str(e)
+                }
+
+        @self.app.post("/rover/stt")
+        async def speech_to_text(request: Request):
+            try:
+                # Get raw audio data
+                audio_data = await request.body()
+                logger.info(f"Received audio data length: {len(audio_data)}")
+                
+                # Save temporarily (Whisper needs a file)
+                with open("temp_audio.mp3", "wb") as f:
+                    f.write(audio_data)
+                
+                """
+                # Use Whisper for transcription
+                with open("temp_audio.mp3", "rb") as audio_file:
+                    transcript = self.openai_helper.client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        response_format="text"
+                    )
+                """
+                
+                transcript = "Test response"
+                
+                # Return in MakeBlock's format
+                return {
+                    "code": 20000,
+                    "data": {
+                        "text": transcript
+                    },
+                    "message": "success"
+                }
+            except Exception as e:
+                logger.error(f"STT Error: {str(e)}")
+                return {
+                    "code": 50000,
                     "data": {},
                     "message": str(e)
                 }

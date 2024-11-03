@@ -50,10 +50,16 @@ def blink_error():
         led.show_all(0, 0, 0)  # Off
         time.sleep(0.5)
 
+
 def voice_to_text():
     console.clear()
     console.print("Press A to start recording")
     console.print("Press A again to stop")
+    
+    # Point to our STT endpoint
+    speech.set_recognition_address(url = "http://10.0.0.69:2345/rover/stt")
+    speech.set_access_token(token = OPENAI_API_KEY)  # Using our OpenAI key
+    
     led.show_all(0, 255, 0)  # Green for ready
     
     # Wait for A press to start
@@ -78,7 +84,8 @@ def voice_to_text():
     
     try:
         # Send recording for recognition while playing it
-        cloud.listen('english', t=1)
+        cloud.listen('english', 1)
+        console.print("Sent to our server...")
         time.sleep(1)
         
         result = cloud.listen_result()
@@ -89,7 +96,7 @@ def voice_to_text():
             console.print("Got text: " + recorded_text)
         else:
             console.print("No speech detected")
-            recorded_text = "Hi Chris, I didn't hear you."
+            recorded_text = ""
             
     except Exception as e:
         console.print("Error type: " + str(type(e)))
@@ -99,6 +106,7 @@ def voice_to_text():
     led.show_all(0, 255, 0)  # Green when done    
     time.sleep(1)
     return recorded_text
+
 
 def retry_connection():
     console.clear()
@@ -201,7 +209,8 @@ def display_main_menu(selected_index):
         "Command",  # Voice command
         "Speak",
         "Proxy",
-        "Chat"
+        "Chat",
+        "Quick Commands"  # New menu item
     ]
     
     for i, item in enumerate(menu_items):
@@ -269,25 +278,80 @@ def display_actions_menu(selected_index):
     return actions
 
 def configure_settings():
-    useBuiltIn = True
+    useBuiltIn = False
     if useBuiltIn:
-        cyberpi.speech.set_recognition_address(url = "wss://mindplus.makeblock.com/mbapi/audio2text")
-        cyberpi.speech.set_access_token(token = "{ACCESSTOKEN}")
-        cyberpi.driver.cloud_translate.TRANS_URL = "wss://mindplus.makeblock.com/mbapi/translate"
-        cyberpi.driver.cloud_translate.set_token("{ACCESSTOKEN}")
-        cyberpi.driver.cloud_translate.TTS_URL = "wss://mindplus.makeblock.com/mbapi/text2audio"
-        cyberpi.driver.cloud_translate.set_token("{ACCESSTOKEN}")
+        console.print("Using built-in speech components")
+        speech.set_recognition_address(url = "wss://mindplus.makeblock.com/mbapi/audio2text")
+        speech.set_access_token(token = "{ACCESSTOKEN}")
+        driver.cloud_translate.TRANS_URL = "wss://mindplus.makeblock.com/mbapi/translate"
+        driver.cloud_translate.set_token("{ACCESSTOKEN}")
+        driver.cloud_translate.TTS_URL = "wss://mindplus.makeblock.com/mbapi/text2audio"
+        driver.cloud_translate.set_token("{ACCESSTOKEN}")
     else:
-        cyberpi.speech.set_recognition_address(url = "{NAVIGATEURL}")
-        cyberpi.speech.set_access_token(token = "{ACCESSTOKEN}")
-        cyberpi.driver.cloud_translate.TRANS_URL = "{TRANSURL}"
-        cyberpi.driver.cloud_translate.set_token("{ACCESSTOKEN}")
-        cyberpi.driver.cloud_translate.TTS_URL = "http://10.0.0.69:2345/rover/tts"
-        cyberpi.driver.cloud_translate.set_token("{ACCESSTOKEN}")
+        console.print("Using custom speech components")
+        speech.set_recognition_address(url = "http://10.0.0.69:2345/rover/stt")
+        speech.set_access_token(token = "{ACCESSTOKEN}")
+        driver.cloud_translate.TRANS_URL = "{TRANSURL}"
+        driver.cloud_translate.set_token("{ACCESSTOKEN}")
+        driver.cloud_translate.TTS_URL = "http://10.0.0.69:2345/rover/tts"
+        driver.cloud_translate.set_token("{ACCESSTOKEN}")
+
+def handle_quick_commands():
+    console.clear()
+    console.print("Quick Commands Mode")
+    console.print("Up: Stand")
+    console.print("Down: Sit")
+    console.print("Left: Trot")
+    console.print("Right: Backward")
+    console.print("Click: Bark")
+    console.print("A: Howl")
+    console.print("B: Exit")
+    
+    while True:
+        try:
+            if controller.is_press("up"):
+                response = api_send_command("stand")
+                console.print("Sent: stand")
+                time.sleep(0.5)
+                
+            elif controller.is_press("down"):
+                response = api_send_command("sit")
+                console.print("Sent: sit")
+                time.sleep(0.5)
+                
+            elif controller.is_press("left"):
+                response = api_send_command("trot")
+                console.print("Sent: trot left")
+                time.sleep(0.5)
+                
+            elif controller.is_press("right"):
+                response = api_send_command("backward")
+                console.print("Sent: backward")
+                time.sleep(0.5)
+                
+            elif controller.is_press("middle"):  # Joystick click
+                response = api_send_command("bark")
+                console.print("Sent: bark")
+                time.sleep(0.5)
+            
+            elif controller.is_press("a"):
+                response = api_send_command("howling")
+                console.print("Sent: howling")
+                time.sleep(0.5)
+                
+            elif controller.is_press("b"):
+                break
+                
+        except Exception as e:
+            console.print("Error: " + str(e))
+            if not retry_connection():
+                break
+        
+        time.sleep(0.1)  # Small delay to prevent button spam
 
 @event.start
 def on_start():
-    #configure_settings()
+    configure_settings()
     console.clear()
     #..cloud.tts_set_url(("http://10.0.0.69:2345/rover/tts")) #recognition_set_url
     audio.set_vol(91)
@@ -304,7 +368,7 @@ def on_start():
     # Only show menu options after successful connection
     while True:
         selected_index = 0
-        menu_size = 5
+        menu_size = 6
         
         # Menu navigation loop
         while True:
@@ -384,6 +448,10 @@ def on_start():
                 voice_input = voice_to_text()
                 if voice_input:
                     response = api_chat_completion(voice_input)        
+            elif selected_index == 5:  # Quick Commands
+                handle_quick_commands()
+                continue  # Skip response handling
+                
         except Exception as e:
             # If any operation fails, it might be a connection issue
             console.print("Error: " + str(e))
