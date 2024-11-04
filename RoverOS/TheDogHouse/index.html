@@ -70,6 +70,40 @@
             0%, 100% { transform: scale(0); opacity: 0; }
             50% { transform: scale(1); opacity: 1; }
         }
+
+        .battery-indicator {
+            width: 50px;
+            height: 24px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 2px;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .battery-indicator::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 10px;
+            background: #333;
+            border-radius: 0 2px 2px 0;
+        }
+
+        .battery-level {
+            height: 100%;
+            background: #10B981;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .battery-low { background: #EF4444; }
+        .battery-medium { background: #F59E0B; }
+        .battery-high { background: #10B981; }
     </style>
 </head>
 <body class="p-4 bg-gradient-to-br from-blue-50 to-purple-50">
@@ -77,28 +111,35 @@
     <div class="status-panel p-4 mb-4 rounded-lg shadow-lg">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-xl font-bold">System Status</h2>
-            <div class="flex gap-2">
-                <button onclick="refreshStatus()" class="btn bg-gray-200 p-2 rounded-full hover:bg-gray-300">
-                    🔄
-                </button>
-                <button onclick="promptRestart()" class="btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">
-                    Restart Service
-                </button>
-            </div>
+            <button onclick="refreshStatus()" class="btn bg-gray-200 p-2 rounded-full hover:bg-gray-300">
+                🔄
+            </button>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- API Status -->
             <div class="text-sm">
                 <span id="apiStatus" class="status-indicator"></span>
                 API: <span id="apiStatusText">Checking...</span>
             </div>
+            <!-- Battery Status -->
+            <div class="text-sm flex items-center gap-2">
+                <span>Battery:</span>
+                <div class="battery-indicator">
+                    <div id="batteryLevel" class="battery-level" style="width: 0%"></div>
+                </div>
+                <span id="batteryPercent">--</span>
+            </div>
+            <!-- Memory Usage -->
             <div class="text-sm">
                 Memory: <span id="memoryUsage">Checking...</span>
             </div>
-            <div class="text-sm">
-                Version: <span id="apiVersion">Checking...</span>
-            </div>
+            <!-- Uptime -->
             <div class="text-sm">
                 Uptime: <span id="uptime">Checking...</span>
+            </div>
+            <!-- Version -->
+            <div class="text-sm">
+                Version: <span id="apiVersion">Checking...</span>
             </div>
         </div>
     </div>
@@ -216,14 +257,47 @@
                 const status = await statusResponse.json();
                 const version = await versionResponse.json();
                 
-                document.getElementById('apiStatus').className = 
-                    `status-indicator status-${health.status === "healthy" ? 'healthy' : 'error'}`;
-                document.getElementById('apiStatusText').textContent = health.status;
-                document.getElementById('memoryUsage').textContent = 
-                    `${Math.round(status.memory_usage.rss)}MB`;
-                document.getElementById('apiVersion').textContent = version.version;
-                document.getElementById('uptime').textContent = 
-                    `${Math.round(health.uptime / 60)}m`;
+                // Safely update DOM elements
+                const updateElement = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                };
+
+                // Update API status
+                const apiStatusIndicator = document.getElementById('apiStatus');
+                if (apiStatusIndicator) {
+                    apiStatusIndicator.className = `status-indicator status-${health.status === 'healthy' ? 'healthy' : 'error'}`;
+                }
+                updateElement('apiStatusText', health.status);
+
+                // Update battery indicator
+                const batteryLevel = document.getElementById('batteryLevel');
+                const batteryPercent = document.getElementById('batteryPercent');
+                if (status.battery !== undefined && batteryLevel && batteryPercent) {
+                    const level = status.battery;
+                    batteryLevel.style.width = `${level}%`;
+                    batteryPercent.textContent = `${level}%`;
+                    
+                    batteryLevel.className = 'battery-level ' + 
+                        (level > 60 ? 'battery-high' : 
+                         level > 20 ? 'battery-medium' : 
+                         'battery-low');
+                    
+                    if (level <= 20 && !window.lowBatteryWarningShown) {
+                        addMessage('⚠️ Battery level is low!', 'system');
+                        window.lowBatteryWarningShown = true;
+                    } else if (level > 20) {
+                        window.lowBatteryWarningShown = false;
+                    }
+                }
+
+                // Update other status info
+                updateElement('memoryUsage', `${Math.round(status.memory_usage.rss)}MB`);
+                updateElement('apiVersion', version.version);
+                updateElement('uptime', `${Math.round(status.uptime / 60)}m`);
+
             } catch (error) {
                 console.error('Status check failed:', error);
                 document.getElementById('apiStatus').className = 'status-indicator status-error';

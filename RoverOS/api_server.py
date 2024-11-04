@@ -371,11 +371,21 @@ class OpenAIHelperServer:
                       Get detailed server status including:
                       - Uptime
                       - Memory usage
+                      - Battery level
                       - Thread pool status
                       - Component availability
                       """)
         async def status():
             process = psutil.Process(os.getpid())
+            
+            # Get battery status from dog controller
+            battery_level = None
+            try:
+                if self.dog_controller and hasattr(self.dog_controller, 'dog'):
+                    battery_level = self.dog_controller.dog.get_battery_level()
+            except Exception as e:
+                logger.error(f"Failed to get battery level: {e}")
+
             return {
                 "status": "healthy",
                 "uptime": time.time() - self._start_time,
@@ -383,6 +393,7 @@ class OpenAIHelperServer:
                     "rss": process.memory_info().rss / 1024 / 1024,  # MB
                     "vms": process.memory_info().vms / 1024 / 1024   # MB
                 },
+                "battery": battery_level,  # Added battery level
                 "thread_pool_active": len(self.rover_interaction.thread_pool._threads),
                 "dog_controller": "available" if self.dog_controller else "unavailable",
                 "ai": "available" if self.ai_interaction else "unavailable"
