@@ -6,7 +6,7 @@ RoverByte
 <img src="https://github.com/CodeMusic/RoverByte/blob/main/roverbanner.jpg?raw=true" alt="Rover">
 
 #RoverControl - (The DogHouse)
-<img src="https://github.com/CodeMusic/RoverByte/blob/main/_api.png?raw=true" alt="Rover">
+<img src="https://github.com/CodeMusic/RoverByte/blob/main/_main.png?raw=true" alt="Rover">
 - expanding into a full experience
 
 #RoverRemote - hand-held device allowing for interaction with rover
