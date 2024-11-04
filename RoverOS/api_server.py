@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import tempfile
 import base64
 import openai
+import dbus
 
 # Setup logging with controlled verbosity
 logging.basicConfig(
@@ -58,6 +59,9 @@ class TTSRequest(BaseModel):
 class STTRequest(BaseModel):
     audio: str  # Base64 encoded audio data
     language: Optional[str] = "en"
+
+class RestartRequest(BaseModel):
+    password: str
 
 # Helper Class for Interactions
 class RoverInteraction:
@@ -257,14 +261,25 @@ class OpenAIHelperServer:
     def setup_middleware(self):
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
+            allow_origins=[
+                "*",  # Allow all external origins
+                "http://10.0.0.69:8000",
+                "http://roverbyte.local:8000",
+                "http://localhost:8000",
+                "http://127.0.0.1:8000"
+            ],
             allow_credentials=True,
-            allow_methods=["*"],
+            allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
+            max_age=3600,  # Cache preflight requests for 1 hour
         )
 
         @self.app.middleware("http")
         async def add_rate_limit(request: Request, call_next):
+            # Skip rate limiting for OPTIONS requests (CORS preflight)
+            if request.method == "OPTIONS":
+                return await call_next(request)
+                
             # Skip rate limiting for OpenAPI docs and health checks
             if request.url.path in ["/openapi.json", "/docs", "/redoc", "/health"]:
                 return await call_next(request)
@@ -428,7 +443,8 @@ class OpenAIHelperServer:
         async def speech_to_text(request: Request):
             try:
                 # Get raw audio data
-                audio_data = await request.body()
+                audio_data_b64 = await request.body()
+                audio_data = base64.b64decode(audio_data_b64)
                 logger.info(f"Received audio data length: {len(audio_data)}")
                 
                 # Save temporarily (Whisper needs a file)
@@ -446,7 +462,7 @@ class OpenAIHelperServer:
                 """
                 
                 transcript = "Test response"
-                
+
                 # Return in MakeBlock's format
                 return {
                     "code": 20000,
@@ -462,6 +478,45 @@ class OpenAIHelperServer:
                     "data": {},
                     "message": str(e)
                 }
+
+        @self.app.post("/admin/restart",
+                       summary="Restart RoverAI Service",
+                       description="Request systemd to restart the RoverAI service")
+        async def restart_service(request: RestartRequest):
+            RESTART_PASSWORD = "R0V3RBYT3"
+            
+            try:
+                if request.password != RESTART_PASSWORD:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "Invalid password"}
+                    )
+                    
+                # Connect to systemd over D-Bus
+                sysbus = dbus.SystemBus()
+                systemd = sysbus.get_object(
+                    'org.freedesktop.systemd1',
+                    '/org/freedesktop/systemd1'
+                )
+                manager = dbus.Interface(
+                    systemd,
+                    'org.freedesktop.systemd1.Manager'
+                )
+                
+                # Request restart
+                manager.RestartUnit('roverai.service', 'replace')
+                
+                return {
+                    "status": "success",
+                    "message": "Restart requested"
+                }
+                    
+            except Exception as e:
+                logger.error(f"Restart error: {str(e)}")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": str(e)}
+                )
 
     def start(self):
         """Start the API server"""

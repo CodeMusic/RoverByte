@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐕 RoverByte Control Center</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .card {
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .status-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-healthy { background: #10B981; }
+        .status-warning { background: #F59E0B; }
+        .status-error { background: #EF4444; }
+        .chat-bubble {
+            max-width: 80%;
+            margin: 8px 0;
+            padding: 12px;
+            border-radius: 20px;
+        }
+        .user-bubble {
+            background: #007AFF;
+            color: white;
+            margin-left: auto;
+            border-radius: 20px 20px 4px 20px;
+        }
+        .bot-bubble {
+            background: #E9ECEF;
+            color: black;
+            margin-right: auto;
+            border-radius: 20px 20px 20px 4px;
+        }
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .loading-sparkles {
+            position: relative;
+            display: inline-flex;
+            gap: 4px;
+        }
+        .sparkle {
+            width: 4px;
+            height: 4px;
+            background: #FFD700;
+            border-radius: 50%;
+            animation: sparkle 1.5s infinite;
+        }
+        .sparkle:nth-child(2) { animation-delay: 0.2s; }
+        .sparkle:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="p-4 bg-gradient-to-br from-blue-50 to-purple-50">
+    <!-- Status Panel -->
+    <div class="status-panel p-4 mb-4 rounded-lg shadow-lg">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold">System Status</h2>
+            <div class="flex gap-2">
+                <button onclick="refreshStatus()" class="btn bg-gray-200 p-2 rounded-full hover:bg-gray-300">
+                    🔄
+                </button>
+                <button onclick="promptRestart()" class="btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">
+                    Restart Service
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-sm">
+                <span id="apiStatus" class="status-indicator"></span>
+                API: <span id="apiStatusText">Checking...</span>
+            </div>
+            <div class="text-sm">
+                Memory: <span id="memoryUsage">Checking...</span>
+            </div>
+            <div class="text-sm">
+                Version: <span id="apiVersion">Checking...</span>
+            </div>
+            <div class="text-sm">
+                Uptime: <span id="uptime">Checking...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Speech Card - Moved to top -->
+    <div class="card rounded-xl p-4 shadow-lg mb-4">
+        <h2 class="text-xl font-bold mb-3">🗣️ Make Rover Speak</h2>
+        <div class="flex gap-2">
+            <input type="text" id="speechInput" 
+                   class="flex-1 rounded-lg border p-2" 
+                   placeholder="Enter text for Rover to say..."
+                   onkeypress="if(event.key === 'Enter') makeRoverSpeak()">
+            <button onclick="makeRoverSpeak()" class="btn bg-blue-500 text-white rounded-lg px-4 hover:bg-blue-600">
+                Speak
+            </button>
+        </div>
+    </div>
+
+    <!-- Direct Action Card -->
+    <div class="card rounded-xl p-4 shadow-lg mb-4">
+        <h2 class="text-xl font-bold mb-3">🎯 Actions</h2>
+        <div class="flex gap-2">
+            <select id="actionSelect" class="flex-1 rounded-lg border p-2">
+                <option value="">Select an action...</option>
+                <optgroup label="Movement">
+                    <option value="forward">Walk Forward</option>
+                    <option value="backward">Walk Backward</option>
+                    <option value="lie">Lie Down</option>
+                    <option value="stand">Stand</option>
+                    <option value="sit">Sit</option>
+                    <option value="butt up">Butt Up</option>
+                </optgroup>
+                <optgroup label="Sounds">
+                    <option value="bark">Bark</option>
+                    <option value="bark harder">Bark Harder</option>
+                    <option value="pant">Pant</option>
+                    <option value="howling">Howling</option>
+                </optgroup>
+                <optgroup label="Gestures">
+                    <option value="wag_tail">Wag Tail</option>
+                    <option value="stretch">Stretch</option>
+                    <option value="push up">Push Up</option>
+                    <option value="scratch">Scratch</option>
+                    <option value="handshake">Handshake</option>
+                    <option value="high five">High Five</option>
+                    <option value="lick hand">Lick Hand</option>
+                    <option value="shake head">Shake Head</option>
+                    <option value="relax neck">Relax Neck</option>
+                    <option value="nod">Nod</option>
+                    <option value="think">Think</option>
+                    <option value="recall">Recall</option>
+                    <option value="head down">Head Down</option>
+                    <option value="fluster">Fluster</option>
+                    <option value="surprise">Surprise</option>
+                    <option value="pray">Pray</option>
+                </optgroup>
+                <optgroup label="Dance Moves">
+                    <option value="dab">Dab</option>
+                    <option value="floss">Floss</option>
+                    <option value="woah">Woah</option>
+                    <option value="gangnam style">Gangnam Style</option>
+                    <option value="bottle flip">Bottle Flip</option>
+                    <option value="twerk">Twerk</option>
+                </optgroup>
+            </select>
+            <button onclick="sendAction()" class="btn bg-green-500 text-white rounded-lg px-4 hover:bg-green-600">
+                Execute
+            </button>
+        </div>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="card rounded-xl p-4 shadow-lg">
+        <h2 class="text-xl font-bold mb-3">💭 Chat with Rover</h2>
+        <div id="chatContainer" class="chat-container bg-white rounded-lg mb-3">
+            <!-- Messages will be inserted here -->
+        </div>
+        <div class="flex gap-2">
+            <input type="text" id="chatInput" 
+                   class="flex-1 rounded-lg border p-2" 
+                   placeholder="Type a message..."
+                   onkeypress="if(event.key === 'Enter') sendChat()">
+            <button onclick="sendChat()" class="btn bg-blue-500 text-white rounded-lg px-4 hover:bg-blue-600">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <!-- Proxy Command Card -->
+    <div class="card rounded-xl p-4 shadow-lg mb-4">
+        <h2 class="text-xl font-bold mb-3">🎭 Proxy Command</h2>
+        <div class="flex gap-2">
+            <input type="text" id="proxyInput" 
+                   class="flex-1 rounded-lg border p-2" 
+                   placeholder="Type as if talking to Rover...">
+            <button onclick="sendProxy()" class="btn bg-purple-500 text-white rounded-lg px-4 hover:bg-purple-600">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://roverbyte.local:2345';
+        
+        // Status checking
+        async function checkStatus() {
+            try {
+                const [healthResponse, statusResponse, versionResponse] = await Promise.all([
+                    fetch(`${API_URL}/health`),
+                    fetch(`${API_URL}/status`),
+                    fetch(`${API_URL}/version`)
+                ]);
+                
+                const health = await healthResponse.json();
+                const status = await statusResponse.json();
+                const version = await versionResponse.json();
+                
+                document.getElementById('apiStatus').className = 
+                    `status-indicator status-${health.status === "healthy" ? 'healthy' : 'error'}`;
+                document.getElementById('apiStatusText').textContent = health.status;
+                document.getElementById('memoryUsage').textContent = 
+                    `${Math.round(status.memory_usage.rss)}MB`;
+                document.getElementById('apiVersion').textContent = version.version;
+                document.getElementById('uptime').textContent = 
+                    `${Math.round(health.uptime / 60)}m`;
+            } catch (error) {
+                console.error('Status check failed:', error);
+                document.getElementById('apiStatus').className = 'status-indicator status-error';
+                document.getElementById('apiStatusText').textContent = 'Error';
+            }
+        }
+
+        async function refreshStatus() {
+            const btn = document.querySelector('button[onclick="refreshStatus()"]');
+            btn.style.transform = 'rotate(360deg)';
+            btn.style.transition = 'transform 0.5s';
+            await checkStatus();
+            setTimeout(() => {
+                btn.style.transform = '';
+                btn.style.transition = '';
+            }, 500);
+        }
+
+        // Action handling
+        async function sendAction() {
+            const action = document.getElementById('actionSelect').value;
+            if (!action) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/rover/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(action)
+                });
+                const data = await response.json();
+                addMessage(`🤖 Executing: ${action}`, 'system');
+            } catch (error) {
+                addMessage('❌ Failed to execute action', 'error');
+            }
+        }
+
+        // Proxy handling
+        async function sendProxy() {
+            const input = document.getElementById('proxyInput');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/rover/proxy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(text)
+                });
+                const data = await response.json();
+                addMessage(`🗣️ You: ${text}`, 'user');
+                if (data.response) {
+                    addMessage(`🤖 Rover: ${data.response}`, 'bot');
+                }
+                input.value = '';
+            } catch (error) {
+                addMessage('❌ Failed to send proxy command', 'error');
+            }
+        }
+
+        // Chat handling
+        async function sendChat() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            addMessage(`🗣️ You: ${text}`, 'user');
+            input.value = '';
+            
+            try {
+                const response = await fetch(`${API_URL}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: text }]
+                    })
+                });
+                const data = await response.json();
+                if (data.choices && data.choices[0]) {
+                    addMessage(`🐾 Rover: ${data.choices[0].message.content}`, 'bot');
+                }
+            } catch (error) {
+                addMessage('❌ Failed to get response', 'error');
+            }
+        }
+
+        function addMessage(text, type) {
+            const container = document.getElementById('chatContainer');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type}-bubble`;
+            bubble.textContent = text;
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function promptRestart() {
+            document.getElementById('restartModal').style.display = 'flex';
+            document.getElementById('restartPassword').focus();
+        }
+
+        function closeRestartModal() {
+            document.getElementById('restartModal').style.display = 'none';
+            document.getElementById('restartPassword').value = '';
+        }
+
+        async function restartService() {
+            const password = document.getElementById('restartPassword').value;
+            if (!password) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/restart`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    closeRestartModal();
+                    addMessage('🔄 Service restart requested', 'system');
+                    
+                    // Wait a bit and then start checking status
+                    setTimeout(async () => {
+                        let attempts = 0;
+                        const checkInterval = setInterval(async () => {
+                            attempts++;
+                            try {
+                                await checkStatus();
+                                addMessage('✅ Service is back online', 'system');
+                                clearInterval(checkInterval);
+                            } catch (error) {
+                                if (attempts >= 30) { // Stop after 30 attempts (30 seconds)
+                                    addMessage('❌ Service restart may have failed', 'error');
+                                    clearInterval(checkInterval);
+                                }
+                            }
+                        }, 1000); // Check every second
+                    }, 2000); // Wait 2 seconds before starting checks
+
+                } else {
+                    addMessage(`❌ Restart failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage('❌ Failed to restart service', 'error');
+            }
+        }
+
+        // Loading indicator functions
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading-sparkles ml-2';
+            loadingDiv.innerHTML = `
+                <div class="sparkle"></div>
+                <div class="sparkle"></div>
+                <div class="sparkle"></div>
+            `;
+            element.appendChild(loadingDiv);
+        }
+
+        function hideLoading(elementId) {
+            const element = document.getElementById(elementId);
+            const loading = element.querySelector('.loading-sparkles');
+            if (loading) loading.remove();
+        }
+
+        // Updated speak function
+        async function makeRoverSpeak() {
+            const input = document.getElementById('speechInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            showLoading('chatContainer');
+            addMessage(`🗣️ Making Rover say: "${text}"`, 'system');
+
+            try {
+                const response = await fetch(`${API_URL}/rover/speak`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(text)
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    addMessage('✅ Rover spoke the message', 'system');
+                } else {
+                    addMessage(`❌ Speech failed: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage('❌ Failed to make Rover speak', 'error');
+                console.error('Speak error:', error);
+            } finally {
+                hideLoading('chatContainer');
+                input.value = '';
+            }
+        }
+
+        // Initialize
+        window.onload = () => {
+            checkStatus();
+            setInterval(checkStatus, 30000); // Check status every 30 seconds
+            addMessage('🐕 Woof! How can I help you today?', 'bot');
+
+            // Close modal on ESC key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeRestartModal();
+                }
+            });
+        };
+    </script>
+</body>
+</html>

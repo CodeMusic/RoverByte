@@ -224,39 +224,39 @@ def display_actions_menu(selected_index):
     console.print("Rover Actions:\n")
     
     actions = [
-        "BACK <<\n",  # First option to return to main menu
-        "forward\n",
-        "backward\n",
-        "lie\n",
-        "stand\n",
-        "sit\n",
-        "bark\n",
-        "bark harder\n",
-        "pant\n",
-        "howling\n",
-        "wag_tail\n",
-        "stretch\n",
-        "push up\n",
-        "scratch\n",
-        "handshake\n",
-        "high five\n",
-        "lick hand\n",
-        "shake head\n",
-        "relax neck\n",
-        "nod\n",
-        "think\n",
-        "recall\n",
-        "head down\n",
-        "fluster\n",
-        "surprise\n",
-        "dab\n",
-        "floss\n",
-        "woah\n",
-        "gangnam style\n",
-        "bottle flip\n",
-        "twerk\n",
-        "pray\n",
-        "butt up\n"
+        "BACK <<",  # First option to return to main menu
+        "forward",
+        "backward",
+        "lie",
+        "stand",
+        "sit",
+        "bark",
+        "bark harder",
+        "pant",
+        "howling",
+        "wag_tail",
+        "stretch",
+        "push up",
+        "scratch",
+        "handshake",
+        "high five",
+        "lick hand",
+        "shake head",
+        "relax neck",
+        "nod",
+        "think",
+        "recall",
+        "head down",
+        "fluster",
+        "surprise",
+        "dab",
+        "floss",
+        "woah",
+        "gangnam style",
+        "bottle flip",
+        "twerk",
+        "pray",
+        "butt up"
     ]
     
     # Calculate which portion of the menu to show (for scrolling)
@@ -278,7 +278,7 @@ def display_actions_menu(selected_index):
     return actions
 
 def configure_settings():
-    useBuiltIn = False
+    useBuiltIn = True
     if useBuiltIn:
         console.print("Using built-in speech components")
         speech.set_recognition_address(url = "wss://mindplus.makeblock.com/mbapi/audio2text")
@@ -300,9 +300,9 @@ def handle_quick_commands():
     console.clear()
     console.print("Quick Commands Mode")
     console.print("Up: Stand")
-    console.print("Down: Sit")
-    console.print("Left: Trot")
-    console.print("Right: Backward")
+    console.print("Down: Lie")
+    console.print("Left: Push Up")
+    console.print("Right: Sit")
     console.print("Click: Bark")
     console.print("A: Howl")
     console.print("B: Exit")
@@ -315,18 +315,18 @@ def handle_quick_commands():
                 time.sleep(0.5)
                 
             elif controller.is_press("down"):
-                response = api_send_command("sit")
-                console.print("Sent: sit")
+                response = api_send_command("lie")
+                console.print("Sent: lie")
                 time.sleep(0.5)
                 
             elif controller.is_press("left"):
-                response = api_send_command("trot")
-                console.print("Sent: trot left")
+                response = api_send_command("push up")
+                console.print("Sent: push up")
                 time.sleep(0.5)
                 
             elif controller.is_press("right"):
-                response = api_send_command("backward")
-                console.print("Sent: backward")
+                response = api_send_command("sit")
+                console.print("Sent: sit")
                 time.sleep(0.5)
                 
             elif controller.is_press("middle"):  # Joystick click
@@ -335,8 +335,8 @@ def handle_quick_commands():
                 time.sleep(0.5)
             
             elif controller.is_press("a"):
-                response = api_send_command("howling")
-                console.print("Sent: howling")
+                response = api_send_proxy_request("Hey Rover, tell me a random fact, or joke, or story, but make it relate to what we have discusssed, but with some randomness.");
+                console.print("Sent: Random AI")
                 time.sleep(0.5)
                 
             elif controller.is_press("b"):
