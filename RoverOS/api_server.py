@@ -428,7 +428,7 @@ class OpenAIHelperServer:
                 # Get speech from OpenAI
                 response = self.openai_helper.client.audio.speech.create(
                     model="tts-1",
-                    voice="alloy",
+                    voice="echo",
                     input=request.text
                 )
                 

@@ -226,6 +226,10 @@
                 Send
             </button>
         </div>
+        <div class="flex items-center gap-2 mb-2">
+            <input type="checkbox" id="playResponse" class="rounded">
+            <label for="playResponse" class="text-sm">Play AI responses</label>
+        </div>
     </div>
 
     <!-- Proxy Command Card -->
@@ -357,6 +361,46 @@
             }
         }
 
+        // Function to convert base64 to audio and play
+        async function playAudioResponse(text) {
+            try {
+                const response = await fetch(`${API_URL}/rover/tts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        language: "en"
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.data.audio) {
+                    // Convert base64 to audio and play
+                    const audio = new Audio(`data:audio/mp3;base64,${data.data.audio}`);
+                    
+                    return new Promise((resolve, reject) => {
+                        audio.onplay = () => addMessage('🎵 Playing response...', 'system');
+                        audio.onended = () => {
+                            addMessage('✅ Playback complete', 'system');
+                            resolve();
+                        };
+                        audio.onerror = () => {
+                            addMessage('❌ Audio playback failed', 'error');
+                            reject(new Error('Audio playback failed'));
+                        };
+                        audio.play().catch(reject);
+                    });
+                } else {
+                    throw new Error('Failed to generate audio');
+                }
+            } catch (error) {
+                console.error('Audio playback error:', error);
+                addMessage('❌ Audio playback failed', 'error');
+                throw error;
+            }
+        }
+
         // Chat handling
         async function sendChat() {
             const input = document.getElementById('chatInput');
@@ -366,6 +410,7 @@
             addMessage(`🗣️ You: ${text}`, 'user');
             input.value = '';
             
+            showLoading('chatContainer');
             try {
                 const response = await fetch(`${API_URL}/v1/chat/completions`, {
                     method: 'POST',
@@ -377,10 +422,23 @@
                 });
                 const data = await response.json();
                 if (data.choices && data.choices[0]) {
-                    addMessage(`🐾 Rover: ${data.choices[0].message.content}`, 'bot');
+                    const responseText = data.choices[0].message.content;
+                    
+                    // Check if we should play the response
+                    if (document.getElementById('playResponse').checked) {
+                        addMessage('🔊 Generating audio...', 'system');
+                        await playAudioResponse(responseText);
+                        // Show the text after audio completes
+                        addMessage(`🐾 Rover: ${responseText}`, 'bot');
+                    } else {
+                        // Show text immediately if audio is disabled
+                        addMessage(`🐾 Rover: ${responseText}`, 'bot');
+                    }
                 }
             } catch (error) {
                 addMessage('❌ Failed to get response', 'error');
+            } finally {
+                hideLoading('chatContainer');
             }
         }
 
