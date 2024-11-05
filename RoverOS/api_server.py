@@ -332,28 +332,67 @@ class OpenAIHelperServer:
                       - shake
                       - wag_tail
                       """)
-        async def direct_action(action: str = Body(...)):
-            return await self.rover_interaction.execute_action(action)
+        async def action(action: str):
+            try:
+                # ... action execution ...
+                return {
+                    "status": "success",
+                    "message": '<"excited"> Action completed successfully!',
+                    "action": action
+                }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": '<"broken"> Failed to execute action',
+                    "error": str(e)
+                }
 
         @self.app.post("/rover/speak",
                       summary="Text-to-speech",
                       description="Make RoverByte speak the given text")
-        async def speak_text(text: str = Body(...)):
-            return await self.rover_interaction.execute_speech(text)
+        async def speak(text: str):
+            try:
+                # ... speech execution ...
+                return {
+                    "status": "success",
+                    "message": '<"friendly"> Speech completed',
+                    "text": text
+                }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": '<"broken"> Speech failed',
+                    "error": str(e)
+                }
 
-        @self.app.post("/rover/proxy",
-                      summary="Full interaction proxy",
-                      description="""
-                      Process text as if spoken to RoverByte in person.
-                      
-                      This endpoint:
-                      1. Processes the text through AI
-                      2. Extracts actions and speech
-                      3. Executes actions and generates speech
-                      4. Returns the full interaction results
-                      """)
-        async def proxy_interaction(text: str = Body(...)):
-            return await self.rover_interaction.process_interaction(text)
+        @self.app.post("/rover/proxy")
+        async def proxy(request: dict):
+            try:
+                # Process the proxy request
+                result = await self.rover_interaction.process_proxy_request(request)
+                
+                # If result is a string (like from chat), it should already have mood/action formatting
+                if isinstance(result, str):
+                    return {
+                        "status": "success",
+                        "message": result,  # Already formatted with <"mood"> and ["actions"]
+                        "result": result
+                    }
+                # If result is a dict or other type, wrap it with appropriate mood
+                else:
+                    return {
+                        "status": "success",
+                        "message": '<"smart">, ["think"] Request processed successfully!',
+                        "result": result
+                    }
+                    
+            except Exception as e:
+                error_msg = str(e)
+                return {
+                    "status": "error",
+                    "message": '<"debugging">, ["head down"] Proxy request failed. ["think"] Error: ' + error_msg,
+                    "error": error_msg
+                }
 
         @self.app.get("/health",
                       summary="Basic health check",

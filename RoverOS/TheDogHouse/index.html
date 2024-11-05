@@ -104,6 +104,20 @@
         .battery-low { background: #EF4444; }
         .battery-medium { background: #F59E0B; }
         .battery-high { background: #10B981; }
+
+        .mood-ascii {
+            font-family: monospace;
+            font-size: 1.2em;
+            white-space: pre;
+            color: #666;
+        }
+
+        .message.bot {
+            background: #f0f4f8;
+            border-radius: 1rem;
+            padding: 0.75rem;
+            margin-left: 1rem;
+        }
     </style>
 </head>
 <body class="p-4 bg-gradient-to-br from-blue-50 to-purple-50">
@@ -320,21 +334,125 @@
             }, 500);
         }
 
-        // Action handling
-        async function sendAction() {
-            const action = document.getElementById('actionSelect').value;
-            if (!action) return;
+        // Mood definitions with their ASCII representations
+        const MOODS = {
+            'sleeping': '(⇀‿‿↼)',
+            'awakening': '(≖‿‿≖)',
+            'awake': '(◕‿‿◕)',
+            'observing_neutral': '(⚆⚆)',
+            'observing_happy': '(◕‿◕)',
+            'intense': '(°▃▃°)',
+            'cool': '(⌐■_■)',
+            'happy': '(•‿‿•)',
+            'grateful': '(^‿‿^)',
+            'excited': '(ᵔ◡◡ᵔ)',
+            'smart': '(✜‿‿✜)',
+            'friendly': '(♥‿‿♥)',
+            'motivated': '(☼‿‿☼)',
+            'demotivated': '(≖__≖)',
+            'bored': '(-__-)',
+            'sad': '(╥☁╥)',
+            'lonely': '(ب__ب)',
+            'broken': '(☓‿‿☓)',
+            'debugging': '(#__#)'
+        };
+
+        // Extract mood from content
+        function extractMood(content) {
+            const moodMatch = content.match(/<"([^"]+)">/);
+            if (moodMatch && moodMatch[1]) {
+                const mood = moodMatch[1].toLowerCase();
+                return {
+                    name: mood,
+                    ascii: MOODS[mood] || MOODS['awake'], // default to awake if mood not found
+                    content: content.replace(/<"[^"]+">/, '').trim() // Remove the mood tag
+                };
+            }
+            return {
+                name: 'awake',
+                ascii: MOODS['awake'],
+                content: content
+            };
+        }
+
+        // Update the chat display function
+        function addMessage(content, type) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type} mb-2`;
+
+            if (type === 'bot') {
+                const mood = extractMood(content);
+                messageDiv.innerHTML = `
+                    <div class="flex items-start gap-2">
+                        <span class="mood-ascii">${mood.ascii}</span>
+                        <span>🐾 Rover (${mood.name}): ${mood.content}</span>
+                    </div>
+                `;
+            } else {
+                messageDiv.textContent = content;
+            }
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Update sendChat function
+        async function sendChat() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
             
+            addMessage(`🗣️ You: ${text}`, 'user');
+            input.value = '';
+            
+            showLoading('chatContainer');
+            try {
+                const response = await fetch(`${API_URL}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: text }]
+                    })
+                });
+                const data = await response.json();
+                if (data.choices && data.choices[0]) {
+                    const responseText = data.choices[0].message.content;
+                    
+                    if (document.getElementById('playResponse').checked) {
+                        addMessage('🔊 Generating audio...', 'system');
+                        await playAudioResponse(responseText);
+                        addMessage(responseText, 'bot');
+                    } else {
+                        addMessage(responseText, 'bot');
+                    }
+                }
+            } catch (error) {
+                addMessage('❌ Failed to get response', 'error');
+            } finally {
+                hideLoading('chatContainer');
+            }
+        }
+
+        // Update action handling
+        async function sendAction(action) {
             try {
                 const response = await fetch(`${API_URL}/rover/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(action)
                 });
+                
                 const data = await response.json();
-                addMessage(`🤖 Executing: ${action}`, 'system');
+                if (response.ok) {
+                    const mood = extractMood(data.message || '');
+                    addMessage(`✅ Action completed (${mood.name})`, 'system');
+                    return { success: true, mood: mood };
+                }
             } catch (error) {
-                addMessage('❌ Failed to execute action', 'error');
+                addMessage('❌ Action failed', 'error');
+                return { success: false, mood: { name: 'broken', ascii: MOODS['broken'] } };
             }
         }
 
@@ -399,56 +517,6 @@
                 addMessage('❌ Audio playback failed', 'error');
                 throw error;
             }
-        }
-
-        // Chat handling
-        async function sendChat() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            addMessage(`🗣️ You: ${text}`, 'user');
-            input.value = '';
-            
-            showLoading('chatContainer');
-            try {
-                const response = await fetch(`${API_URL}/v1/chat/completions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: text }]
-                    })
-                });
-                const data = await response.json();
-                if (data.choices && data.choices[0]) {
-                    const responseText = data.choices[0].message.content;
-                    
-                    // Check if we should play the response
-                    if (document.getElementById('playResponse').checked) {
-                        addMessage('🔊 Generating audio...', 'system');
-                        await playAudioResponse(responseText);
-                        // Show the text after audio completes
-                        addMessage(`🐾 Rover: ${responseText}`, 'bot');
-                    } else {
-                        // Show text immediately if audio is disabled
-                        addMessage(`🐾 Rover: ${responseText}`, 'bot');
-                    }
-                }
-            } catch (error) {
-                addMessage('❌ Failed to get response', 'error');
-            } finally {
-                hideLoading('chatContainer');
-            }
-        }
-
-        function addMessage(text, type) {
-            const container = document.getElementById('chatContainer');
-            const bubble = document.createElement('div');
-            bubble.className = `chat-bubble ${type}-bubble`;
-            bubble.textContent = text;
-            container.appendChild(bubble);
-            container.scrollTop = container.scrollHeight;
         }
 
         function promptRestart() {
