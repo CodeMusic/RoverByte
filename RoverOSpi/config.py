@@ -6,20 +6,14 @@ import datetime
 This file contains the configuration for the roverbyte.
 """
 
-<<<<<<< HEAD:RoverOSpi/config.py
 SAVED_OWNER_NAME = "Chris"
 OPENAI_API_KEY = ""
 OPENAI_ASSISTANT_ID = "asst_cGUSaSRQGUQmOf1gwpEXxlbJ"
-=======
-
-OPENAI_API_KEY = "ENTER OPEN AI API KEY HERE"
-OPENAI_ASSISTANT_ID = "ENTER ASSISTANT ID HERE"
->>>>>>> parent of 61b8d4a (RoverCodeBase (ESP32)):RoverOS/config.py
 
 INPUT_MODE = 'voice'  # or 'keyboard'
 WITH_IMG = True
 LANGUAGE = []
-VOLUME_DB = 9
+VOLUME_DB = 14
 TTS_VOICE = 'echo'
 VOICE_ACTIONS = ["bark", "bark harder", "pant", "howling"]
 
