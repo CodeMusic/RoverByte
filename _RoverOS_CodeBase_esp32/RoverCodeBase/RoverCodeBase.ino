@@ -4,19 +4,18 @@
 #include <RotaryEncoder.h>
 #include <time.h>
 #include <WiFi.h>
+#include <SPIFFS.h>
+#include "utilities.h"
+#include "Audio.h"
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
-#define PIN_IN1 4
-#define PIN_IN2 5
 
-#define NUM_LEDS 8
-#define DATA_PIN 14
 #define CLOCK_PIN 45
-CRGB leds[NUM_LEDS];
+CRGB leds[WS2812_NUM_LEDS];
 
-RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
 
 
 #define color1 0xC638
@@ -63,30 +62,33 @@ int numMoods = 8;  // Number of moods in the array
 static int pos = 0;
 bool earsPerked = false;
 
+Audio audio;
+
+bool isPlayingSound = false;  // Global flag to track sound playing
+
 void setup() {
   
   pinMode(46, OUTPUT);
   digitalWrite(46, HIGH);
 
   tft.begin();
-  tft.writecommand(0x11);
-  tft.setRotation(0);
+  tft.setRotation(0);  // Set the desired rotation
   tft.fillScreen(TFT_BLACK);
 
   pinMode(15, OUTPUT);
   digitalWrite(15, HIGH);
 
   pinMode(0, INPUT_PULLUP);
-  FastLED.addLeds<APA102, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.addLeds<APA102, WS2812_DATA_PIN, CLOCK_PIN, RGB>(leds, WS2812_NUM_LEDS);
 
   Wire.begin(43,44);
     
 
-  spr.createSprite(320,170);
+  spr.createSprite(tft.width(), tft.height());
   spr.setTextDatum(4);
   spr.setSwapBytes(true);
   spr.setFreeFont(&Orbitron_Light_24);
-  spr.setTextColor(color1,TFT_BLACK);
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
 
   leds[0] = CRGB::Red;
   leds[1] = CRGB::White;
@@ -105,13 +107,9 @@ void setup() {
       delay(500);
   }
   
-  // Configure time for Eastern Time Zone
-  // -5 hours * 3600 seconds = -18000 for EST
-  // -4 hours * 3600 seconds = -14400 for EDT
-
-  //MAKE THE TIME IN 12h FORMAT
-  configTime(-14400, 0, "pool.ntp.org", "time.nist.gov");  // Using EDT for summer
-  // For winter, change to: configTime(-18000, 0, "pool.ntp.org", "time.nist.gov");
+  // Configure time for Eastern Standard Time (EST)
+  configTime(-18000, 0, "pool.ntp.org", "time.nist.gov");  // -5 hours for EST
+  // For Eastern Daylight Time (EDT), use -14400 (4 hours behind UTC)
 
   syncLEDsForDay();
 }
@@ -163,7 +161,7 @@ void readEncoder() {
     static int pos = 0;
     encoder.tick();
 
-    if(digitalRead(0) == 0) {
+    if(digitalRead(ENCODER_KEY) == 0) {
         if(deb == 0) {
             deb = 1;
             muted = !muted;
@@ -185,6 +183,14 @@ void readEncoder() {
         
         pos = newPos;
         drawSprite();
+        
+        // Check if the MP3 file exists
+        if (SPIFFS.exists("/move.mp3")) {
+            audio.connecttoFS(SPIFFS, "/move.mp3");
+        } else {
+            // Generate a beep if the file doesn't exist
+            playTone(1000, 200);  // 1000 Hz for 200 ms
+        }
     }
 }
 
@@ -217,26 +223,34 @@ void drawSprite() {
     sprintf(timeStr, "%02d:%02d", hour12, timeInfo->tm_min);
     
     spr.setTextColor(timeColor, TFT_BLACK);
-    spr.drawString(timeStr, SCREEN_CENTER_X, 40, 7);
+    spr.drawString(timeStr, SCREEN_CENTER_X, 30, 7);  // Adjust Y position for top half
     
     // Draw Rover in middle (centered)
     drawRover(moods[currentMood], earsPerked);
     
-    // Draw level and exp under Rover (centered)
+    // Conditionally draw "Beep" if sound is playing
+    if (isPlayingSound) {
+        spr.setTextColor(TFT_WHITE, TFT_BLACK);
+        spr.setTextFont(2);
+        spr.drawString("Beep", SCREEN_CENTER_X, 110);  // Adjust Y position as needed
+    }
+    
+    // Draw Level and Experience between Rover and ToDo list
     spr.setTextColor(TFT_WHITE, TFT_BLACK);
     spr.setTextFont(2);
-    spr.drawString("Level: " + String(pos), SCREEN_CENTER_X, 160);
-    spr.drawString("Exp: 100", SCREEN_CENTER_X, 180);
+    spr.drawString("Level: 1", SCREEN_CENTER_X - 40, 170);  // Adjust X and Y positions as needed
+    spr.drawString("Exp: 100", SCREEN_CENTER_X + 40, 170);  // Adjust X and Y positions as needed
     
-    // Draw ToDo section
-    spr.fillRect(20, 200, 280, 110, 0xC618);
+    // Draw ToDo section in the bottom half with 3D effect
+    spr.fillRect(20, 200, 280, 110, 0xC618);  // Adjust Y position and dimensions
+    spr.drawRect(18, 198, 284, 114, TFT_DARKGREY);  // Add a border for 3D effect
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, 0xC618);
-    spr.drawString("ToDo:", SCREEN_CENTER_X, 220);
+    spr.drawString("ToDo:", SCREEN_CENTER_X, 220);  // Adjust Y position as needed
     spr.setTextFont(2);
-    spr.drawString("Pick up Eggs", SCREEN_CENTER_X, 250);
+    spr.drawString("Pick up Eggs", SCREEN_CENTER_X, 250);  // Adjust Y position as needed
     
-    spr.pushSprite(0, 0);
+    spr.pushSprite(0, 0);  // Push sprite to the top-left corner
 }
 
 void drawRover(String mood, bool earsPerked) {
@@ -314,7 +328,8 @@ void drawRover(String mood, bool earsPerked) {
     spr.drawLine(roverX + 50, 125, roverX + 50, 135, TFT_BLACK);
     
     if (mood == "happy") {
-        spr.drawArc(roverX + 50, 140, 20, 15, 0, 180, TFT_BLACK, TFT_BLACK);
+        // Rotate the arc to make it look like a smile
+        spr.drawArc(roverX + 50, 135, 15, 10, 270, 450, TFT_BLACK, TFT_BLACK);  // Adjusted for a smile
     } else if (mood == "sad") {
         spr.drawArc(roverX + 50, 150, 20, 15, 180, 360, TFT_BLACK, TFT_BLACK);
     } else if (mood == "intense") {
@@ -365,29 +380,56 @@ void updateWeekLEDs() {
 }
 
 void handleSideButton() {
-    int sideButtonPin = 2;  // Replace with the actual pin number for the side button
+    pinMode(BOARD_IR_EN, INPUT_PULLUP);
 
-    pinMode(sideButtonPin, INPUT_PULLUP);
-
-    if (digitalRead(sideButtonPin) == LOW) {
+    if (digitalRead(BOARD_IR_EN) == LOW) {
         if (!earsPerked) {
             earsPerked = true;
             drawSprite();  // Redraw with ears perked
+
+            // Check if the recording file exists
+            if (SPIFFS.exists("/record.wav")) {
+                audio.connecttoFS(SPIFFS, "/record.wav");
+            } else {
+                // Generate a beep if the file doesn't exist
+                playTone(1000, 200);  // Use BOARD_VOICE_DIN for sound
+            }
         }
     } else {
         if (earsPerked) {
             earsPerked = false;
             drawSprite();  // Redraw with normal ears
+
+            // Stop recording and play back
+            audio.stopSong();
+            if (SPIFFS.exists("/record.wav")) {
+                audio.connecttoFS(SPIFFS, "/record.wav");
+            } else {
+                // Generate a beep if the file doesn't exist
+                playTone(1000, 200);  // Use BOARD_VOICE_DIN for sound
+            }
         }
     }
 }
 
+void playTone(int frequency, int duration) {
+    isPlayingSound = true;  // Set flag to true when sound starts
+
+    // Configure a PWM channel
+    ledcSetup(0, frequency, 8);  // Channel 0, frequency, 8-bit resolution
+    ledcAttachPin(BOARD_VOICE_DIN, 0);  // Attach the channel to the speaker pin
+
+    // Play the tone
+    ledcWriteTone(0, frequency);  // Set the frequency
+    delay(duration);  // Play for the specified duration
+
+    // Stop the tone
+    ledcWriteTone(0, 0);
+
+    isPlayingSound = false;  // Reset flag after sound stops
+}
+
 void loop() {
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    Serial.print("Hour: ");
-    Serial.println(timeInfo->tm_hour);
-    Serial.print("Minute: ");
-    Serial.println(timeInfo->tm_min);
-    delay(60000);  // Print every minute
+    readEncoder();
+    handleSideButton();
 }
