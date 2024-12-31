@@ -92,7 +92,7 @@ int roverYOffset = 0;
 bool movingDown = true;
 const int MAX_OFFSET = 5;  // Maximum pixels to move up/down
 unsigned long lastHoverUpdate = 0;
-const int HOVER_SPEED = 90;  // Update every 100ms
+const int HOVER_SPEED = 90;  // Update every 90ms
 
 // Add at top with other global variables
 unsigned long lastStatusUpdate = 0;
@@ -140,6 +140,10 @@ const CRGB DAY_COLORS[] = {
 unsigned long lastWiFiAttempt = 0;
 const unsigned long WIFI_RETRY_INTERVAL = 300000;  // Try every 5 minutes
 bool isWiFiConnected = false;
+
+// Add at top with other global variables
+unsigned long lastMoodChange = 0;
+const unsigned long MOOD_CHANGE_INTERVAL = 30000;  // Change mood every 30 seconds
 
 void tryWiFiConnection() {
     if (!isWiFiConnected && 
@@ -874,10 +878,52 @@ void updateLEDs() {
     FastLED.show();
 }
 
+void calculateMood() {
+    unsigned long currentMillis = millis();
+    
+    // Update mood randomly
+    if (currentMillis - lastMoodChange >= MOOD_CHANGE_INTERVAL) {
+        lastMoodChange = currentMillis;
+        
+        // Generate random mood different from current
+        int newMood;
+        do {
+            newMood = random(numMoods);
+        } while (newMood == currentMood);
+        
+        currentMood = newMood;
+        Serial.printf("New mood: %s\n", moods[currentMood]);
+        
+        drawSprite();  // Redraw with new mood
+    }
+}
+
 void loop() {
     static unsigned long lastDisplayUpdate = 0;
     static unsigned long lastStatusUpdate = 0;
     unsigned long currentMillis = millis();
+    
+    // Update hover animation
+    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
+        lastHoverUpdate = currentMillis;
+        
+        if (movingDown) {
+            roverYOffset++;
+            if (roverYOffset >= MAX_OFFSET) {
+                movingDown = false;
+            }
+        } else {
+            roverYOffset--;
+            if (roverYOffset <= -MAX_OFFSET) {
+                movingDown = true;
+            }
+        }
+        
+        drawSprite();  // Redraw with new position
+    }
+    
+    // Calculate mood
+    calculateMood();
     
     // Try WiFi connection periodically if not connected
     tryWiFiConnection();
