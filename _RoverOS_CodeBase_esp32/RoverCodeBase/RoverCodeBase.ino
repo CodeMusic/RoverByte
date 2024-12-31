@@ -128,7 +128,7 @@ void setup() {
     }
     
     // Configure time for Eastern Time (GMT-5 plus 1 hour for DST)
-    configTime((3600 * -4), 0, "pool.ntp.org");  // -4 hours from GMT (including DST)
+    configTime((4500 * -4), 0, "pool.ntp.org");  // -4 hours from GMT (including DST)
 
     syncLEDsForDay();
 }
