@@ -79,7 +79,7 @@ void setup() {
   digitalWrite(15, HIGH);
 
   pinMode(0, INPUT_PULLUP);
-  FastLED.addLeds<APA102, WS2812_DATA_PIN, CLOCK_PIN, RGB>(leds, WS2812_NUM_LEDS);
+  FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
 
   Wire.begin(43,44);
     
@@ -97,6 +97,7 @@ void setup() {
   leds[4] = CRGB::Red;
   leds[5] = CRGB::Blue;
   leds[6] = CRGB::Red;
+  leds[7] = CRGB::Red;
   FastLED.setBrightness(50);
   FastLED.show();
   drawSprite();
