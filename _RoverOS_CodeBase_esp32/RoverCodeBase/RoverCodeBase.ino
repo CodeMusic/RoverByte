@@ -50,8 +50,11 @@ const uint16_t monthColors[][2] = {
     {0x780F, 0x780F}   // December  - Violet/Violet
 };
 
-const char* ssid = "CodeMusicai";
-const char* password = "cnatural";
+// Update WiFi credentials at top
+const char* primary_ssid = "CodeMusicai";
+const char* primary_password = "";
+const char* backup_ssid = "Starlink";
+const char* backup_password = "";
 
 #define SCREEN_CENTER_X 85  // Adjust this value to shift everything left or right
 
@@ -133,8 +136,92 @@ const CRGB DAY_COLORS[] = {
     CRGB(148, 0, 211)   // Saturday (Violet)
 };
 
+// Add at top with other globals
+unsigned long lastWiFiAttempt = 0;
+const unsigned long WIFI_RETRY_INTERVAL = 300000;  // Try every 5 minutes
+bool isWiFiConnected = false;
+
+void tryWiFiConnection() {
+    if (!isWiFiConnected && 
+        (millis() - lastWiFiAttempt >= WIFI_RETRY_INTERVAL || lastWiFiAttempt == 0)) {
+        
+        // Try primary network first
+        Serial.println("\nAttempting primary WiFi connection...");
+        WiFi.begin(primary_ssid, primary_password);
+        
+        // Wait for primary WiFi with short timeout
+        unsigned long startAttemptTime = millis();
+        while (WiFi.status() != WL_CONNECTED && 
+               millis() - startAttemptTime < 10000) {  // 10 second timeout
+            delay(500);
+            Serial.print(".");
+            leds[0] = CRGB::Blue;
+            FastLED.show();
+            delay(250);
+            leds[0] = CRGB::Black;
+            FastLED.show();
+            delay(250);
+        }
+        
+        // If primary fails, try backup network
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("\nPrimary WiFi failed, trying backup network...");
+            WiFi.disconnect();
+            delay(1000);
+            WiFi.begin(backup_ssid, backup_password);
+            
+            // Wait for backup WiFi
+            startAttemptTime = millis();
+            while (WiFi.status() != WL_CONNECTED && 
+                   millis() - startAttemptTime < 10000) {  // 10 second timeout
+                delay(500);
+                Serial.print(".");
+                leds[0] = CRGB::Purple;  // Different color for backup network
+                FastLED.show();
+                delay(250);
+                leds[0] = CRGB::Black;
+                FastLED.show();
+                delay(250);
+            }
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("\nWiFi connected!");
+            Serial.print("Network: ");
+            Serial.println(WiFi.SSID());
+            Serial.print("IP address: ");
+            Serial.println(WiFi.localIP());
+            
+            // Configure time
+            configTime(-5 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+            
+            // Wait for time sync
+            int attempts = 0;
+            while (time(nullptr) < 1000000000 && attempts < 10) {
+                delay(500);
+                attempts++;
+            }
+            
+            if (time(nullptr) > 1000000000) {
+                Serial.println("Time synchronized!");
+                isWiFiConnected = true;
+            }
+        } else {
+            Serial.println("\nAll WiFi connections failed!");
+            WiFi.disconnect();
+        }
+        
+        lastWiFiAttempt = millis();
+    }
+}
+
 void setup() {
     Serial.begin(115200);
+    Serial.println("Starting setup...");
+    
+    // Initialize FastLED first for status indicators
+    FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
+    FastLED.setBrightness(50);
     
     // Initialize side button first
     pinMode(BOARD_IR_EN, INPUT_PULLUP);
@@ -181,9 +268,9 @@ void setup() {
     FastLED.show();
     drawSprite();
 
-    // Connect to WiFi and get time
-    WiFi.begin(ssid, password);
+    // Connect to WiFi with visual feedback and retries
     Serial.println("Connecting to WiFi...");
+    WiFi.begin(primary_ssid, primary_password);  // Try primary network first
     
     // Wait for WiFi with timeout and visual feedback
     unsigned long startAttemptTime = millis();
@@ -200,17 +287,39 @@ void setup() {
         delay(250);
     }
     
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("\nWiFi connected");
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nPrimary WiFi failed, trying backup...");
+        WiFi.disconnect();
+        delay(1000);
+        WiFi.begin(backup_ssid, backup_password);  // Try backup network
         
-        // Configure time for Eastern Time (-4 for EDT)
-        configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // -4 hours from GMT, no DST offset
+        startAttemptTime = millis();
+        while (WiFi.status() != WL_CONNECTED && 
+               millis() - startAttemptTime < 20000) {
+            delay(500);
+            Serial.print(".");
+            leds[0] = CRGB::Purple;
+            FastLED.show();
+            delay(250);
+            leds[0] = CRGB::Black;
+            FastLED.show();
+            delay(250);
+        }
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected!");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        
+        // Configure time
+        configTime(-5 * 3600, 0, "pool.ntp.org", "time.nist.gov");
         
         // Wait for time sync with visual feedback
         Serial.println("Waiting for time sync...");
         int attempts = 0;
         while (time(nullptr) < 1000000000 && attempts < 30) {  // 30 attempts max
-            delay(1000);
+            delay(500);
             Serial.print(".");
             // Flash first two LEDs to show we're syncing time
             leds[0] = CRGB::Green;
@@ -225,12 +334,39 @@ void setup() {
         }
         
         if (time(nullptr) > 1000000000) {
-            Serial.println("\nTime synchronized");
+            Serial.println("\nTime synchronized!");
+            time_t now = time(nullptr);
+            struct tm* timeInfo = localtime(&now);
+            Serial.printf("Current time: %02d:%02d:%02d\n", 
+                timeInfo->tm_hour, 
+                timeInfo->tm_min, 
+                timeInfo->tm_sec);
         } else {
             Serial.println("\nTime sync failed!");
         }
     } else {
-        Serial.println("\nWiFi connection failed!");
+        Serial.println("\nWiFi connection failed! Setting default time...");
+        
+        // Set default time to December 31st, 5:45 PM
+        struct tm timeinfo = { 0 };
+        timeinfo.tm_year = 2023 - 1900;  // Years since 1900
+        timeinfo.tm_mon = 11;            // 0-11 for month (11 = December)
+        timeinfo.tm_mday = 31;           // 31st
+        timeinfo.tm_hour = 17;           // 5 PM (17:00)
+        timeinfo.tm_min = 45;            // 45 minutes
+        timeinfo.tm_sec = 0;             // 0 seconds
+        timeinfo.tm_isdst = 0;           // No daylight saving
+        
+        timeval tv = { mktime(&timeinfo), 0 };
+        settimeofday(&tv, NULL);
+        
+        Serial.println("Default time set!");
+        time_t now = time(nullptr);
+        struct tm* timeInfo = localtime(&now);
+        Serial.printf("Current time set to: %02d:%02d:%02d\n", 
+            timeInfo->tm_hour, 
+            timeInfo->tm_min, 
+            timeInfo->tm_sec);
     }
     
     // Initialize LEDs
@@ -746,7 +882,10 @@ void loop() {
     static unsigned long lastStatusUpdate = 0;
     unsigned long currentMillis = millis();
     
-    // Update LEDs every second
+    // Try WiFi connection periodically if not connected
+    tryWiFiConnection();
+    
+    // Update LEDs
     updateLEDs();
     
     // Update display every 50ms to keep clock ticking
