@@ -93,6 +93,8 @@ void setup() {
     digitalWrite(15, HIGH);
 
     pinMode(0, INPUT_PULLUP);
+    pinMode(BOARD_IR_EN, INPUT_PULLUP);  // Initialize side button
+    
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
 
     // Initialize audio with the correct board pins
@@ -199,6 +201,7 @@ void readEncoder() {
     }
     
     int newPos = encoder.getPosition();
+    bool forward = newPos > pos;
     if (pos != newPos) {
         if(newPos > pos) {
             currentMood = (currentMood + 1) % numMoods;  // Cycle forward through moods
@@ -211,11 +214,21 @@ void readEncoder() {
         drawSprite();
         
         // Check if the MP3 file exists
-        if (SPIFFS.exists("/move.mp3")) {
+        if (SPIFFS.exists("/move.mp3")) 
+        {
             audio.connecttoFS(SPIFFS, "/move.mp3");
         } else {
             // Generate a beep if the file doesn't exist
-            playTone(1000, 200);  // 1000 Hz for 200 ms
+            if(forward) 
+            {
+                playTone(1000, 200);  // 1000 Hz for 200 ms
+                playTone(2000, 200);  // 2000 Hz for 200 ms
+            }
+            else 
+            {
+                playTone(2000, 200);  // 2000 Hz for 200 ms
+                playTone(1000, 200);  // 1000 Hz for 200 ms
+            }
         }
     }
 }
@@ -421,26 +434,19 @@ void handleSideButton() {
             drawSprite();  // Redraw with ears perked
 
             // Check if the recording file exists
-            if (SPIFFS.exists("/record.wav")) {
-                audio.connecttoFS(SPIFFS, "/record.wav");
+            if (SD.exists("/bark.mp3")) {
+                Serial.println("Playing bark sound...");
+                audio.connecttoFS(SD, "/bark.mp3");
+                isPlayingSound = true;
+                delay(10);  // Small delay to let audio initialize
             } else {
-                // Generate a beep if the file doesn't exist
-                playTone(1000, 200);  // Use BOARD_VOICE_DIN for sound
+                Serial.println("bark.mp3 not found!");
             }
         }
     } else {
         if (earsPerked) {
             earsPerked = false;
             drawSprite();  // Redraw with normal ears
-
-            // Stop recording and play back
-            audio.stopSong();
-            if (SPIFFS.exists("/record.wav")) {
-                audio.connecttoFS(SPIFFS, "/record.wav");
-            } else {
-                // Generate a beep if the file doesn't exist
-                playTone(1000, 200);  // Use BOARD_VOICE_DIN for sound
-            }
         }
     }
 }
