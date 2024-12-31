@@ -101,14 +101,14 @@ bool showLevel = true;  // Toggle between level and experience
 
 // Add at top with other global variables
 const CRGB BASE_8_COLORS[] = {
-    CRGB::Black,    // 0 = Off
-    CRGB::Red,      // 1
-    CRGB(255, 140, 0),  // 2 = Orange
-    CRGB::Yellow,   // 3
-    CRGB::Green,    // 4
-    CRGB::Blue,     // 5
-    CRGB(75, 0, 130),   // 6 = Indigo
-    CRGB(148, 0, 211)   // 7 = Violet
+    CRGB::Black,          // 0 = Off
+    CRGB::Red,           // 1 = Red
+    CRGB(255, 140, 0),   // 2 = Orange
+    CRGB::Yellow,        // 3 = Yellow
+    CRGB::Green,         // 4 = Green
+    CRGB::Blue,          // 5 = Blue
+    CRGB(75, 0, 130),    // 6 = Indigo
+    CRGB(200, 0, 200)    // 7 = Violet (adjusted to be more purple/violet)
 };
 
 const CRGB MONTH_COLORS[][2] = {
@@ -840,41 +840,38 @@ void updateLEDs() {
     // LED 0: Month color (possibly gradient)
     int month = timeInfo->tm_mon;
     leds[0] = MONTH_COLORS[month][timeInfo->tm_sec % 2];
-    Serial.printf("Month LED: %d (Color1: R%d G%d B%d", month, 
-        MONTH_COLORS[month][timeInfo->tm_sec % 2].r,
-        MONTH_COLORS[month][timeInfo->tm_sec % 2].g,
-        MONTH_COLORS[month][timeInfo->tm_sec % 2].b);
     
     // LED 1: Day of week color
     int dayOfWeek = timeInfo->tm_wday;
     leds[1] = DAY_COLORS[dayOfWeek];
-    Serial.printf("Day LED: %d (R%d G%d B%d)\n", dayOfWeek,
-        DAY_COLORS[dayOfWeek].r,
-        DAY_COLORS[dayOfWeek].g,
-        DAY_COLORS[dayOfWeek].b);
     
-    // Calculate seconds since midnight
-    long secondsSinceMidnight = timeInfo->tm_hour * 3600L + 
-                               timeInfo->tm_min * 60L + 
-                               timeInfo->tm_sec;
+    // Convert hours (0-23) to base 8
+    int hours = timeInfo->tm_hour;
+    int hourTens = hours / 8;
+    int hourOnes = hours % 8;
+    leds[2] = BASE_8_COLORS[hourTens];  // Most significant hour digit (left)
+    leds[3] = BASE_8_COLORS[hourOnes];  // Least significant hour digit (right)
     
-    Serial.printf("Seconds since midnight: %ld\n", secondsSinceMidnight);
+    // Convert minutes (0-59) to base 8
+    int minutes = timeInfo->tm_min;
+    int minTens = minutes / 8;
+    int minOnes = minutes % 8;
+    leds[4] = BASE_8_COLORS[minTens];   // Most significant minute digit (left)
+    leds[5] = BASE_8_COLORS[minOnes];   // Least significant minute digit (right)
     
-    // Convert to base 8 for last 6 LEDs (right to left)
-    long temp = secondsSinceMidnight;
-    for (int i = 7; i >= 2; i--) {
-        int digit = temp % 8;
-        leds[i] = BASE_8_COLORS[digit];
-        temp /= 8;
-        Serial.printf("LED %d: digit %d (R%d G%d B%d)\n", i, digit,
-            BASE_8_COLORS[digit].r,
-            BASE_8_COLORS[digit].g,
-            BASE_8_COLORS[digit].b);
-    }
+    // Convert seconds (0-59) to base 8
+    int seconds = timeInfo->tm_sec;
+    int secTens = seconds / 8;
+    int secOnes = seconds % 8;
+    leds[6] = BASE_8_COLORS[secTens];   // Most significant second digit (left)
+    leds[7] = BASE_8_COLORS[secOnes];   // Least significant second digit (right)
     
-    // Force LED update
+    // Debug output
+    Serial.printf("Hours (base 8): %d%d\n", hourTens, hourOnes);
+    Serial.printf("Minutes (base 8): %d%d\n", minTens, minOnes);
+    Serial.printf("Seconds (base 8): %d%d\n", secTens, secOnes);
+    
     FastLED.show();
-    delay(1);  // Small delay to ensure LED update
 }
 
 void loop() {
