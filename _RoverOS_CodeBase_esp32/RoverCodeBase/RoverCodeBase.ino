@@ -305,56 +305,19 @@ void drawSprite() {
     
     updateWeekLEDs();
     
-    // Draw time at top (centered) in 12-hour format
+    // Draw time at top (centered)
     char timeStr[6];
     int hour12 = (timeInfo->tm_hour % 12) ? (timeInfo->tm_hour % 12) : 12;
     sprintf(timeStr, "%02d:%02d", hour12, timeInfo->tm_min);
     
     spr.setTextColor(timeColor, TFT_BLACK);
-    spr.drawString(timeStr, SCREEN_CENTER_X, 30, 7);  // Adjust Y position for top half
+    spr.drawString(timeStr, SCREEN_CENTER_X, 30, 7);
     
     // Draw Rover in middle (centered)
     drawRover(moods[currentMood], earsPerked);
     
-    // Draw status bar
+    // Draw status bar (which now includes the countdown)
     drawStatusBar();
-    
-    // Calculate time until 2025
-    struct tm target = {0};
-    target.tm_year = 125;  // 2025 (years since 1900)
-    target.tm_mon = 0;     // January
-    target.tm_mday = 1;    // 1st
-    target.tm_hour = 0;    // Midnight
-    target.tm_min = 0;
-    target.tm_sec = 0;
-    
-    time_t targetTime = mktime(&target);
-    double diff = difftime(targetTime, now);
-    
-    // Fix the time calculations
-    int daysLeft = (int)(diff / (24 * 3600));
-    int hoursLeft = (int)((diff / 3600)) % 24;
-    int minsLeft = (int)((diff / 60)) % 60;
-    int secsLeft = (int)diff % 60;
-    
-    // Draw 2025 countdown section
-    spr.fillRect(2, 200, 280, 110, 0xC618);
-    spr.drawRect(4, 198, 284, 114, TFT_DARKGREY);
-    spr.setTextFont(4);
-    spr.setTextColor(TFT_BLACK, 0xC618);
-    spr.drawString("2025 in", SCREEN_CENTER_X, 220);
-    
-    // Draw seconds in large font
-    char secsStr[10];
-    sprintf(secsStr, "%d", (int)diff);
-    spr.setTextFont(7);  // Same large font as time
-    spr.drawString(secsStr, SCREEN_CENTER_X, 260);
-    
-    // Draw hours and minutes in smaller font
-    spr.setTextFont(2);
-    char countdownStr[50];
-    sprintf(countdownStr, "%d Hours, %d Minutes", hoursLeft, minsLeft);
-    spr.drawString(countdownStr, SCREEN_CENTER_X, 290);
     
     spr.pushSprite(0, 0);
 }
@@ -571,38 +534,75 @@ void drawStatusBar() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
-    int barY = 160;  // Position below Rover
-    int barHeight = 30;
-    int dateWidth = 40;
+    // Calculate time until 2025
+    struct tm target = {0};
+    target.tm_year = 125;  // 2025 (years since 1900)
+    target.tm_mon = 0;     // January
+    target.tm_mday = 1;    // 1st
+    target.tm_hour = 0;    // Midnight
+    target.tm_min = 0;
+    target.tm_sec = 0;
     
-    // Draw outer rectangle with month colors
-    if (timeInfo->tm_mon == timeInfo->tm_mon) {  // Same month, solid color
-        spr.fillRect(10, barY, 160, barHeight, monthColors[timeInfo->tm_mon][0]);
-    } else {  // Gradient between two colors (if needed in future)
-        for (int i = 0; i < 160; i++) {
-            uint8_t mix = (i * 255) / 160;
+    time_t targetTime = mktime(&target);
+    double diff = difftime(targetTime, now);
+    
+    // Calculate countdown components
+    int hoursLeft = (int)((diff / 3600)) % 24;
+    int minsLeft = (int)((diff / 60)) % 60;
+    int secsLeft = (int)diff % 60;
+    
+    int barY = 160;  // Position below Rover
+    int barHeight = 160;  // Extend all the way to bottom
+    int dateWidth = 45;
+    
+    // Draw outer rectangle with month colors (full width)
+    if (timeInfo->tm_mon == timeInfo->tm_mon) {
+        spr.fillRect(0, barY, tft.width(), barHeight, monthColors[timeInfo->tm_mon][0]);
+    } else {
+        for (int i = 0; i < tft.width(); i++) {
+            uint8_t mix = (i * 255) / tft.width();
             uint16_t color = spr.alphaBlend(mix, monthColors[timeInfo->tm_mon][0], monthColors[timeInfo->tm_mon][1]);
-            spr.drawFastVLine(10 + i, barY, barHeight, color);
+            spr.drawFastVLine(i, barY, barHeight, color);
         }
     }
     
-    // Draw date number
-    spr.setTextFont(2);  // Smaller font for date
+    // Draw date number (larger, like a tab)
+    spr.setTextFont(4);  // Larger font for date
     spr.setTextColor(TFT_BLACK);
     char dateStr[3];
     sprintf(dateStr, "%d", timeInfo->tm_mday);
-    spr.drawString(dateStr, 30, barY + (barHeight/2));  // Center in left portion
+    spr.drawString(dateStr, 25, barY + 15);  // Adjusted position for larger font
     
-    // Draw black status area
-    spr.fillRect(55, barY + 2, 110, barHeight - 4, TFT_BLACK);
+    // Draw black status area (taller and more to the left, moved up)
+    spr.fillRect(45, barY - 2, 140, 35, TFT_BLACK);  // Moved up by adjusting Y position
     
-    // Draw status text
+    // Draw status text (centered in black area)
+    spr.setTextFont(2);
     spr.setTextColor(TFT_WHITE);
     if (showLevel) {
-        spr.drawString("Level: 1", 110, barY + (barHeight/2));
+        spr.drawString("Level: 1", 110, barY + 15);  // Adjusted for new black area position
     } else {
-        spr.drawString("Experience: 100", 110, barY + (barHeight/2));
+        spr.drawString("Experience: 100", 110, barY + 15);  // Adjusted for new black area position
     }
+    
+    // Draw 2025 countdown section (moved up, made taller)
+    spr.fillRect(2, 195, 280, 120, 0xC618);  // Moved up and made taller
+    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);  // Adjusted border to match
+    spr.setTextFont(4);
+    spr.setTextColor(TFT_BLACK, 0xC618);
+    spr.drawString("2025 in", SCREEN_CENTER_X, 215);  // Moved up
+    
+    // Draw seconds in large font (back to center)
+    char secsStr[10];
+    sprintf(secsStr, "%d", (int)diff);
+    spr.setTextFont(7);
+    spr.drawString(secsStr, SCREEN_CENTER_X, 255);  // Moved up
+    
+    // Draw hours and minutes in smaller font
+    spr.setTextFont(2);
+    char countdownStr[50];
+    sprintf(countdownStr, "%d Hours, %d Minutes", hoursLeft, minsLeft);
+    spr.drawString(countdownStr, SCREEN_CENTER_X, 285);  // Moved up
 }
 
 void loop() {
