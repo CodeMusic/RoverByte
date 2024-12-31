@@ -89,12 +89,49 @@ int roverYOffset = 0;
 bool movingDown = true;
 const int MAX_OFFSET = 5;  // Maximum pixels to move up/down
 unsigned long lastHoverUpdate = 0;
-const int HOVER_SPEED = 100;  // Update every 100ms
+const int HOVER_SPEED = 90;  // Update every 100ms
 
 // Add at top with other global variables
 unsigned long lastStatusUpdate = 0;
 const unsigned long STATUS_CHANGE_INTERVAL = 3000;  // Switch every 3 seconds
 bool showLevel = true;  // Toggle between level and experience
+
+// Add at top with other global variables
+const CRGB BASE_8_COLORS[] = {
+    CRGB::Black,    // 0 = Off
+    CRGB::Red,      // 1
+    CRGB(255, 140, 0),  // 2 = Orange
+    CRGB::Yellow,   // 3
+    CRGB::Green,    // 4
+    CRGB::Blue,     // 5
+    CRGB(75, 0, 130),   // 6 = Indigo
+    CRGB(148, 0, 211)   // 7 = Violet
+};
+
+const CRGB MONTH_COLORS[][2] = {
+    {CRGB::Red, CRGB::Red},                    // January (Red)
+    {CRGB::Red, CRGB(255, 140, 0)},           // February (Red/Orange)
+    {CRGB(255, 140, 0), CRGB(255, 140, 0)},   // March (Orange)
+    {CRGB(255, 140, 0), CRGB::Yellow},        // April (Orange/Yellow)
+    {CRGB::Yellow, CRGB::Yellow},             // May (Yellow)
+    {CRGB::Green, CRGB::Green},               // June (Green)
+    {CRGB::Green, CRGB::Blue},                // July (Green/Blue)
+    {CRGB::Blue, CRGB::Blue},                 // August (Blue)
+    {CRGB::Blue, CRGB(75, 0, 130)},           // September (Blue/Indigo)
+    {CRGB(75, 0, 130), CRGB(75, 0, 130)},     // October (Indigo)
+    {CRGB(75, 0, 130), CRGB(148, 0, 211)},    // November (Indigo/Violet)
+    {CRGB(148, 0, 211), CRGB(148, 0, 211)}    // December (Violet)
+};
+
+const CRGB DAY_COLORS[] = {
+    CRGB::Red,           // Sunday
+    CRGB(255, 140, 0),  // Monday (Orange)
+    CRGB::Yellow,       // Tuesday
+    CRGB::Green,        // Wednesday
+    CRGB::Blue,         // Thursday
+    CRGB(75, 0, 130),   // Friday (Indigo)
+    CRGB(148, 0, 211)   // Saturday (Violet)
+};
 
 void setup() {
     Serial.begin(115200);
@@ -146,16 +183,61 @@ void setup() {
 
     // Connect to WiFi and get time
     WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Connecting to WiFi...");
+    
+    // Wait for WiFi with timeout and visual feedback
+    unsigned long startAttemptTime = millis();
+    while (WiFi.status() != WL_CONNECTED && 
+           millis() - startAttemptTime < 20000) {  // 20 second timeout
         delay(500);
+        Serial.print(".");
+        // Flash first LED to show we're trying to connect
+        leds[0] = CRGB::Blue;
+        FastLED.show();
+        delay(250);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        delay(250);
     }
     
-    // Configure time for Eastern Time (GMT-5 plus 1 hour for DST)
-    configTime((4500 * -4), 0, "pool.ntp.org");  // -4 hours from GMT (including DST)
-
-    syncLEDsForDay();
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected");
+        
+        // Configure time for Eastern Time (-4 for EDT)
+        configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // -4 hours from GMT, no DST offset
+        
+        // Wait for time sync with visual feedback
+        Serial.println("Waiting for time sync...");
+        int attempts = 0;
+        while (time(nullptr) < 1000000000 && attempts < 30) {  // 30 attempts max
+            delay(1000);
+            Serial.print(".");
+            // Flash first two LEDs to show we're syncing time
+            leds[0] = CRGB::Green;
+            leds[1] = CRGB::Green;
+            FastLED.show();
+            delay(250);
+            leds[0] = CRGB::Black;
+            leds[1] = CRGB::Black;
+            FastLED.show();
+            delay(250);
+            attempts++;
+        }
+        
+        if (time(nullptr) > 1000000000) {
+            Serial.println("\nTime synchronized");
+        } else {
+            Serial.println("\nTime sync failed!");
+        }
+    } else {
+        Serial.println("\nWiFi connection failed!");
+    }
+    
+    // Initialize LEDs
+    FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
+    FastLED.setBrightness(50);
+    updateLEDs();  // Initial LED update
 }
-
 
 void syncLEDsForDay() {
     time_t now = time(nullptr);
@@ -303,7 +385,7 @@ void drawSprite() {
         default: timeColor = TFT_WHITE; break;
     }
     
-    updateWeekLEDs();
+    //updateWeekLEDs();
     
     // Draw time at top (centered)
     char timeStr[6];
@@ -605,138 +687,87 @@ void drawStatusBar() {
     spr.drawString(countdownStr, SCREEN_CENTER_X, 285);  // Moved up
 }
 
-void loop() {
-    static unsigned long lastDisplayUpdate = 0;
-    unsigned long currentMillis = millis();
-    
-    // Get current time once for this loop iteration
+void updateLEDs() {
+    static unsigned long lastUpdate = 0;
+    if (millis() - lastUpdate < 1000) return; // Update every second
+    lastUpdate = millis();
+
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
-    // Handle audio processing first
-    if (isPlayingSound) {
-        audio.loop();
+    // Debug print current time
+    Serial.printf("Time: %02d:%02d:%02d\n", 
+        timeInfo->tm_hour, 
+        timeInfo->tm_min, 
+        timeInfo->tm_sec);
+    
+    // LED 0: Month color (possibly gradient)
+    int month = timeInfo->tm_mon;
+    leds[0] = MONTH_COLORS[month][timeInfo->tm_sec % 2];
+    Serial.printf("Month LED: %d (Color1: R%d G%d B%d", month, 
+        MONTH_COLORS[month][timeInfo->tm_sec % 2].r,
+        MONTH_COLORS[month][timeInfo->tm_sec % 2].g,
+        MONTH_COLORS[month][timeInfo->tm_sec % 2].b);
+    
+    // LED 1: Day of week color
+    int dayOfWeek = timeInfo->tm_wday;
+    leds[1] = DAY_COLORS[dayOfWeek];
+    Serial.printf("Day LED: %d (R%d G%d B%d)\n", dayOfWeek,
+        DAY_COLORS[dayOfWeek].r,
+        DAY_COLORS[dayOfWeek].g,
+        DAY_COLORS[dayOfWeek].b);
+    
+    // Calculate seconds since midnight
+    long secondsSinceMidnight = timeInfo->tm_hour * 3600L + 
+                               timeInfo->tm_min * 60L + 
+                               timeInfo->tm_sec;
+    
+    Serial.printf("Seconds since midnight: %ld\n", secondsSinceMidnight);
+    
+    // Convert to base 8 for last 6 LEDs (right to left)
+    long temp = secondsSinceMidnight;
+    for (int i = 7; i >= 2; i--) {
+        int digit = temp % 8;
+        leds[i] = BASE_8_COLORS[digit];
+        temp /= 8;
+        Serial.printf("LED %d: digit %d (R%d G%d B%d)\n", i, digit,
+            BASE_8_COLORS[digit].r,
+            BASE_8_COLORS[digit].g,
+            BASE_8_COLORS[digit].b);
     }
     
-    // Handle Auld Lang Syne playback
+    // Force LED update
+    FastLED.show();
+    delay(1);  // Small delay to ensure LED update
+}
+
+void loop() {
+    static unsigned long lastDisplayUpdate = 0;
+    static unsigned long lastStatusUpdate = 0;
+    unsigned long currentMillis = millis();
+    
+    // Update LEDs every second
+    updateLEDs();
+    
+    // Update display every 50ms to keep clock ticking
+    if (currentMillis - lastDisplayUpdate >= 50) {
+        readEncoder();
+        handleSideButton();
+        drawSprite();  // This will update the clock display
+        lastDisplayUpdate = currentMillis;
+    }
+    
+    // Update status text every 3 seconds
+    if (currentMillis - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
+        showLevel = !showLevel;
+        lastStatusUpdate = currentMillis;
+    }
+    
     if (isPlayingAuldLangSyne) {
         playAuldLangSyne();
     }
     
-    // Update hover animation
-    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
-        if (movingDown) {
-            roverYOffset++;
-            if (roverYOffset >= MAX_OFFSET) {
-                movingDown = false;
-            }
-        } else {
-            roverYOffset--;
-            if (roverYOffset <= -MAX_OFFSET) {
-                movingDown = true;
-            }
-        }
-        lastHoverUpdate = currentMillis;
-        drawSprite();  // Redraw with new position
-    }
-    
-    // Update status text
-    if (currentMillis - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
-        showLevel = !showLevel;  // Toggle between level and experience
-        lastStatusUpdate = currentMillis;
-        drawSprite();  // Redraw with new status
-    }
-    
-    // Only update display every 50ms to reduce glitches
-    if (currentMillis - lastDisplayUpdate >= 50) {
-        readEncoder();
-        handleSideButton();
-        
-        // Animation and LED updates
-        if (isAnimating && (currentMillis - lastAnimationStep >= ANIMATION_DELAY)) {
-            lastAnimationStep = currentMillis;
-            
-            if (animationStep < 7) {
-                // First phase: turn off LEDs one by one
-                leds[animationStep + 1] = CRGB::Black;
-            } else if (animationStep < 14) {
-                // Second phase: turn each LED white then to its final state
-                int ledIndex = animationStep - 7 + 1;
-                if (animationStep % 2 == 1) {
-                    // White flash
-                    leds[ledIndex] = CRGB::White;
-                } else {
-                    // Set final state
-                    int currentDay = timeInfo->tm_wday;
-                    CRGB dayColors[] = {
-                        CRGB::Red, CRGB(255, 140, 0), CRGB::Yellow, CRGB::Green,
-                        CRGB::Blue, CRGB(75, 0, 130), CRGB(148, 0, 211)
-                    };
-                    
-                    if (ledIndex - 1 < currentDay) {
-                        leds[ledIndex] = CRGB::Black;  // Past days
-                    } else if (ledIndex - 1 == currentDay) {
-                        leds[ledIndex] = dayColors[ledIndex - 1];
-                        leds[ledIndex].nscale8(204);  // 80% brightness
-                    } else {
-                        leds[ledIndex] = dayColors[ledIndex - 1];
-                        leds[ledIndex].nscale8(128);  // 50% brightness
-                    }
-                }
-            }
-            
-            FastLED.show();
-            animationStep++;
-            
-            if (animationStep >= TOTAL_ANIMATION_STEPS) {
-                isAnimating = false;
-            }
-        }
-        
-        if (!isAnimating && currentMillis - lastCounterUpdate >= COUNTER_SPEED) {
-            // Update hour LED
-            int hour12 = timeInfo->tm_hour % 12;
-            if (hour12 == 0) hour12 = 12;
-            
-            // Set hour color (LED[0])
-            switch(hour12) {
-                case 1: leds[0] = CRGB::Red; break;
-                case 2: leds[0] = CRGB(255, 105, 0); break;
-                case 3: leds[0] = CRGB(255, 140, 0); break;
-                case 4: leds[0] = CRGB(255, 165, 0); break;
-                case 5: leds[0] = CRGB::Yellow; break;
-                case 6: leds[0] = CRGB::Green; break;
-                case 7: leds[0] = CRGB(0, 128, 128); break;
-                case 8: leds[0] = CRGB::Blue; break;
-                case 9: leds[0] = CRGB(37, 0, 190); break;
-                case 10: leds[0] = CRGB(75, 0, 130); break;
-                case 11: leds[0] = CRGB(112, 0, 170); break;
-                case 12: leds[0] = CRGB(148, 0, 211); break;
-            }
-            
-            // Update day LEDs if not animating
-            int currentDay = timeInfo->tm_wday;
-            CRGB dayColors[] = {
-                CRGB::Red, CRGB(255, 140, 0), CRGB::Yellow, CRGB::Green,
-                CRGB::Blue, CRGB(75, 0, 130), CRGB(148, 0, 211)
-            };
-            
-            for(int i = 0; i < 7; i++) {
-                if (i < currentDay) {
-                    leds[i + 1] = CRGB::Black;
-                } else if (i == currentDay) {
-                    leds[i + 1] = dayColors[i];
-                    leds[i + 1].nscale8(204);
-                } else {
-                    leds[i + 1] = dayColors[i];
-                    leds[i + 1].nscale8(128);
-                }
-            }
-            
-            FastLED.show();
-            lastCounterUpdate = currentMillis;
-        }
-        
-        lastDisplayUpdate = currentMillis;
+    if (isPlayingSound) {
+        audio.loop();
     }
 }
