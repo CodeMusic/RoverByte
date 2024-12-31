@@ -56,63 +56,81 @@ const char* password = "cnatural";
 #define SCREEN_CENTER_X 85  // Adjust this value to shift everything left or right
 
 // Add at top with other global variables
+unsigned long lastCounterUpdate = 0;
+const unsigned long COUNTER_SPEED = 1000;  // 1 second interval
+unsigned long lastAnimationStep = 0;
+const unsigned long ANIMATION_DELAY = 250;  // 250ms between animation steps
+bool isAnimating = false;
+int animationStep = 0;
+const int TOTAL_ANIMATION_STEPS = 14;  // 7 steps for turning off + 7 steps for turning on
+
+// Add at top with other global variables
 const char* moods[] = {"happy", "sad", "cool", "sleeping", "looking_left", "looking_right", "intense", "broken"};
 int currentMood = 0;
 int numMoods = 8;  // Number of moods in the array
 static int pos = 0;
 bool earsPerked = false;
 
-Audio audio;
+// Add near top with other defines
+#define I2S_BCK_PIN  BOARD_VOICE_BCLK   // Pin 46
+#define I2S_WS_PIN   BOARD_VOICE_LRCLK  // Pin 40
+#define I2S_DOUT_PIN BOARD_VOICE_DIN    // Pin 7
 
-bool isPlayingSound = false;  // Global flag to track sound playing
+// Single declaration of Audio
+Audio audio;
+bool isPlayingSound = false;
 
 void setup() {
-  
-  pinMode(46, OUTPUT);
-  digitalWrite(46, HIGH);
+    Serial.begin(115200);  // Add serial debug
+    pinMode(46, OUTPUT);
+    digitalWrite(46, HIGH);
 
-  tft.begin();
-  tft.setRotation(0);  // Set the desired rotation
-  tft.fillScreen(TFT_BLACK);
+    tft.begin();
+    tft.setRotation(0);
+    tft.fillScreen(TFT_BLACK);
 
-  pinMode(15, OUTPUT);
-  digitalWrite(15, HIGH);
+    pinMode(15, OUTPUT);
+    digitalWrite(15, HIGH);
 
-  pinMode(0, INPUT_PULLUP);
-  FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
+    pinMode(0, INPUT_PULLUP);
+    FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
 
-  Wire.begin(43,44);
+    // Initialize audio with the correct board pins
+    audio.setPinout(I2S_BCK_PIN, I2S_WS_PIN, I2S_DOUT_PIN);
+    audio.setVolume(21); // 0...21
+    Serial.println("Audio initialized");
+    
+    Wire.begin(43,44);
     
 
-  spr.createSprite(tft.width(), tft.height());
-  spr.setTextDatum(4);
-  spr.setSwapBytes(true);
-  spr.setFreeFont(&Orbitron_Light_24);
-  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    spr.createSprite(tft.width(), tft.height());
+    spr.setTextDatum(4);
+    spr.setSwapBytes(true);
+    spr.setFreeFont(&Orbitron_Light_24);
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  leds[0] = CRGB::Red;
-  leds[1] = CRGB::White;
-  leds[2] = CRGB::Red;
-  leds[3] = CRGB::Green;
-  leds[4] = CRGB::Red;
-  leds[5] = CRGB::Blue;
-  leds[6] = CRGB::Red;
-  leds[7] = CRGB::Red;
-  FastLED.setBrightness(50);
-  FastLED.show();
-  drawSprite();
+    leds[0] = CRGB::Red;
+    leds[1] = CRGB::White;
+    leds[2] = CRGB::Red;
+    leds[3] = CRGB::Green;
+    leds[4] = CRGB::Red;
+    leds[5] = CRGB::Blue;
+    leds[6] = CRGB::Red;
+    leds[7] = CRGB::Red;
+    FastLED.setBrightness(50);
+    FastLED.show();
+    drawSprite();
 
-  // Add WiFi and time sync
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-  }
-  
-  // Configure time for Eastern Standard Time (EST)
-  configTime(-18000, 0, "pool.ntp.org", "time.nist.gov");  // -5 hours for EST
-  // For Eastern Daylight Time (EDT), use -14400 (4 hours behind UTC)
+    // Connect to WiFi and get time
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+    }
+    
+    // Configure time for Eastern Time (GMT-5 plus 1 hour for DST)
+    configTime((3600 * -4), 0, "pool.ntp.org");  // -4 hours from GMT (including DST)
 
-  syncLEDsForDay();
+    syncLEDsForDay();
 }
 
 
@@ -166,8 +184,15 @@ void readEncoder() {
         if(deb == 0) {
             deb = 1;
             muted = !muted;
+            
+            // Play bark sound when button is pressed
+            if (SD.exists("/bark.mp3")) {
+                audio.connecttoFS(SD, "/bark.mp3");
+                isPlayingSound = true;
+                delay(10);  // Small delay to let audio initialize
+            }
+            
             drawSprite();
-            delay(200);
         }
     } else {
         deb = 0;
@@ -229,29 +254,36 @@ void drawSprite() {
     // Draw Rover in middle (centered)
     drawRover(moods[currentMood], earsPerked);
     
-    // Conditionally draw "Beep" if sound is playing
-    if (isPlayingSound) {
-        spr.setTextColor(TFT_WHITE, TFT_BLACK);
-        spr.setTextFont(2);
-        spr.drawString("Beep", SCREEN_CENTER_X, 110);  // Adjust Y position as needed
-    }
+    // Calculate time until 2025
+    struct tm target = {0};
+    target.tm_year = 125;  // 2025 (years since 1900)
+    target.tm_mon = 0;     // January
+    target.tm_mday = 1;    // 1st
+    target.tm_hour = 0;    // Midnight
+    target.tm_min = 0;
+    target.tm_sec = 0;
     
-    // Draw Level and Experience between Rover and ToDo list
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
-    spr.setTextFont(2);
-    spr.drawString("Level: 1", SCREEN_CENTER_X - 40, 170);  // Adjust X and Y positions as needed
-    spr.drawString("Exp: 100", SCREEN_CENTER_X + 40, 170);  // Adjust X and Y positions as needed
+    time_t targetTime = mktime(&target);
+    double diff = difftime(targetTime, now);
     
-    // Draw ToDo section in the bottom half with 3D effect
-    spr.fillRect(20, 200, 280, 110, 0xC618);  // Adjust Y position and dimensions
-    spr.drawRect(18, 198, 284, 114, TFT_DARKGREY);  // Add a border for 3D effect
+    // Fix the time calculations
+    int daysLeft = (int)(diff / (24 * 3600));
+    int hoursLeft = (int)((diff / 3600)) % 24;
+    int minsLeft = (int)((diff / 60)) % 60;
+    
+    // Draw 2025 countdown section
+    spr.fillRect(2, 200, 280, 110, 0xC618);
+    spr.drawRect(4, 198, 284, 114, TFT_DARKGREY);
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, 0xC618);
-    spr.drawString("ToDo:", SCREEN_CENTER_X, 220);  // Adjust Y position as needed
+    spr.drawString("2025 in", SCREEN_CENTER_X, 220);
     spr.setTextFont(2);
-    spr.drawString("Pick up Eggs", SCREEN_CENTER_X, 250);  // Adjust Y position as needed
     
-    spr.pushSprite(0, 0);  // Push sprite to the top-left corner
+    char countdownStr[50];
+    sprintf(countdownStr, "%d Hours, %d Minutes", hoursLeft, minsLeft);
+    spr.drawString(countdownStr, SCREEN_CENTER_X, 250);
+    
+    spr.pushSprite(0, 0);
 }
 
 void drawRover(String mood, bool earsPerked) {
@@ -431,6 +463,108 @@ void playTone(int frequency, int duration) {
 }
 
 void loop() {
-    readEncoder();
-    handleSideButton();
+    static unsigned long lastDisplayUpdate = 0;
+    unsigned long currentMillis = millis();
+    
+    // Get current time once for this loop iteration
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    
+    // Handle audio processing first
+    if (isPlayingSound) {
+        audio.loop();
+    }
+    
+    // Only update display every 50ms to reduce glitches
+    if (currentMillis - lastDisplayUpdate >= 50) {
+        readEncoder();
+        handleSideButton();
+        
+        // Animation and LED updates
+        if (isAnimating && (currentMillis - lastAnimationStep >= ANIMATION_DELAY)) {
+            lastAnimationStep = currentMillis;
+            
+            if (animationStep < 7) {
+                // First phase: turn off LEDs one by one
+                leds[animationStep + 1] = CRGB::Black;
+            } else if (animationStep < 14) {
+                // Second phase: turn each LED white then to its final state
+                int ledIndex = animationStep - 7 + 1;
+                if (animationStep % 2 == 1) {
+                    // White flash
+                    leds[ledIndex] = CRGB::White;
+                } else {
+                    // Set final state
+                    int currentDay = timeInfo->tm_wday;
+                    CRGB dayColors[] = {
+                        CRGB::Red, CRGB(255, 140, 0), CRGB::Yellow, CRGB::Green,
+                        CRGB::Blue, CRGB(75, 0, 130), CRGB(148, 0, 211)
+                    };
+                    
+                    if (ledIndex - 1 < currentDay) {
+                        leds[ledIndex] = CRGB::Black;  // Past days
+                    } else if (ledIndex - 1 == currentDay) {
+                        leds[ledIndex] = dayColors[ledIndex - 1];
+                        leds[ledIndex].nscale8(204);  // 80% brightness
+                    } else {
+                        leds[ledIndex] = dayColors[ledIndex - 1];
+                        leds[ledIndex].nscale8(128);  // 50% brightness
+                    }
+                }
+            }
+            
+            FastLED.show();
+            animationStep++;
+            
+            if (animationStep >= TOTAL_ANIMATION_STEPS) {
+                isAnimating = false;
+            }
+        }
+        
+        if (!isAnimating && currentMillis - lastCounterUpdate >= COUNTER_SPEED) {
+            // Update hour LED
+            int hour12 = timeInfo->tm_hour % 12;
+            if (hour12 == 0) hour12 = 12;
+            
+            // Set hour color (LED[0])
+            switch(hour12) {
+                case 1: leds[0] = CRGB::Red; break;
+                case 2: leds[0] = CRGB(255, 105, 0); break;
+                case 3: leds[0] = CRGB(255, 140, 0); break;
+                case 4: leds[0] = CRGB(255, 165, 0); break;
+                case 5: leds[0] = CRGB::Yellow; break;
+                case 6: leds[0] = CRGB::Green; break;
+                case 7: leds[0] = CRGB(0, 128, 128); break;
+                case 8: leds[0] = CRGB::Blue; break;
+                case 9: leds[0] = CRGB(37, 0, 190); break;
+                case 10: leds[0] = CRGB(75, 0, 130); break;
+                case 11: leds[0] = CRGB(112, 0, 170); break;
+                case 12: leds[0] = CRGB(148, 0, 211); break;
+            }
+            
+            // Update day LEDs if not animating
+            int currentDay = timeInfo->tm_wday;
+            CRGB dayColors[] = {
+                CRGB::Red, CRGB(255, 140, 0), CRGB::Yellow, CRGB::Green,
+                CRGB::Blue, CRGB(75, 0, 130), CRGB(148, 0, 211)
+            };
+            
+            for(int i = 0; i < 7; i++) {
+                if (i < currentDay) {
+                    leds[i + 1] = CRGB::Black;
+                } else if (i == currentDay) {
+                    leds[i + 1] = dayColors[i];
+                    leds[i + 1].nscale8(204);
+                } else {
+                    leds[i + 1] = dayColors[i];
+                    leds[i + 1].nscale8(128);
+                }
+            }
+            
+            FastLED.show();
+            lastCounterUpdate = currentMillis;
+        }
+        
+        lastDisplayUpdate = currentMillis;
+    }
 }
