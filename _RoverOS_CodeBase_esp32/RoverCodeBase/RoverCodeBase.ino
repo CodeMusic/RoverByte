@@ -80,11 +80,28 @@ bool earsPerked = false;
 Audio audio;
 bool isPlayingSound = false;
 
+// Add at top with other global variables
+bool isPlayingAuldLangSyne = false;
+int currentNote = 0;
+
+// Add at top with other global variables
+int roverYOffset = 0;
+bool movingDown = true;
+const int MAX_OFFSET = 5;  // Maximum pixels to move up/down
+unsigned long lastHoverUpdate = 0;
+const int HOVER_SPEED = 100;  // Update every 100ms
+
 void setup() {
-    Serial.begin(115200);  // Add serial debug
+    Serial.begin(115200);
+    
+    // Initialize side button first
+    pinMode(BOARD_IR_EN, INPUT_PULLUP);
+    delay(100); // Give time for pin to stabilize
+    
+    // Rest of setup
     pinMode(46, OUTPUT);
     digitalWrite(46, HIGH);
-
+    
     tft.begin();
     tft.setRotation(0);
     tft.fillScreen(TFT_BLACK);
@@ -93,13 +110,12 @@ void setup() {
     digitalWrite(15, HIGH);
 
     pinMode(0, INPUT_PULLUP);
-    pinMode(BOARD_IR_EN, INPUT_PULLUP);  // Initialize side button
     
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
 
-    // Initialize audio with the correct board pins
+    // Initialize audio
     audio.setPinout(I2S_BCK_PIN, I2S_WS_PIN, I2S_DOUT_PIN);
-    audio.setVolume(21); // 0...21
+    audio.setVolume(21);
     Serial.println("Audio initialized");
     
     Wire.begin(43,44);
@@ -178,6 +194,34 @@ void syncLEDsForDay() {
     FastLED.show();
 }
 
+void playAuldLangSyne() {
+    // Notes for Auld Lang Syne (shifted up three octaves)
+    static const int melody[] = {
+        3136, 3520, 3136, 2637, 3136, 3520, 3136,  // G7 A7 G7 E7 G7 A7 G7
+        4186, 3136, 3520, 3136, 2637, 2349, 2637,  // C8 G7 A7 G7 E7 D7 E7
+        3136, 3520, 3136, 2637, 3136, 3520, 3136,  // G7 A7 G7 E7 G7 A7 G7
+        4186, 3136, 3520, 3136, 2637, 2349, 2637   // C8 G7 A7 G7 E7 D7 E7
+    };
+    
+    static const int durations[] = {
+        250, 250, 375, 125, 250, 250, 500,
+        250, 250, 375, 125, 250, 250, 500,
+        250, 250, 375, 125, 250, 250, 500,
+        250, 250, 375, 125, 250, 250, 500
+    };
+
+    if (isPlayingAuldLangSyne) {
+        playTone(melody[currentNote], durations[currentNote]);
+        delay(durations[currentNote] * 0.3); // Short pause between notes
+        
+        currentNote++;
+        if (currentNote >= sizeof(melody) / sizeof(melody[0])) {
+            currentNote = 0;
+            isPlayingAuldLangSyne = false;
+        }
+    }
+}
+
 void readEncoder() {
     static int pos = 0;
     encoder.tick();
@@ -185,13 +229,13 @@ void readEncoder() {
     if(digitalRead(ENCODER_KEY) == 0) {
         if(deb == 0) {
             deb = 1;
-            muted = !muted;
             
-            // Play bark sound when button is pressed
-            if (SD.exists("/bark.mp3")) {
-                audio.connecttoFS(SD, "/bark.mp3");
-                isPlayingSound = true;
-                delay(10);  // Small delay to let audio initialize
+            // Toggle song playback
+            if (isPlayingAuldLangSyne) {
+                isPlayingAuldLangSyne = false;  // Stop playing
+                currentNote = 0;  // Reset to beginning
+            } else {
+                isPlayingAuldLangSyne = true;  // Start playing
             }
             
             drawSprite();
@@ -307,83 +351,83 @@ void drawRover(String mood, bool earsPerked) {
     uint16_t rightEyeColor = monthColors[timeInfo->tm_mon][1];
     
     int roverX = SCREEN_CENTER_X - 50;  // Center point for Rover
+    int baseY = 80;  // Base Y position
+    
+    // Apply hover animation offset
+    int currentY = baseY + roverYOffset;
     
     // Draw Rover's body (white)
-    spr.fillRect(roverX, 80, 100, 70, TFT_WHITE);
+    spr.fillRect(roverX, currentY, 100, 70, TFT_WHITE);
     
-    // Draw ears (triangles)
+    // Draw ears (triangles) with adjusted Y position
     if (earsPerked) {
         // Perked ears
-        spr.fillTriangle(roverX + 10, 60, roverX + 25, 75, roverX + 40, 60, TFT_WHITE);  // Left ear
-        spr.fillTriangle(roverX + 60, 60, roverX + 75, 75, roverX + 90, 60, TFT_WHITE);  // Right ear
+        spr.fillTriangle(roverX + 10, currentY - 20, roverX + 25, currentY - 5, roverX + 40, currentY - 20, TFT_WHITE);  // Left ear
+        spr.fillTriangle(roverX + 60, currentY - 20, roverX + 75, currentY - 5, roverX + 90, currentY - 20, TFT_WHITE);  // Right ear
     } else {
         // Normal ears
-        spr.fillTriangle(roverX + 10, 70, roverX + 25, 85, roverX + 40, 70, TFT_WHITE);  // Left ear
-        spr.fillTriangle(roverX + 60, 70, roverX + 75, 85, roverX + 90, 70, TFT_WHITE);  // Right ear
+        spr.fillTriangle(roverX + 10, currentY - 10, roverX + 25, currentY + 5, roverX + 40, currentY - 10, TFT_WHITE);  // Left ear
+        spr.fillTriangle(roverX + 60, currentY - 10, roverX + 75, currentY + 5, roverX + 90, currentY - 10, TFT_WHITE);  // Right ear
     }
     
     // Draw eye panel (silver rectangle)
-    spr.fillRect(roverX + 15, 85, 70, 30, 0xC618);
+    spr.fillRect(roverX + 15, currentY + 5, 70, 30, 0xC618);
     
     if (mood == "cool") {
-        // Draw sunglasses
-        spr.fillRect(roverX + 20, 95, 60, 15, TFT_BLACK);  // Sunglasses bar
-        spr.fillCircle(roverX + 30, 100, 10, TFT_BLACK);   // Left lens
-        spr.fillCircle(roverX + 70, 100, 10, TFT_BLACK);   // Right lens
-        // Add shine to glasses
-        spr.drawLine(roverX + 25, 95, roverX + 30, 95, TFT_WHITE);
-        spr.drawLine(roverX + 65, 95, roverX + 70, 95, TFT_WHITE);
+        // Draw sunglasses with adjusted Y
+        spr.fillRect(roverX + 20, currentY + 15, 60, 15, TFT_BLACK);  // Sunglasses bar
+        spr.fillCircle(roverX + 30, currentY + 20, 10, TFT_BLACK);   // Left lens
+        spr.fillCircle(roverX + 70, currentY + 20, 10, TFT_BLACK);   // Right lens
+        spr.drawLine(roverX + 25, currentY + 15, roverX + 30, currentY + 15, TFT_WHITE);
+        spr.drawLine(roverX + 65, currentY + 15, roverX + 70, currentY + 15, TFT_WHITE);
     } else {
-        // Normal eyes
-        spr.fillCircle(roverX + 30, 100, 10, TFT_WHITE);  // Left eye white
-        spr.fillCircle(roverX + 70, 100, 10, TFT_WHITE);  // Right eye white
+        // Normal eyes with adjusted Y
+        spr.fillCircle(roverX + 30, currentY + 20, 10, TFT_WHITE);  // Left eye white
+        spr.fillCircle(roverX + 70, currentY + 20, 10, TFT_WHITE);  // Right eye white
         
         if (mood == "sleeping") {
             // Closed eyes
-            spr.drawLine(roverX + 25, 100, roverX + 35, 100, TFT_BLACK);
-            spr.drawLine(roverX + 65, 100, roverX + 75, 100, TFT_BLACK);
+            spr.drawLine(roverX + 25, currentY + 20, roverX + 35, currentY + 20, TFT_BLACK);
+            spr.drawLine(roverX + 65, currentY + 20, roverX + 75, currentY + 20, TFT_BLACK);
         } else if (mood == "looking_left") {
             // Eyes looking left
-            spr.fillCircle(roverX + 25, 100, 5, leftEyeColor);
-            spr.fillCircle(roverX + 65, 100, 5, rightEyeColor);
+            spr.fillCircle(roverX + 25, currentY + 20, 5, leftEyeColor);
+            spr.fillCircle(roverX + 65, currentY + 20, 5, rightEyeColor);
         } else if (mood == "looking_right") {
             // Eyes looking right
-            spr.fillCircle(roverX + 35, 100, 5, leftEyeColor);
-            spr.fillCircle(roverX + 75, 100, 5, rightEyeColor);
+            spr.fillCircle(roverX + 35, currentY + 20, 5, leftEyeColor);
+            spr.fillCircle(roverX + 75, currentY + 20, 5, rightEyeColor);
         } else if (mood == "intense") {
             // Intense eyes (smaller)
-            spr.fillCircle(roverX + 30, 100, 3, leftEyeColor);
-            spr.fillCircle(roverX + 70, 100, 3, rightEyeColor);
+            spr.fillCircle(roverX + 30, currentY + 20, 3, leftEyeColor);
+            spr.fillCircle(roverX + 70, currentY + 20, 3, rightEyeColor);
         } else if (mood == "broken") {
             // X eyes
-            spr.drawLine(roverX + 25, 95, roverX + 35, 105, TFT_BLACK);
-            spr.drawLine(roverX + 25, 105, roverX + 35, 95, TFT_BLACK);
-            spr.drawLine(roverX + 65, 95, roverX + 75, 105, TFT_BLACK);
-            spr.drawLine(roverX + 65, 105, roverX + 75, 95, TFT_BLACK);
+            spr.drawLine(roverX + 25, currentY + 15, roverX + 35, currentY + 25, TFT_BLACK);
+            spr.drawLine(roverX + 25, currentY + 25, roverX + 35, currentY + 15, TFT_BLACK);
+            spr.drawLine(roverX + 65, currentY + 15, roverX + 75, currentY + 25, TFT_BLACK);
+            spr.drawLine(roverX + 65, currentY + 25, roverX + 75, currentY + 15, TFT_BLACK);
         } else {
             // Default eyes (happy/neutral)
-            spr.fillCircle(roverX + 30, 100, 5, leftEyeColor);
-            spr.fillCircle(roverX + 70, 100, 5, rightEyeColor);
+            spr.fillCircle(roverX + 30, currentY + 20, 5, leftEyeColor);
+            spr.fillCircle(roverX + 70, currentY + 20, 5, rightEyeColor);
         }
     }
     
-    // Draw nose
-    spr.fillTriangle(roverX + 45, 115, roverX + 40, 125, roverX + 50, 125, TFT_BLACK);
+    // Draw nose with adjusted Y
+    spr.fillTriangle(roverX + 45, currentY + 35, roverX + 40, currentY + 45, roverX + 50, currentY + 45, TFT_BLACK);
     
-    // Draw mouth line and expression
-    spr.drawLine(roverX + 50, 125, roverX + 50, 135, TFT_BLACK);
+    // Draw mouth with adjusted Y
+    spr.drawLine(roverX + 50, currentY + 45, roverX + 50, currentY + 55, TFT_BLACK);
     
     if (mood == "happy") {
-        // Rotate the arc to make it look like a smile
-        spr.drawArc(roverX + 50, 135, 15, 10, 270, 450, TFT_BLACK, TFT_BLACK);  // Adjusted for a smile
+        spr.drawArc(roverX + 50, currentY + 55, 15, 10, 270, 450, TFT_BLACK, TFT_BLACK);
     } else if (mood == "sad") {
-        spr.drawArc(roverX + 50, 150, 20, 15, 180, 360, TFT_BLACK, TFT_BLACK);
+        spr.drawArc(roverX + 50, currentY + 70, 20, 15, 180, 360, TFT_BLACK, TFT_BLACK);
     } else if (mood == "intense") {
-        // Straight determined line
-        spr.drawLine(roverX + 35, 140, roverX + 65, 140, TFT_BLACK);
+        spr.drawLine(roverX + 35, currentY + 60, roverX + 65, currentY + 60, TFT_BLACK);
     } else if (mood == "sleeping") {
-        // Slight smile while sleeping
-        spr.drawArc(roverX + 50, 140, 15, 10, 0, 180, TFT_BLACK, TFT_BLACK);
+        spr.drawArc(roverX + 50, currentY + 60, 15, 10, 0, 180, TFT_BLACK, TFT_BLACK);
     }
 }
 
@@ -426,33 +470,72 @@ void updateWeekLEDs() {
 }
 
 void handleSideButton() {
-    pinMode(BOARD_IR_EN, INPUT_PULLUP);
+    static bool lastState = HIGH;  // Initialize to HIGH (not pressed)
+    static unsigned long lastDebounceTime = 0;
+    unsigned long debounceDelay = 50;
+    
+    bool currentState = digitalRead(BOARD_IR_EN);
+    
+    // Debounce
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (currentState != lastState) {
+            lastDebounceTime = millis();
+            lastState = currentState;
+            
+            Serial.print("Side button state changed to: ");
+            Serial.println(currentState ? "HIGH" : "LOW");
+            
+            if (currentState == LOW) {  // Button pressed
+                if (!earsPerked) {
+                    Serial.println("Perking ears and playing sound...");
+                    earsPerked = true;
+                    drawSprite();
 
-    if (digitalRead(BOARD_IR_EN) == LOW) {
-        if (!earsPerked) {
-            earsPerked = true;
-            drawSprite();  // Redraw with ears perked
-
-            // Check if the recording file exists
-            if (SD.exists("/bark.mp3")) {
-                Serial.println("Playing bark sound...");
-                audio.connecttoFS(SD, "/bark.mp3");
-                isPlayingSound = true;
-                delay(10);  // Small delay to let audio initialize
-            } else {
-                Serial.println("bark.mp3 not found!");
+                    if (SD.exists("/bark.mp3")) {
+                        Serial.println("Playing bark sound...");
+                        audio.connecttoFS(SD, "/bark.mp3");
+                        isPlayingSound = true;
+                        delay(10);
+                    } else {
+                        Serial.println("bark.mp3 not found! Playing fallback tone...");
+                        playTone(300, 100);
+                        delay(50);
+                        playTone(400, 100);
+                    }
+                }
+            } else {  // Button released
+                if (earsPerked) {
+                    Serial.println("Returning ears to normal...");
+                    earsPerked = false;
+                    drawSprite();
+                }
             }
-        }
-    } else {
-        if (earsPerked) {
-            earsPerked = false;
-            drawSprite();  // Redraw with normal ears
         }
     }
 }
 
 void playTone(int frequency, int duration) {
     isPlayingSound = true;  // Set flag to true when sound starts
+
+    // Set LED color based on the closest musical note
+    if (frequency >= 1047) {        // High C (C6)
+        leds[0] = CRGB::Red;
+    } else if (frequency >= 988) {  // B5
+        leds[0] = CRGB(148, 0, 211);  // Violet
+    } else if (frequency >= 880) {  // A5
+        leds[0] = CRGB(75, 0, 130);   // Indigo
+    } else if (frequency >= 784) {  // G5
+        leds[0] = CRGB::Blue;
+    } else if (frequency >= 698) {  // F5
+        leds[0] = CRGB::Green;
+    } else if (frequency >= 659) {  // E5
+        leds[0] = CRGB::Yellow;
+    } else if (frequency >= 587) {  // D5
+        leds[0] = CRGB(255, 140, 0);  // Orange
+    } else {                        // C5 or lower
+        leds[0] = CRGB::Red;
+    }
+    FastLED.show();
 
     // Configure a PWM channel
     ledcSetup(0, frequency, 8);  // Channel 0, frequency, 8-bit resolution
@@ -479,6 +562,28 @@ void loop() {
     // Handle audio processing first
     if (isPlayingSound) {
         audio.loop();
+    }
+    
+    // Handle Auld Lang Syne playback
+    if (isPlayingAuldLangSyne) {
+        playAuldLangSyne();
+    }
+    
+    // Update hover animation
+    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
+        if (movingDown) {
+            roverYOffset++;
+            if (roverYOffset >= MAX_OFFSET) {
+                movingDown = false;
+            }
+        } else {
+            roverYOffset--;
+            if (roverYOffset <= -MAX_OFFSET) {
+                movingDown = true;
+            }
+        }
+        lastHoverUpdate = currentMillis;
+        drawSprite();  // Redraw with new position
     }
     
     // Only update display every 50ms to reduce glitches
