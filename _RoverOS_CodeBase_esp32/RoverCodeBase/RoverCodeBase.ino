@@ -91,6 +91,11 @@ const int MAX_OFFSET = 5;  // Maximum pixels to move up/down
 unsigned long lastHoverUpdate = 0;
 const int HOVER_SPEED = 100;  // Update every 100ms
 
+// Add at top with other global variables
+unsigned long lastStatusUpdate = 0;
+const unsigned long STATUS_CHANGE_INTERVAL = 3000;  // Switch every 3 seconds
+bool showLevel = true;  // Toggle between level and experience
+
 void setup() {
     Serial.begin(115200);
     
@@ -311,6 +316,9 @@ void drawSprite() {
     // Draw Rover in middle (centered)
     drawRover(moods[currentMood], earsPerked);
     
+    // Draw status bar
+    drawStatusBar();
+    
     // Calculate time until 2025
     struct tm target = {0};
     target.tm_year = 125;  // 2025 (years since 1900)
@@ -327,6 +335,7 @@ void drawSprite() {
     int daysLeft = (int)(diff / (24 * 3600));
     int hoursLeft = (int)((diff / 3600)) % 24;
     int minsLeft = (int)((diff / 60)) % 60;
+    int secsLeft = (int)diff % 60;
     
     // Draw 2025 countdown section
     spr.fillRect(2, 200, 280, 110, 0xC618);
@@ -334,11 +343,18 @@ void drawSprite() {
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, 0xC618);
     spr.drawString("2025 in", SCREEN_CENTER_X, 220);
-    spr.setTextFont(2);
     
+    // Draw seconds in large font
+    char secsStr[10];
+    sprintf(secsStr, "%d", (int)diff);
+    spr.setTextFont(7);  // Same large font as time
+    spr.drawString(secsStr, SCREEN_CENTER_X, 260);
+    
+    // Draw hours and minutes in smaller font
+    spr.setTextFont(2);
     char countdownStr[50];
     sprintf(countdownStr, "%d Hours, %d Minutes", hoursLeft, minsLeft);
-    spr.drawString(countdownStr, SCREEN_CENTER_X, 250);
+    spr.drawString(countdownStr, SCREEN_CENTER_X, 290);
     
     spr.pushSprite(0, 0);
 }
@@ -551,6 +567,44 @@ void playTone(int frequency, int duration) {
     isPlayingSound = false;  // Reset flag after sound stops
 }
 
+void drawStatusBar() {
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    
+    int barY = 160;  // Position below Rover
+    int barHeight = 30;
+    int dateWidth = 40;
+    
+    // Draw outer rectangle with month colors
+    if (timeInfo->tm_mon == timeInfo->tm_mon) {  // Same month, solid color
+        spr.fillRect(10, barY, 160, barHeight, monthColors[timeInfo->tm_mon][0]);
+    } else {  // Gradient between two colors (if needed in future)
+        for (int i = 0; i < 160; i++) {
+            uint8_t mix = (i * 255) / 160;
+            uint16_t color = spr.alphaBlend(mix, monthColors[timeInfo->tm_mon][0], monthColors[timeInfo->tm_mon][1]);
+            spr.drawFastVLine(10 + i, barY, barHeight, color);
+        }
+    }
+    
+    // Draw date number
+    spr.setTextFont(2);  // Smaller font for date
+    spr.setTextColor(TFT_BLACK);
+    char dateStr[3];
+    sprintf(dateStr, "%d", timeInfo->tm_mday);
+    spr.drawString(dateStr, 30, barY + (barHeight/2));  // Center in left portion
+    
+    // Draw black status area
+    spr.fillRect(55, barY + 2, 110, barHeight - 4, TFT_BLACK);
+    
+    // Draw status text
+    spr.setTextColor(TFT_WHITE);
+    if (showLevel) {
+        spr.drawString("Level: 1", 110, barY + (barHeight/2));
+    } else {
+        spr.drawString("Experience: 100", 110, barY + (barHeight/2));
+    }
+}
+
 void loop() {
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
@@ -584,6 +638,13 @@ void loop() {
         }
         lastHoverUpdate = currentMillis;
         drawSprite();  // Redraw with new position
+    }
+    
+    // Update status text
+    if (currentMillis - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
+        showLevel = !showLevel;  // Toggle between level and experience
+        lastStatusUpdate = currentMillis;
+        drawSprite();  // Redraw with new status
     }
     
     // Only update display every 50ms to reduce glitches
