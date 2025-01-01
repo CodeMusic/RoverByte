@@ -52,9 +52,9 @@ const uint16_t monthColors[][2] = {
 
 // Update WiFi credentials at top
 const char* primary_ssid = "CodeMusicai";
-const char* primary_password = "";
+const char* primary_password = "cnatural";
 const char* backup_ssid = "Starlink";
-const char* backup_password = "";
+const char* backup_password = "Country21!";
 
 #define SCREEN_CENTER_X 85  // Adjust this value to shift everything left or right
 
@@ -68,9 +68,9 @@ int animationStep = 0;
 const int TOTAL_ANIMATION_STEPS = 14;  // 7 steps for turning off + 7 steps for turning on
 
 // Add at top with other global variables
-const char* moods[] = {"happy", "sad", "cool", "sleeping", "looking_left", "looking_right", "intense", "broken"};
+const char* moods[] = {"happy", "looking_left", "looking_right", "intense"};
 int currentMood = 0;
-int numMoods = 8;  // Number of moods in the array
+int numMoods = 4;  // Number of moods in the array
 static int pos = 0;
 bool earsPerked = false;
 
@@ -144,6 +144,13 @@ bool isWiFiConnected = false;
 // Add at top with other global variables
 unsigned long lastMoodChange = 0;
 const unsigned long MOOD_CHANGE_INTERVAL = 30000;  // Change mood every 30 seconds
+
+// Add at top with other global variables
+bool isWeekMode = false;  // false = full mode, true = week mode
+const uint8_t PAST_BRIGHTNESS = 0;      // 0%
+const uint8_t FUTURE_BRIGHTNESS = 178;  // 70%
+const uint8_t TODAY_BRIGHTNESS = 232;   // 91%
+const uint8_t MONTH_DIM = 64;          // 25%
 
 void tryWiFiConnection() {
     if (!isWiFiConnected && 
@@ -457,12 +464,24 @@ void readEncoder() {
         if(deb == 0) {
             deb = 1;
             
-            // Toggle song playback
-            if (isPlayingAuldLangSyne) {
-                isPlayingAuldLangSyne = false;  // Stop playing
-                currentNote = 0;  // Reset to beginning
+            // Toggle LED mode
+            isWeekMode = !isWeekMode;
+            
+            // Play mode change tones
+            if (isWeekMode) {
+                // Ascending tones for week mode
+                playTone(1000, 100);
+                delay(50);
+                playTone(1500, 100);
+                delay(50);
+                playTone(2000, 100);
             } else {
-                isPlayingAuldLangSyne = true;  // Start playing
+                // Descending tones for full mode
+                playTone(2000, 100);
+                delay(50);
+                playTone(1500, 100);
+                delay(50);
+                playTone(1000, 100);
             }
             
             drawSprite();
@@ -753,31 +772,15 @@ void playTone(int frequency, int duration) {
 }
 
 void drawStatusBar() {
+    int barY = 160;
+    int barHeight = 160;
+    int dateWidth = 45;
+    
+    // Get current time for color
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
-    // Calculate time until 2025
-    struct tm target = {0};
-    target.tm_year = 125;  // 2025 (years since 1900)
-    target.tm_mon = 0;     // January
-    target.tm_mday = 1;    // 1st
-    target.tm_hour = 0;    // Midnight
-    target.tm_min = 0;
-    target.tm_sec = 0;
-    
-    time_t targetTime = mktime(&target);
-    double diff = difftime(targetTime, now);
-    
-    // Calculate countdown components
-    int hoursLeft = (int)((diff / 3600)) % 24;
-    int minsLeft = (int)((diff / 60)) % 60;
-    int secsLeft = (int)diff % 60;
-    
-    int barY = 160;  // Position below Rover
-    int barHeight = 160;  // Extend all the way to bottom
-    int dateWidth = 45;
-    
-    // Draw outer rectangle with month colors (full width)
+    // Draw outer rectangle with month colors
     if (timeInfo->tm_mon == timeInfo->tm_mon) {
         spr.fillRect(0, barY, tft.width(), barHeight, monthColors[timeInfo->tm_mon][0]);
     } else {
@@ -788,92 +791,125 @@ void drawStatusBar() {
         }
     }
     
-    // Draw date number (larger, like a tab)
-    spr.setTextFont(4);  // Larger font for date
+    // Draw date number
+    spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK);
     char dateStr[3];
     sprintf(dateStr, "%d", timeInfo->tm_mday);
-    spr.drawString(dateStr, 25, barY + 15);  // Adjusted position for larger font
+    spr.drawString(dateStr, 25, barY + 15);
     
-    // Draw black status area (taller and more to the left, moved up)
-    spr.fillRect(45, barY - 2, 140, 35, TFT_BLACK);  // Moved up by adjusting Y position
+    // Draw black status area
+    spr.fillRect(45, barY - 2, 140, 35, TFT_BLACK);
     
-    // Draw status text (centered in black area)
-    spr.setTextFont(2);
-    spr.setTextColor(TFT_WHITE);
-    if (showLevel) {
-        spr.drawString("Level: 1", 110, barY + 15);  // Adjusted for new black area position
-    } else {
-        spr.drawString("Experience: 100", 110, barY + 15);  // Adjusted for new black area position
-    }
+    // Draw todo list section
+    spr.fillRect(2, 195, 280, 120, 0xC618);
+    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);
     
-    // Draw 2025 countdown section (moved up, made taller)
-    spr.fillRect(2, 195, 280, 120, 0xC618);  // Moved up and made taller
-    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);  // Adjusted border to match
+    // Draw todo items
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, 0xC618);
-    spr.drawString("2025 in", SCREEN_CENTER_X, 215);  // Moved up
+    spr.drawString("Today's Tasks:", SCREEN_CENTER_X, 210);
     
-    // Draw seconds in large font (back to center)
-    char secsStr[10];
-    sprintf(secsStr, "%d", (int)diff);
-    spr.setTextFont(7);
-    spr.drawString(secsStr, SCREEN_CENTER_X, 255);  // Moved up
-    
-    // Draw hours and minutes in smaller font
     spr.setTextFont(2);
-    char countdownStr[50];
-    sprintf(countdownStr, "%d Hours, %d Minutes", hoursLeft, minsLeft);
-    spr.drawString(countdownStr, SCREEN_CENTER_X, 285);  // Moved up
+    // Sample todo items (these could be made dynamic later)
+    spr.drawString("1. Migrate Home", SCREEN_CENTER_X, 225);
+    spr.drawString("2. Organize My Place", SCREEN_CENTER_X, 245);
+    spr.drawString("3. Update Rover", SCREEN_CENTER_X, 265);
 }
 
 void updateLEDs() {
     static unsigned long lastUpdate = 0;
-    if (millis() - lastUpdate < 1000) return; // Update every second
+    if (millis() - lastUpdate < 1000) return;
     lastUpdate = millis();
 
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
-    // Debug print current time
-    Serial.printf("Time: %02d:%02d:%02d\n", 
-        timeInfo->tm_hour, 
+    Serial.printf("\n=== LED States === Mode: %s ===\n", isWeekMode ? "Week" : "Full");
+    Serial.printf("Time: %02d:%02d:%02d Date: Day %d, Weekday %d, Month %d\n",
+        timeInfo->tm_hour, timeInfo->tm_min, timeInfo->tm_sec,
+        timeInfo->tm_mday, timeInfo->tm_wday, timeInfo->tm_mon + 1);  // Month is 0-based
+
+    if (isWeekMode) {
+        // Week mode display
+        // LED 0: Month color at 25% brightness, blinking
+        CRGB monthColor = MONTH_COLORS[timeInfo->tm_mon][0];
+        if (timeInfo->tm_sec % 2 == 0) {
+            monthColor.nscale8(MONTH_DIM);
+            leds[0] = monthColor;
+        } else {
+            leds[0] = CRGB::Black;
+        }
+        
+        // LEDs 1-7: Days of the week
+        int currentDay = timeInfo->tm_wday;
+        for (int i = 1; i <= 7; i++) {
+            CRGB dayColor = DAY_COLORS[i - 1];
+            if (i - 1 < currentDay) {
+                dayColor.nscale8(PAST_BRIGHTNESS);  // Past = 0%
+            } else if (i - 1 == currentDay) {
+                if (timeInfo->tm_sec % 2 == 0) {
+                    dayColor.nscale8(TODAY_BRIGHTNESS);  // Today = 91%, blinking
+                } else {
+                    dayColor = CRGB::Black;
+                }
+            } else {
+                dayColor.nscale8(FUTURE_BRIGHTNESS);  // Future = 70%
+            }
+            leds[i] = dayColor;
+        }
+        
+    } else {
+        // Full mode display
+        leds[1] = DAY_COLORS[timeInfo->tm_wday];
+        leds[0] = (timeInfo->tm_sec % 2 == 0) ? 
+            MONTH_COLORS[timeInfo->tm_mon][0] : 
+            MONTH_COLORS[timeInfo->tm_mon][1];
+            
+        // Hours (1-12 format)
+        int hours = timeInfo->tm_hour % 12;
+        if (hours == 0) hours = 12;  // Convert 0 to 12
+        int hourTens = (hours - 1) / 8;
+        int hourOnes = (hours - 1) % 8 + 1;  // Add 1 to start at 1
+        leds[2] = BASE_8_COLORS[hourTens];
+        leds[3] = BASE_8_COLORS[hourOnes];
+        
+        // Minutes (0-59)
+        int minutes = timeInfo->tm_min;
+        int minTens = minutes / 8;
+        int minOnes = minutes % 8;
+        leds[4] = BASE_8_COLORS[minTens];
+        leds[5] = BASE_8_COLORS[minOnes];
+        
+        // Calendar day (1-31)
+        // For day 1: dayTens = 0, dayOnes = 1
+        int dayTens = (timeInfo->tm_mday - 1) / 8;
+        int dayOnes = (timeInfo->tm_mday - 1) % 8 + 1;  // Add 1 to start at 1
+        leds[7] = BASE_8_COLORS[dayTens];
+        leds[6] = BASE_8_COLORS[dayOnes];
+    }
+    
+    // Print LED states
+    Serial.println("\nLED States:");
+    Serial.printf("LED 0: Month %d\n", timeInfo->tm_mon + 1);  // Month is 1-based
+    Serial.printf("LED 1: Weekday %d\n", timeInfo->tm_wday + 1);  // Make weekday 1-based
+    
+    int hours = timeInfo->tm_hour % 12;
+    if (hours == 0) hours = 12;
+    Serial.printf("LED 2,3: Hour %02d = %d/%d base-8\n", 
+        hours, 
+        (hours - 1) / 8, 
+        ((hours - 1) % 8) + 1);
+        
+    Serial.printf("LED 4,5: Minute %02d = %d/%d base-8\n", 
         timeInfo->tm_min, 
-        timeInfo->tm_sec);
-    
-    // LED 0: Month color (possibly gradient)
-    int month = timeInfo->tm_mon;
-    leds[0] = MONTH_COLORS[month][timeInfo->tm_sec % 2];
-    
-    // LED 1: Day of week color
-    int dayOfWeek = timeInfo->tm_wday;
-    leds[1] = DAY_COLORS[dayOfWeek];
-    
-    // Convert hours (0-23) to base 8
-    int hours = timeInfo->tm_hour;
-    int hourTens = hours / 8;
-    int hourOnes = hours % 8;
-    leds[2] = BASE_8_COLORS[hourTens];  // Most significant hour digit (left)
-    leds[3] = BASE_8_COLORS[hourOnes];  // Least significant hour digit (right)
-    
-    // Convert minutes (0-59) to base 8
-    int minutes = timeInfo->tm_min;
-    int minTens = minutes / 8;
-    int minOnes = minutes % 8;
-    leds[4] = BASE_8_COLORS[minTens];   // Most significant minute digit (left)
-    leds[5] = BASE_8_COLORS[minOnes];   // Least significant minute digit (right)
-    
-    // Convert seconds (0-59) to base 8
-    int seconds = timeInfo->tm_sec;
-    int secTens = seconds / 8;
-    int secOnes = seconds % 8;
-    leds[6] = BASE_8_COLORS[secTens];   // Most significant second digit (left)
-    leds[7] = BASE_8_COLORS[secOnes];   // Least significant second digit (right)
-    
-    // Debug output
-    Serial.printf("Hours (base 8): %d%d\n", hourTens, hourOnes);
-    Serial.printf("Minutes (base 8): %d%d\n", minTens, minOnes);
-    Serial.printf("Seconds (base 8): %d%d\n", secTens, secOnes);
+        timeInfo->tm_min / 8, 
+        timeInfo->tm_min % 8);
+        
+    Serial.printf("LED 6,7: Day %d = %d/%d base-8\n", 
+        timeInfo->tm_mday, 
+        (timeInfo->tm_mday - 1) / 8, 
+        ((timeInfo->tm_mday - 1) % 8) + 1);
     
     FastLED.show();
 }
