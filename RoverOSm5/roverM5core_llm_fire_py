@@ -1,0 +1,120 @@
+import os, sys, io
+import M5
+from M5 import *
+from module import LlmModule
+import time
+
+label0 = None
+label1 = None
+label2 = None
+label3 = None
+label4 = None
+label5 = None
+llm_0 = None
+system_message = None
+
+asr_data = None
+asr_is_finish = None
+asr_index = None
+llm_data = None
+llm_is_finish = None
+llm_index = None
+
+def llm_0_asr_data_input_event(data, finish, index):
+  global label0, label1, label2, label3, label4, label5, llm_0, asr_data, asr_is_finish, asr_index, llm_data, llm_is_finish, llm_index
+  asr_data = data
+  asr_is_finish = finish
+  asr_index = index
+  label3.setText(str(asr_data))
+
+def llm_0_llm_data_input_event(data, finish, index):
+  global label0, label1, label2, label3, label4, label5, llm_0, asr_data, asr_is_finish, asr_index, llm_data, llm_is_finish, llm_index
+  llm_data = data
+  llm_is_finish = finish
+  llm_index = index
+  label5.setText(str(llm_data))
+
+def setup():
+  global label0, label1, label2, label3, label4, label5, llm_0, asr_data, asr_is_finish, asr_index, llm_data, llm_is_finish, llm_index
+
+  M5.begin()
+  Widgets.fillScreen(0x222222)
+  label0 = Widgets.Label("State:", 10, 11, 1.0, 0xffffff, 0x222222, Widgets.FONTS.DejaVu18)
+  label1 = Widgets.Label("~", 11, 37, 1.0, 0xffe600, 0x222222, Widgets.FONTS.DejaVu18)
+  label2 = Widgets.Label("ASR input data:", 10, 64, 1.0, 0xffffff, 0x222222, Widgets.FONTS.DejaVu18)
+  label3 = Widgets.Label("~", 11, 94, 1.0, 0x65f62f, 0x222222, Widgets.FONTS.DejaVu18)
+  label4 = Widgets.Label("LLM input data:", 10, 120, 1.0, 0xffffff, 0x222222, Widgets.FONTS.DejaVu18)
+  label5 = Widgets.Label("~", 10, 151, 1.0, 0xffe600, 0x222222, Widgets.FONTS.DejaVu18)
+
+  try:
+    print("Starting LLM initialization...")
+    llm_0 = LlmModule(2, tx=17, rx=16)
+    print("LLM Module created")
+    
+    llm_0.set_voice_assistant_on_asr_data_input_callback(llm_0_asr_data_input_event)
+    llm_0.set_voice_assistant_on_llm_data_input_callback(llm_0_llm_data_input_event)
+    print("Callbacks set")
+    
+    label1.setText(str('Wait ModuleLLM connection..'))
+    print("Waiting for connection...")
+    while not (llm_0.check_connection()):
+      time.sleep(1)
+      
+    label1.setText(str('Reset ModuleLLM..'))
+    print("Resetting module...")
+    llm_0.sys_reset(True)
+    
+    label1.setText(str('Begin voice assistant preset..'))
+    print("Starting voice assistant...")
+    if not (llm_0.begin_voice_assistant('', 'You are RoverByte, a helpful and friendly AI assistant.')):
+      label1.setText(str('Failed!'))
+      print("Voice assistant initialization failed!")
+      llm_0 = None
+    else:
+      label1.setText(str('OK'))
+      print("Voice assistant initialized successfully")
+      
+  except Exception as e:
+    error_msg = f'Error: {str(e)}'
+    label1.setText(error_msg)
+    print(error_msg)
+    llm_0 = None
+
+def loop():
+  global label0, label1, label2, label3, label4, label5, llm_0, asr_data, asr_is_finish, asr_index, llm_data, llm_is_finish, llm_index
+  
+  if llm_0:
+    llm_0.update()
+  
+  M5.update()
+  
+  if M5.BtnA.wasPressed():
+    if llm_0 is None:
+      error_msg = 'LLM not initialized!'
+      label1.setText(str(error_msg))
+      print(error_msg)
+      return
+      
+    label1.setText(str('Button A Pressed!'))
+    print("Button A pressed")
+    time.sleep(0.5)
+    label1.setText(str('Listening...'))
+    try:
+      llm_0.wake_up()
+      print("Wake up called")
+    except Exception as e:
+      error_msg = f'Listen Error: {str(e)}'
+      label1.setText(error_msg)
+      print(error_msg)
+
+if __name__ == '__main__':
+  try:
+    setup()
+    while True:
+      loop()
+  except (Exception, KeyboardInterrupt) as e:
+    try:
+      from utility import print_error_msg
+      print_error_msg(e)
+    except ImportError:
+      print("please update to latest firmware")
