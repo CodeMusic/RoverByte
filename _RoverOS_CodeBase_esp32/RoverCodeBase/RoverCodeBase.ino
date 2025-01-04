@@ -7,6 +7,7 @@
 #include <SPIFFS.h>
 #include "utilities.h"
 #include "Audio.h"
+#include <XPowersLib.h>
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -51,10 +52,10 @@ const uint16_t monthColors[][2] = {
 };
 
 // Update WiFi credentials at top
-const char* primary_ssid = "CodeMusicai";
-const char* primary_password = "cnatural";
-const char* backup_ssid = "Starlink";
-const char* backup_password = "Country21!";
+const char* primary_ssid = "RevivalNetwork ";
+const char* primary_password = "";
+const char* backup_ssid = "CodeMusicai";
+const char* backup_password = "";
 
 #define SCREEN_CENTER_X 85  // Adjust this value to shift everything left or right
 
@@ -151,6 +152,38 @@ const uint8_t PAST_BRIGHTNESS = 0;      // 0%
 const uint8_t FUTURE_BRIGHTNESS = 178;  // 70%
 const uint8_t TODAY_BRIGHTNESS = 232;   // 91%
 const uint8_t MONTH_DIM = 64;          // 25%
+
+// Add at top with other global variables
+XPowersPPM PPM;
+bool batteryInitialized = false;
+int batteryPercentage = 0;
+String chargeStatus = "Unknown";
+
+// Add this function near other initialization functions
+void initializeBattery() {
+    bool result = PPM.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, BQ25896_SLAVE_ADDRESS);
+    if (result) {
+        PPM.setSysPowerDownVoltage(3300);
+        PPM.setInputCurrentLimit(3250);
+        PPM.disableCurrentLimitPin();
+        PPM.setChargeTargetVoltage(4208);
+        PPM.setPrechargeCurr(64);
+        PPM.setChargerConstantCurr(832);
+        PPM.enableADCMeasure();
+        PPM.enableCharge();
+        batteryInitialized = true;
+    }
+}
+
+// Add this function to calculate battery percentage
+int calculateBatteryPercentage(int voltage) {
+    // These values might need adjustment based on your battery
+    const int maxVoltage = 4200; // 4.2V fully charged
+    const int minVoltage = 3300; // 3.3V empty
+    
+    int percentage = map(voltage, minVoltage, maxVoltage, 0, 100);
+    return constrain(percentage, 0, 100);
+}
 
 void tryWiFiConnection() {
     if (!isWiFiConnected && 
@@ -258,7 +291,8 @@ void setup() {
     audio.setVolume(21);
     Serial.println("Audio initialized");
     
-    Wire.begin(43,44);
+    Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
+    initializeBattery();
     
 
     spr.createSprite(tft.width(), tft.height());
@@ -798,9 +832,48 @@ void drawStatusBar() {
     sprintf(dateStr, "%d", timeInfo->tm_mday);
     spr.drawString(dateStr, 25, barY + 15);
     
-    // Draw black status area
-    spr.fillRect(45, barY - 2, 140, 35, TFT_BLACK);
+    // Update battery info if initialized
+    if (batteryInitialized) {
+        batteryPercentage = calculateBatteryPercentage(PPM.getBattVoltage());
+        chargeStatus = PPM.getChargeStatusString();
+    }
+
+    // Draw black status area - make it even wider and more right-shifted
+    spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);  // Keep background same position
     
+    // Move text position further right
+    int statusX = SCREEN_CENTER_X + 27;  // Increased from +20 to +30
+    
+    // Alternate between different status displays
+    static int statusRotation = 0;
+    if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
+        statusRotation = (statusRotation + 1) % 3; // Now rotating between 3 states
+        lastStatusUpdate = millis();
+    }
+
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    
+    switch (statusRotation) {
+        case 0:
+            spr.drawString("Level: 21", statusX, barY + 15);
+            break;
+        case 1:
+            spr.drawString("XP: 1337/2000", statusX, barY + 15);
+            break;
+        case 2:
+            if (batteryInitialized) {
+                String batteryText = String(batteryPercentage) + "% ";
+                if (PPM.isVbusIn()) {
+                    batteryText += chargeStatus;
+                }
+                spr.drawString(batteryText, statusX, barY + 15);
+            } else {
+                spr.drawString("Battery: Not Found", statusX, barY + 15);
+            }
+            break;
+    }
+
     // Draw todo list section
     spr.fillRect(2, 195, 280, 120, 0xC618);
     spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);

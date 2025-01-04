@@ -67,7 +67,7 @@ def drawRover(state):
     # Base coordinates - adjust size
     roverX = 60
     baseY = 40
-    scale = 1.5  # Make Rover slightly smaller
+    scale = 0.75  # Make Rover smaller (was 1.0)
     
     # Convert float calculations to int for drawing functions
     def scaleInt(val):
