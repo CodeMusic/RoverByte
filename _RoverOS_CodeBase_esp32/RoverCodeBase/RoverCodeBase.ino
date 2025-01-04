@@ -17,12 +17,10 @@
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
-
 #define CLOCK_PIN 45
 CRGB leds[WS2812_NUM_LEDS];
 
 RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
-
 
 #define color1 0xC638
 #define color2  0xC638
@@ -88,10 +86,6 @@ bool earsPerked = false;
 // Single declaration of Audio
 Audio audio;
 bool isPlayingSound = false;
-
-// Add at top with other global variables
-bool isPlayingAuldLangSyne = false;
-int currentNote = 0;
 
 // Add at top with other global variables
 int roverYOffset = 0;
@@ -796,34 +790,6 @@ void syncLEDsForDay() {
     FastLED.show();
 }
 
-void playAuldLangSyne() {
-    // Notes for Auld Lang Syne (shifted up three octaves)
-    static const int melody[] = {
-        3136, 3520, 3136, 2637, 3136, 3520, 3136,  // G7 A7 G7 E7 G7 A7 G7
-        4186, 3136, 3520, 3136, 2637, 2349, 2637,  // C8 G7 A7 G7 E7 D7 E7
-        3136, 3520, 3136, 2637, 3136, 3520, 3136,  // G7 A7 G7 E7 G7 A7 G7
-        4186, 3136, 3520, 3136, 2637, 2349, 2637   // C8 G7 A7 G7 E7 D7 E7
-    };
-    
-    static const int durations[] = {
-        250, 250, 375, 125, 250, 250, 500,
-        250, 250, 375, 125, 250, 250, 500,
-        250, 250, 375, 125, 250, 250, 500,
-        250, 250, 375, 125, 250, 250, 500
-    };
-
-    if (isPlayingAuldLangSyne) {
-        playTone(melody[currentNote], durations[currentNote]);
-        delay(durations[currentNote] * 0.3); // Short pause between notes
-        
-        currentNote++;
-        if (currentNote >= sizeof(melody) / sizeof(melody[0])) {
-            currentNote = 0;
-            isPlayingAuldLangSyne = false;
-        }
-    }
-}
-
 void readEncoder() {
     encoder.tick();
 
@@ -1398,10 +1364,6 @@ void loop() {
     }
     
     // Rest of your existing loop code...
-    if (isPlayingAuldLangSyne) {
-        playAuldLangSyne();
-    }
-    
     if (isPlayingSound) {
         audio.loop();
     }
@@ -1431,5 +1393,4 @@ void setEarsDown() {
     earsPerked = false;
     drawSprite();  // Redraw to show normal ears
     FastLED.show(); // Update LEDs if needed
-    
 }
