@@ -2,6 +2,10 @@
 
 #pragma once
 
+// buttons
+#define BOARD_USER_KEY 6
+#define BOARD_PWR_EN   15
+
 // WS2812
 #define WS2812_NUM_LEDS 8
 #define WS2812_DATA_PIN 14

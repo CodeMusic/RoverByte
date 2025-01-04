@@ -268,7 +268,7 @@ void setup() {
     FastLED.setBrightness(50);
     
     // Initialize side button first
-    pinMode(BOARD_IR_EN, INPUT_PULLUP);
+    pinMode(BOARD_USER_KEY, INPUT);
     delay(100); // Give time for pin to stabilize
     
     // Rest of setup
@@ -728,7 +728,7 @@ void handleSideButton() {
     static unsigned long lastDebounceTime = 0;
     unsigned long debounceDelay = 50;
     
-    bool currentState = digitalRead(BOARD_IR_EN);
+    bool currentState = digitalRead(BOARD_USER_KEY);
     
     // Debounce
     if ((millis() - lastDebounceTime) > debounceDelay) {
