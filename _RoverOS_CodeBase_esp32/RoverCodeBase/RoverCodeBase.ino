@@ -108,28 +108,28 @@ bool showLevel = true;  // Toggle between level and experience
 // Add at top with other global variables
 const CRGB BASE_8_COLORS[] = {
     CRGB::Black,          // 0 = Off
-    CRGB::Red,           // 1 = Red
-    CRGB(255, 100, 0),   // 2 = Orange (reduced red component)
+    CRGB(255, 0, 0),     // 1 = Pure Red (same as Rover's eyes)
+    CRGB(255, 100, 0),   // 2 = Orange
     CRGB::Yellow,        // 3 = Yellow
     CRGB::Green,         // 4 = Green
     CRGB::Blue,          // 5 = Blue
-    CRGB(75, 0, 180),    // 6 = Indigo (added more blue)
-    CRGB(220, 0, 220)    // 7 = Violet (added more red)
+    CRGB(75, 0, 180),    // 6 = Indigo
+    CRGB(220, 0, 220)    // 7 = Violet
 };
 
 const CRGB MONTH_COLORS[][2] = {
-    {CRGB::Red, CRGB::Red},                    // January (Red)
-    {CRGB::Red, CRGB(255, 100, 0)},           // February (Red/Orange)
-    {CRGB(255, 100, 0), CRGB(255, 100, 0)},   // March (Orange)
-    {CRGB(255, 100, 0), CRGB::Yellow},        // April (Orange/Yellow)
-    {CRGB::Yellow, CRGB::Yellow},             // May (Yellow)
-    {CRGB::Green, CRGB::Green},               // June (Green)
-    {CRGB::Green, CRGB::Blue},                // July (Green/Blue)
-    {CRGB::Blue, CRGB::Blue},                 // August (Blue)
-    {CRGB::Blue, CRGB(75, 0, 180)},           // September (Blue/Indigo)
-    {CRGB(75, 0, 180), CRGB(75, 0, 180)},     // October (Indigo)
-    {CRGB(75, 0, 180), CRGB(220, 0, 220)},    // November (Indigo/Violet)
-    {CRGB(220, 0, 220), CRGB(220, 0, 220)}    // December (Violet)
+    {CRGB(255, 0, 0), CRGB(255, 0, 0)},      // January (Pure Red/Red)
+    {CRGB(255, 0, 0), CRGB(255, 100, 0)},    // February (Red/Orange)
+    {CRGB(255, 100, 0), CRGB(255, 100, 0)},  // March (Orange)
+    {CRGB(255, 100, 0), CRGB::Yellow},       // April (Orange/Yellow)
+    {CRGB::Yellow, CRGB::Yellow},            // May (Yellow)
+    {CRGB::Green, CRGB::Green},              // June (Green)
+    {CRGB::Green, CRGB::Blue},               // July (Green/Blue)
+    {CRGB::Blue, CRGB::Blue},                // August (Blue)
+    {CRGB::Blue, CRGB(75, 0, 180)},          // September (Blue/Indigo)
+    {CRGB(75, 0, 180), CRGB(75, 0, 180)},    // October (Indigo)
+    {CRGB(75, 0, 180), CRGB(220, 0, 220)},   // November (Indigo/Violet)
+    {CRGB(220, 0, 220), CRGB(220, 0, 220)}   // December (Violet)
 };
 
 const CRGB DAY_COLORS[] = {
@@ -213,6 +213,7 @@ void setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
     ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
     ledcWrite(PWM_CHANNEL, 255);  // Full brightness
+    Serial.println("Backlight setup complete");
 }
 
 void setBacklight(uint8_t brightness) {
@@ -222,6 +223,9 @@ void setBacklight(uint8_t brightness) {
 void checkSleepState() {
     unsigned long idleTime = millis() - lastActivityTime;
     SleepState newState = currentSleepState;
+
+    // Add debug prints
+    Serial.printf("Idle time: %lu, Current state: %d\n", idleTime, currentSleepState);
 
     // Determine sleep state based on idle time
     if (idleTime < IDLE_TIMEOUT) {
@@ -236,28 +240,37 @@ void checkSleepState() {
 
     // Only update if state has changed
     if (newState != currentSleepState) {
+        Serial.printf("State changing from %d to %d\n", currentSleepState, newState);
+        
         switch (newState) {
             case AWAKE:
+                Serial.println("Going to AWAKE state");
                 tft.writecommand(TFT_DISPON);
                 setBacklight(255);  // Full brightness
-                FastLED.setBrightness(50);  // Normal LED brightness
+                FastLED.setBrightness(50);
                 FastLED.show();
-                drawSprite();  // Refresh display
+                drawSprite();
                 break;
-
+                
             case DIM_DISPLAY:
-                setBacklight(128);  // 50% brightness
+                Serial.println("Going to DIM_DISPLAY state");
+                setBacklight(64);  // 25% brightness
+                playTone(1000, 200);
+                delay(50);
+                playTone(2000, 200);
                 drawSprite();
                 break;
 
             case DISPLAY_OFF:
+                Serial.println("Going to DISPLAY_OFF state");
                 tft.writecommand(TFT_DISPOFF);
                 setBacklight(0);  // Turn off backlight
                 break;
 
             case DEEP_SLEEP:
+                Serial.println("Going to DEEP_SLEEP state");
                 tft.writecommand(TFT_DISPOFF);
-                setBacklight(0);  // Turn off backlight
+                setBacklight(0);
                 FastLED.setBrightness(0);
                 FastLED.show();
                 break;
@@ -1354,6 +1367,22 @@ void loop() {
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
     
+    // Add hover animation update
+    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
+        if (movingDown) {
+            roverYOffset++;
+            if (roverYOffset >= MAX_OFFSET) {
+                movingDown = false;
+            }
+        } else {
+            roverYOffset--;
+            if (roverYOffset <= -MAX_OFFSET) {
+                movingDown = true;
+            }
+        }
+        lastHoverUpdate = currentMillis;
+    }
+
     // Update display and check inputs
     if (currentMillis - lastDisplayUpdate >= 50) {
         readEncoder();
@@ -1388,6 +1417,7 @@ void audio_eof_mp3(const char *info) {
         Serial.println("Failed to delete temporary recording file");
         playErrorSound(2);
     }
+    isPlayingSound = false;
 }
 
 // Make sure setEarsUp and setEarsDown are defined only once
@@ -1401,4 +1431,5 @@ void setEarsDown() {
     earsPerked = false;
     drawSprite();  // Redraw to show normal ears
     FastLED.show(); // Update LEDs if needed
+    
 }
