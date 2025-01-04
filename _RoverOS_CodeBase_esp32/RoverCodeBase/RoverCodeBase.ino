@@ -8,6 +8,11 @@
 #include "utilities.h"
 #include "Audio.h"
 #include <XPowersLib.h>
+#include "driver/i2s.h"
+
+// Add FastLED SPI definitions
+#define FASTLED_ALL_PINS_HARDWARE_SPI
+#define FASTLED_ESP32_SPI_BUS VSPI
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -53,9 +58,9 @@ const uint16_t monthColors[][2] = {
 
 // Update WiFi credentials at top
 const char* primary_ssid = "RevivalNetwork ";
-const char* primary_password = "";
+const char* primary_password = "xunjmq84";
 const char* backup_ssid = "CodeMusicai";
-const char* backup_password = "";
+const char* backup_password = "cnatural";
 
 #define SCREEN_CENTER_X 85  // Adjust this value to shift everything left or right
 
@@ -104,27 +109,27 @@ bool showLevel = true;  // Toggle between level and experience
 const CRGB BASE_8_COLORS[] = {
     CRGB::Black,          // 0 = Off
     CRGB::Red,           // 1 = Red
-    CRGB(255, 140, 0),   // 2 = Orange
+    CRGB(255, 100, 0),   // 2 = Orange (reduced red component)
     CRGB::Yellow,        // 3 = Yellow
     CRGB::Green,         // 4 = Green
     CRGB::Blue,          // 5 = Blue
-    CRGB(75, 0, 130),    // 6 = Indigo
-    CRGB(200, 0, 200)    // 7 = Violet (adjusted to be more purple/violet)
+    CRGB(75, 0, 180),    // 6 = Indigo (added more blue)
+    CRGB(220, 0, 220)    // 7 = Violet (added more red)
 };
 
 const CRGB MONTH_COLORS[][2] = {
     {CRGB::Red, CRGB::Red},                    // January (Red)
-    {CRGB::Red, CRGB(255, 140, 0)},           // February (Red/Orange)
-    {CRGB(255, 140, 0), CRGB(255, 140, 0)},   // March (Orange)
-    {CRGB(255, 140, 0), CRGB::Yellow},        // April (Orange/Yellow)
+    {CRGB::Red, CRGB(255, 100, 0)},           // February (Red/Orange)
+    {CRGB(255, 100, 0), CRGB(255, 100, 0)},   // March (Orange)
+    {CRGB(255, 100, 0), CRGB::Yellow},        // April (Orange/Yellow)
     {CRGB::Yellow, CRGB::Yellow},             // May (Yellow)
     {CRGB::Green, CRGB::Green},               // June (Green)
     {CRGB::Green, CRGB::Blue},                // July (Green/Blue)
     {CRGB::Blue, CRGB::Blue},                 // August (Blue)
-    {CRGB::Blue, CRGB(75, 0, 130)},           // September (Blue/Indigo)
-    {CRGB(75, 0, 130), CRGB(75, 0, 130)},     // October (Indigo)
-    {CRGB(75, 0, 130), CRGB(148, 0, 211)},    // November (Indigo/Violet)
-    {CRGB(148, 0, 211), CRGB(148, 0, 211)}    // December (Violet)
+    {CRGB::Blue, CRGB(75, 0, 180)},           // September (Blue/Indigo)
+    {CRGB(75, 0, 180), CRGB(75, 0, 180)},     // October (Indigo)
+    {CRGB(75, 0, 180), CRGB(220, 0, 220)},    // November (Indigo/Violet)
+    {CRGB(220, 0, 220), CRGB(220, 0, 220)}    // December (Violet)
 };
 
 const CRGB DAY_COLORS[] = {
@@ -159,6 +164,318 @@ bool batteryInitialized = false;
 int batteryPercentage = 0;
 String chargeStatus = "Unknown";
 
+// Add these definitions
+#define RECORD_FILENAME "/sdcard/temp_record.wav"
+#define EXAMPLE_I2S_CH      0
+#define EXAMPLE_SAMPLE_RATE 44100
+#define EXAMPLE_BIT_SAMPLE  16
+#define NUM_CHANNELS        1
+#define SAMPLE_SIZE         (EXAMPLE_BIT_SAMPLE * 1024)
+#define BYTE_RATE          (EXAMPLE_SAMPLE_RATE * (EXAMPLE_BIT_SAMPLE / 8)) * NUM_CHANNELS
+
+// Add these globals
+static int16_t i2s_readraw_buff[SAMPLE_SIZE];
+size_t bytes_read;
+const int WAVE_HEADER_SIZE = 44;
+bool isRecording = false;
+File recordFile;
+
+// Add these near your other global variables
+#define RECORD_BUFFER_SIZE 1024  // Smaller buffer size
+static uint8_t recording_buffer[RECORD_BUFFER_SIZE];
+
+// Add these globals near the top
+const unsigned long DOUBLE_CLICK_TIME = 500;  // Maximum time between clicks (ms)
+unsigned long lastButtonPress = 0;
+bool isInSleepMode = false;
+
+// Add these globals near the top
+bool rotaryButtonPressed = false;
+bool sideButtonPressed = false;
+
+// Add these near your other global variables
+const unsigned long IDLE_TIMEOUT = 60000;  // 60 seconds for each stage
+unsigned long lastActivityTime = 0;
+enum SleepState {
+    AWAKE,
+    DIM_DISPLAY,    // 50% brightness
+    DISPLAY_OFF,    // Screen off, LEDs on
+    DEEP_SLEEP      // Screen and LEDs off
+} currentSleepState = AWAKE;
+
+// Add these near other global variables
+const uint8_t BACKLIGHT_PIN = 38;  // Check your board's backlight pin
+const uint8_t PWM_CHANNEL = 0;
+const uint8_t PWM_RESOLUTION = 8;
+const uint32_t PWM_FREQUENCY = 5000;
+
+void setupBacklight() {
+    ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
+    ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
+    ledcWrite(PWM_CHANNEL, 255);  // Full brightness
+}
+
+void setBacklight(uint8_t brightness) {
+    ledcWrite(PWM_CHANNEL, brightness);
+}
+
+void checkSleepState() {
+    unsigned long idleTime = millis() - lastActivityTime;
+    SleepState newState = currentSleepState;
+
+    // Determine sleep state based on idle time
+    if (idleTime < IDLE_TIMEOUT) {
+        newState = AWAKE;
+    } else if (idleTime < IDLE_TIMEOUT * 2) {
+        newState = DIM_DISPLAY;
+    } else if (idleTime < IDLE_TIMEOUT * 3) {
+        newState = DISPLAY_OFF;
+    } else {
+        newState = DEEP_SLEEP;
+    }
+
+    // Only update if state has changed
+    if (newState != currentSleepState) {
+        switch (newState) {
+            case AWAKE:
+                tft.writecommand(TFT_DISPON);
+                setBacklight(255);  // Full brightness
+                FastLED.setBrightness(50);  // Normal LED brightness
+                FastLED.show();
+                drawSprite();  // Refresh display
+                break;
+
+            case DIM_DISPLAY:
+                setBacklight(128);  // 50% brightness
+                drawSprite();
+                break;
+
+            case DISPLAY_OFF:
+                tft.writecommand(TFT_DISPOFF);
+                setBacklight(0);  // Turn off backlight
+                break;
+
+            case DEEP_SLEEP:
+                tft.writecommand(TFT_DISPOFF);
+                setBacklight(0);  // Turn off backlight
+                FastLED.setBrightness(0);
+                FastLED.show();
+                break;
+        }
+        currentSleepState = newState;
+    }
+}
+
+void wakeFromSleep() {
+    lastActivityTime = millis();
+    if (currentSleepState != AWAKE) {
+        currentSleepState = AWAKE;
+        tft.writecommand(TFT_DISPON);
+        setBacklight(255);
+        FastLED.setBrightness(50);
+        FastLED.show();
+        drawSprite();
+    }
+}
+
+// Add these functions
+void init_microphone() {
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+        .sample_rate = EXAMPLE_SAMPLE_RATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+        .dma_buf_count = 8,
+        .dma_buf_len = 200,
+        .use_apll = 0,
+    };
+
+    i2s_pin_config_t pin_config = {
+        .mck_io_num = I2S_PIN_NO_CHANGE,
+        .bck_io_num = I2S_PIN_NO_CHANGE,
+        .ws_io_num = BOARD_MIC_CLK,
+        .data_out_num = I2S_PIN_NO_CHANGE,
+        .data_in_num = BOARD_MIC_DATA,
+    };
+
+    ESP_ERROR_CHECK(i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL));
+    ESP_ERROR_CHECK(i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config));
+    ESP_ERROR_CHECK(i2s_set_clk((i2s_port_t)EXAMPLE_I2S_CH, EXAMPLE_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO));
+}
+
+
+void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate)
+{
+    // See this for reference: http://soundfile.sapp.org/doc/WaveFormat/
+    uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
+    uint32_t byte_rate = BYTE_RATE;
+
+    const char set_wav_header[] = {
+        'R','I','F','F', // ChunkID
+        (char)file_size, (char)(file_size >> 8), (char)(file_size >> 16), (char)(file_size >> 24), // ChunkSize
+        'W','A','V','E', // Format
+        'f','m','t',' ', // Subchunk1ID
+        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+        0x01, 0x00, // AudioFormat (1 for PCM)
+        0x01, 0x00, // NumChannels (1 channel)
+        (char)sample_rate, (char)(sample_rate >> 8), (char)(sample_rate >> 16), (char)(sample_rate >> 24), // SampleRate
+        (char)byte_rate, (char)(byte_rate >> 8), (char)(byte_rate >> 16), (char)(byte_rate >> 24), // ByteRate
+        0x02, 0x00, // BlockAlign
+        0x10, 0x00, // BitsPerSample (16 bits)
+        'd','a','t','a', // Subchunk2ID
+        (char)wav_size, (char)(wav_size >> 8), (char)(wav_size >> 16), (char)(wav_size >> 24), // Subchunk2Size
+    };
+
+    memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
+}
+
+void playErrorSound(int type) {
+    switch(type) {
+        case 1: // Recording error
+            playTone(1000, 200);
+            delay(100);
+            playTone(800, 200);
+            delay(100);
+            playTone(600, 400);
+            break;
+            
+        case 2: // SD card error
+            playTone(800, 200);
+            delay(100);
+            playTone(800, 200);
+            delay(100);
+            playTone(400, 400);
+            break;
+            
+        case 3: // Playback error
+            playTone(600, 200);
+            delay(100);
+            playTone(600, 200);
+            delay(100);
+            playTone(300, 400);
+            break;
+    }
+}
+
+void startRecording() {
+    if (isRecording) return;
+    
+    Serial.println("=== Starting Recording ===");
+    
+    // Initialize microphone
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+        .sample_rate = EXAMPLE_SAMPLE_RATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+        .dma_buf_count = 4,
+        .dma_buf_len = 64,
+        .use_apll = false,
+    };
+
+    i2s_pin_config_t pin_config = {
+        .mck_io_num = I2S_PIN_NO_CHANGE,
+        .bck_io_num = I2S_PIN_NO_CHANGE,
+        .ws_io_num = BOARD_MIC_CLK,
+        .data_out_num = I2S_PIN_NO_CHANGE,
+        .data_in_num = BOARD_MIC_DATA,
+    };
+
+    if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
+        Serial.println("ERROR: Failed to install I2S driver");
+        playErrorSound(1);
+        setEarsDown();
+        return;
+    }
+    
+    if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
+        Serial.println("ERROR: Failed to set I2S pins");
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        playErrorSound(1);
+        setEarsDown();
+        return;
+    }
+
+    // Create new WAV file
+    recordFile = SD.open(RECORD_FILENAME, FILE_WRITE);
+    if (!recordFile) {
+        Serial.println("ERROR: Failed to open file for recording");
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        playErrorSound(2);
+        setEarsDown();
+        return;
+    }
+
+    // Reserve space for the header
+    for (int i = 0; i < WAVE_HEADER_SIZE; i++) {
+        recordFile.write(0);
+    }
+
+    isRecording = true;
+    Serial.println("Recording started!");
+}
+
+void stopRecording() {
+    if (!isRecording) return;
+
+    Serial.println("=== Stopping Recording ===");
+    isRecording = false;
+    
+    // Get final size
+    uint32_t file_size = recordFile.size() - WAVE_HEADER_SIZE;
+    
+    // Generate and write header
+    char wav_header[WAVE_HEADER_SIZE];
+    generate_wav_header(wav_header, file_size, EXAMPLE_SAMPLE_RATE);
+    
+    if (!recordFile.seek(0)) {
+        Serial.println("ERROR: Failed to seek in file");
+        recordFile.close();
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        playErrorSound(2);
+        setEarsDown();
+        return;
+    }
+    
+    if (recordFile.write((uint8_t *)wav_header, WAVE_HEADER_SIZE) != WAVE_HEADER_SIZE) {
+        Serial.println("ERROR: Failed to write WAV header");
+        recordFile.close();
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        playErrorSound(2);
+        setEarsDown();
+        return;
+    }
+    
+    recordFile.close();
+    i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+
+    // Play the recording
+    Serial.println("Attempting to play recording...");
+    audio.setVolume(21);
+    
+    if (SD.exists(RECORD_FILENAME)) {
+        Serial.println("Found recording file, playing...");
+        if (!audio.connecttoFS(SD, RECORD_FILENAME)) {
+            Serial.println("ERROR: Failed to start playback");
+            playErrorSound(3);
+            setEarsDown();
+            return;
+        }
+    } else {
+        Serial.println("ERROR: Recording file not found!");
+        playErrorSound(3);
+        setEarsDown();
+        return;
+    }
+    
+    setEarsDown();  // Put ears down after successful recording/playback start
+}
+
+
 // Add this function near other initialization functions
 void initializeBattery() {
     bool result = PPM.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, BQ25896_SLAVE_ADDRESS);
@@ -186,6 +503,8 @@ int calculateBatteryPercentage(int voltage) {
 }
 
 void tryWiFiConnection() {
+    if (isRecording) return;  // Skip WiFi connection attempts while recording
+    
     if (!isWiFiConnected && 
         (millis() - lastWiFiAttempt >= WIFI_RETRY_INTERVAL || lastWiFiAttempt == 0)) {
         
@@ -287,8 +606,8 @@ void setup() {
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
 
     // Initialize audio
-    audio.setPinout(I2S_BCK_PIN, I2S_WS_PIN, I2S_DOUT_PIN);
-    audio.setVolume(21);
+    audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
+    audio.setVolume(21); // 0...21
     Serial.println("Audio initialized");
     
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
@@ -418,6 +737,8 @@ void setup() {
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
     FastLED.setBrightness(50);
     updateLEDs();  // Initial LED update
+
+    setupBacklight();
 }
 
 void syncLEDsForDay() {
@@ -491,69 +812,63 @@ void playAuldLangSyne() {
 }
 
 void readEncoder() {
-    static int pos = 0;
     encoder.tick();
 
-    if(digitalRead(ENCODER_KEY) == 0) {
-        if(deb == 0) {
-            deb = 1;
-            
-            // Toggle LED mode
+    // Handle button press with debounce
+    static bool buttonState = HIGH;
+    bool newButtonState = digitalRead(ENCODER_KEY);
+    
+    if (newButtonState != buttonState) {
+        wakeFromSleep();  // Wake on button activity
+        if (newButtonState == LOW) {  // Button pressed
+            // Original LED mode toggle
             isWeekMode = !isWeekMode;
+            updateLEDs();
             
-            // Play mode change tones
+            // Original mode change tones
             if (isWeekMode) {
-                // Ascending tones for week mode
                 playTone(1000, 100);
                 delay(50);
                 playTone(1500, 100);
                 delay(50);
                 playTone(2000, 100);
             } else {
-                // Descending tones for full mode
                 playTone(2000, 100);
                 delay(50);
                 playTone(1500, 100);
                 delay(50);
                 playTone(1000, 100);
             }
-            
-            drawSprite();
         }
-    } else {
-        deb = 0;
+        buttonState = newButtonState;
     }
     
+    // Original rotation handling
+    static int lastPos = 0;
     int newPos = encoder.getPosition();
-    bool forward = newPos > pos;
-    if (pos != newPos) {
-        if(newPos > pos) {
-            currentMood = (currentMood + 1) % numMoods;  // Cycle forward through moods
-        }
-        if(newPos < pos) {
-            currentMood = (currentMood - 1 + numMoods) % numMoods;  // Cycle backward through moods
+    
+    if (newPos != lastPos) {
+        wakeFromSleep();  // Wake on rotation
+        if (newPos > lastPos) {
+            currentMood = (currentMood + 1) % numMoods;
+        } else {
+            currentMood = (currentMood - 1 + numMoods) % numMoods;
         }
         
-        pos = newPos;
-        drawSprite();
+        lastPos = newPos;
         
-        // Check if the MP3 file exists
-        if (SPIFFS.exists("/move.mp3")) 
-        {
+        if (SPIFFS.exists("/move.mp3")) {
             audio.connecttoFS(SPIFFS, "/move.mp3");
         } else {
-            // Generate a beep if the file doesn't exist
-            if(forward) 
-            {
-                playTone(1000, 200);  // 1000 Hz for 200 ms
-                playTone(2000, 200);  // 2000 Hz for 200 ms
-            }
-            else 
-            {
-                playTone(2000, 200);  // 2000 Hz for 200 ms
-                playTone(1000, 200);  // 1000 Hz for 200 ms
+            if (newPos > lastPos) {
+                playTone(1000, 200);
+                playTone(2000, 200);
+            } else {
+                playTone(2000, 200);
+                playTone(1000, 200);
             }
         }
+        drawSprite();
     }
 }
 
@@ -615,11 +930,11 @@ void drawRover(String mood, bool earsPerked) {
     
     // Draw ears (triangles) with adjusted Y position
     if (earsPerked) {
-        // Perked ears
-        spr.fillTriangle(roverX + 10, currentY - 20, roverX + 25, currentY - 5, roverX + 40, currentY - 20, TFT_WHITE);  // Left ear
-        spr.fillTriangle(roverX + 60, currentY - 20, roverX + 75, currentY - 5, roverX + 90, currentY - 20, TFT_WHITE);  // Right ear
+        // Perked ears - higher position and more upright angle
+        spr.fillTriangle(roverX + 10, currentY - 25, roverX + 25, currentY, roverX + 40, currentY - 25, TFT_WHITE);  // Left ear
+        spr.fillTriangle(roverX + 60, currentY - 25, roverX + 75, currentY, roverX + 90, currentY - 25, TFT_WHITE);  // Right ear
     } else {
-        // Normal ears
+        // Normal ears - lower position and more relaxed angle
         spr.fillTriangle(roverX + 10, currentY - 10, roverX + 25, currentY + 5, roverX + 40, currentY - 10, TFT_WHITE);  // Left ear
         spr.fillTriangle(roverX + 60, currentY - 10, roverX + 75, currentY + 5, roverX + 90, currentY - 10, TFT_WHITE);  // Right ear
     }
@@ -723,43 +1038,37 @@ void updateWeekLEDs() {
     FastLED.show();
 }
 
+// Modify handleSideButton to include wake functionality
 void handleSideButton() {
-    static bool lastState = HIGH;  // Initialize to HIGH (not pressed)
+    static bool lastState = HIGH;
     static unsigned long lastDebounceTime = 0;
     unsigned long debounceDelay = 50;
     
     bool currentState = digitalRead(BOARD_USER_KEY);
     
-    // Debounce
     if ((millis() - lastDebounceTime) > debounceDelay) {
         if (currentState != lastState) {
+            wakeFromSleep();  // Wake on button activity
             lastDebounceTime = millis();
             lastState = currentState;
             
-            Serial.print("Side button state changed to: ");
-            Serial.println(currentState ? "HIGH" : "LOW");
-            
-            if (currentState == LOW) {  // Button pressed
+            if (currentState == LOW) {
                 if (!earsPerked) {
-                    Serial.println("Perking ears and playing sound...");
                     earsPerked = true;
                     drawSprite();
 
                     if (SD.exists("/bark.mp3")) {
-                        Serial.println("Playing bark sound...");
                         audio.connecttoFS(SD, "/bark.mp3");
                         isPlayingSound = true;
                         delay(10);
                     } else {
-                        Serial.println("bark.mp3 not found! Playing fallback tone...");
                         playTone(300, 100);
                         delay(50);
                         playTone(400, 100);
                     }
                 }
-            } else {  // Button released
+            } else {
                 if (earsPerked) {
-                    Serial.println("Returning ears to normal...");
                     earsPerked = false;
                     drawSprite();
                 }
@@ -842,7 +1151,7 @@ void drawStatusBar() {
     spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);  // Keep background same position
     
     // Move text position further right
-    int statusX = SCREEN_CENTER_X + 27;  // Increased from +20 to +30
+    int statusX = SCREEN_CENTER_X + 27; 
     
     // Alternate between different status displays
     static int statusRotation = 0;
@@ -1007,53 +1316,59 @@ void calculateMood() {
     }
 }
 
-void loop() {
-    static unsigned long lastDisplayUpdate = 0;
-    static unsigned long lastStatusUpdate = 0;
-    unsigned long currentMillis = millis();
+void enterSleepMode() {
+    Serial.println("Entering sleep mode...");
+    isInSleepMode = true;
     
-    // Update hover animation
-    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
-        lastHoverUpdate = currentMillis;
-        
-        if (movingDown) {
-            roverYOffset++;
-            if (roverYOffset >= MAX_OFFSET) {
-                movingDown = false;
-            }
-        } else {
-            roverYOffset--;
-            if (roverYOffset <= -MAX_OFFSET) {
-                movingDown = true;
-            }
-        }
-        
-        drawSprite();  // Redraw with new position
-    }
+    // Turn off screen
+    spr.fillSprite(TFT_BLACK);
+    spr.pushSprite(0, 0);
+    tft.writecommand(TFT_DISPOFF);  // Turn off display
     
-    // Calculate mood
-    calculateMood();
+    // Turn off all LEDs
+    fill_solid(leds, WS2812_NUM_LEDS, CRGB::Black);
+    FastLED.show();
     
-    // Try WiFi connection periodically if not connected
-    tryWiFiConnection();
+    // Reset button states
+    rotaryButtonPressed = false;
+    sideButtonPressed = false;
+}
+
+void exitSleepMode() {
+    Serial.println("Exiting sleep mode...");
+    isInSleepMode = false;
     
-    // Update LEDs
+    // Turn on screen
+    tft.writecommand(TFT_DISPON);  // Turn on display
+    drawSprite();  // Redraw the display
+    
+    // Restore LED state
     updateLEDs();
     
-    // Update display every 50ms to keep clock ticking
+    // Reset button states
+    rotaryButtonPressed = false;
+    sideButtonPressed = false;
+}
+
+void loop() {
+    static unsigned long lastDisplayUpdate = 0;
+    unsigned long currentMillis = millis();
+    
+    // Update display and check inputs
     if (currentMillis - lastDisplayUpdate >= 50) {
         readEncoder();
         handleSideButton();
-        drawSprite();  // This will update the clock display
+        checkSleepState();  // Check if we need to enter sleep mode
+        
+        if (currentSleepState == AWAKE || currentSleepState == DIM_DISPLAY) {
+            drawSprite();
+            updateLEDs();
+        }
+        
         lastDisplayUpdate = currentMillis;
     }
     
-    // Update status text every 3 seconds
-    if (currentMillis - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
-        showLevel = !showLevel;
-        lastStatusUpdate = currentMillis;
-    }
-    
+    // Rest of your existing loop code...
     if (isPlayingAuldLangSyne) {
         playAuldLangSyne();
     }
@@ -1061,4 +1376,29 @@ void loop() {
     if (isPlayingSound) {
         audio.loop();
     }
+    
+    tryWiFiConnection();
+}
+
+// Add audio callback
+void audio_eof_mp3(const char *info) {
+    Serial.printf("Audio playback finished: %s\n", info);
+    // Delete temporary recording after playback
+    if (!SD.remove(RECORD_FILENAME)) {
+        Serial.println("Failed to delete temporary recording file");
+        playErrorSound(2);
+    }
+}
+
+// Make sure setEarsUp and setEarsDown are defined only once
+void setEarsUp() {
+    earsPerked = true;
+    drawSprite();  // Redraw to show perked ears
+    FastLED.show(); // Update LEDs if needed
+}
+
+void setEarsDown() {
+    earsPerked = false;
+    drawSprite();  // Redraw to show normal ears
+    FastLED.show(); // Update LEDs if needed
 }
