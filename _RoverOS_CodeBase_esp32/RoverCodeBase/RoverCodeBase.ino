@@ -187,6 +187,10 @@ const uint8_t PWM_CHANNEL = 0;
 const uint8_t PWM_RESOLUTION = 8;
 const uint32_t PWM_FREQUENCY = 5000;
 
+// Add these constants at the top with other defines
+#define TONE_PWM_CHANNEL 2  // Use a different channel than the backlight
+#define TONE_PIN BOARD_VOICE_DIN
+
 void setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
     ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
@@ -233,9 +237,6 @@ void checkSleepState() {
             case DIM_DISPLAY:
                 Serial.println("Going to DIM_DISPLAY state");
                 setBacklight(64);  // 25% brightness
-                playTone(1000, 200);
-                delay(50);
-                playTone(2000, 200);
                 drawSprite();
                 break;
 
@@ -581,6 +582,12 @@ void setup() {
     pinMode(BOARD_USER_KEY, INPUT);
     delay(100); // Give time for pin to stabilize
     
+    // Initialize encoder (no begin needed for this library)
+    // encoder is already initialized by its constructor
+    
+    // Initialize audio
+    pinMode(BOARD_VOICE_DIN, OUTPUT);
+    
     // Rest of setup
     pinMode(46, OUTPUT);
     digitalWrite(46, HIGH);
@@ -777,67 +784,74 @@ void syncLEDsForDay() {
 void readEncoder() {
     encoder.tick();
 
-    // Handle button press with debounce
-    static bool buttonState = HIGH;
-    bool newButtonState = digitalRead(ENCODER_KEY);
-    
-    if (newButtonState != buttonState) {
-        wakeFromSleep();  // Wake on button activity
-        if (newButtonState == LOW) {  // Button pressed
-            // Original LED mode toggle
-            isWeekMode = !isWeekMode;
-            updateLEDs();
-            
-            // Original mode change tones
-            if (isWeekMode) {
-                playTone(1000, 100);
-                delay(50);
-                playTone(1500, 100);
-                delay(50);
-                playTone(2000, 100);
-            } else {
-                playTone(2000, 100);
-                delay(50);
-                playTone(1500, 100);
-                delay(50);
-                playTone(1000, 100);
-            }
-        }
-        buttonState = newButtonState;
-    }
-    
-    // Original rotation handling
+    // Handle rotation
     static int lastPos = 0;
     int newPos = encoder.getPosition();
     
     if (newPos != lastPos) {
         wakeFromSleep();  // Wake on rotation
         if (newPos > lastPos) {
-
-            nextMood();
+            RoverManager::nextMood();
+            // Ascending tones for right turn
+            playTone(1047, 50);  // C6
+            delay(10);
+            playTone(1319, 50);  // E6
+            delay(10);
+            playTone(1568, 50);  // G6
         } else {
-            previousMood();
+            RoverManager::previousMood();
+            // Descending tones for left turn
+            playTone(1568, 50);  // G6
+            delay(10);
+            playTone(1319, 50);  // E6
+            delay(10);
+            playTone(1047, 50);  // C6
         }
-        
         lastPos = newPos;
-        
-        if (SPIFFS.exists("/move.mp3")) {
-            audio.connecttoFS(SPIFFS, "/move.mp3");
-        } else {
-            if (newPos > lastPos) {
-                playTone(1000, 200);
-                playTone(2000, 200);
-            } else {
-                playTone(2000, 200);
-                playTone(1000, 200);
+        drawSprite();
+    }
+
+    // Handle button press with debounce (rest of the encoder button code remains the same)
+    static bool lastButtonState = HIGH;
+    static unsigned long lastDebounceTime = 0;
+    unsigned long debounceDelay = 50;
+    
+    bool currentButtonState = digitalRead(ENCODER_KEY);
+    
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (currentButtonState != lastButtonState) {
+            lastDebounceTime = millis();
+            
+            if (currentButtonState == LOW) {  // Button pressed
+                wakeFromSleep();
+                isWeekMode = !isWeekMode;  // Toggle LED display mode
+                
+                // Play mode change tones
+                if (isWeekMode) {
+                    playTone(1000, 100);
+                    delay(50);
+                    playTone(1500, 100);
+                    delay(50);
+                    playTone(2000, 100);
+                } else {
+                    playTone(2000, 100);
+                    delay(50);
+                    playTone(1500, 100);
+                    delay(50);
+                    playTone(1000, 100);
+                }
+                
+                updateLEDs();
             }
         }
-        drawSprite();
+        lastButtonState = currentButtonState;
     }
 }
 
 
 void drawSprite() {
+    if (currentSleepState != AWAKE) return;
+    
     spr.fillSprite(TFT_BLACK);
     
     // Get current time and update LEDs
@@ -866,7 +880,7 @@ void drawSprite() {
     spr.drawString(timeStr, SCREEN_CENTER_X, 30, 7);
     
     // Draw Rover in middle (centered)
-    drawRover(moods[currentMood], earsPerked);
+    RoverManager::drawRover(RoverManager::getCurrentMood(), RoverManager::earsPerked);
     
     // Draw status bar (which now includes the countdown)
     drawStatusBar();
@@ -883,29 +897,33 @@ void handleSideButton() {
     
     if ((millis() - lastDebounceTime) > debounceDelay) {
         if (currentState != lastState) {
-            wakeFromSleep();  // Wake on button activity
+            wakeFromSleep();
             lastDebounceTime = millis();
             lastState = currentState;
             
             if (currentState == LOW) {
-                if (!earsPerked) {
-                    earsPerked = true;
+                if (!RoverManager::earsPerked) {
+                    setEarsUp();
                     drawSprite();
 
-                    if (SD.exists("/bark.mp3")) {
-                        audio.connecttoFS(SD, "/bark.mp3");
-                        isPlayingSound = true;
-                        delay(10);
-                    } else {
-                        playTone(300, 100);
-                        delay(50);
-                        playTone(400, 100);
-                    }
+                    // Radio-style chirp sequence
+                    playTone(2500, 30);  // High chirp
+                    delay(20);
+                    playTone(1800, 40);  // Medium chirp
+                    delay(20);
+                    playTone(2200, 35);  // Response chirp
+                    delay(15);
+                    playTone(2600, 25);  // Final blip
                 }
             } else {
-                if (earsPerked) {
-                    earsPerked = false;
+                if (RoverManager::earsPerked) {
+                    setEarsDown();
                     drawSprite();
+                    
+                    // Radio sign-off chirp
+                    playTone(2200, 35);
+                    delay(20);
+                    playTone(1800, 45);  // Lower tone for "down"
                 }
             }
         }
@@ -935,16 +953,16 @@ void playTone(int frequency, int duration) {
     }
     FastLED.show();
 
-    // Configure a PWM channel
-    ledcSetup(0, frequency, 8);  // Channel 0, frequency, 8-bit resolution
-    ledcAttachPin(BOARD_VOICE_DIN, 0);  // Attach the channel to the speaker pin
+    // Configure PWM for tone
+    ledcSetup(TONE_PWM_CHANNEL, frequency, 8);
+    ledcAttachPin(TONE_PIN, TONE_PWM_CHANNEL);
+    ledcWrite(TONE_PWM_CHANNEL, 127);  // 50% duty cycle for clearer tone
 
-    // Play the tone
-    ledcWriteTone(0, frequency);  // Set the frequency
-    delay(duration);  // Play for the specified duration
+    delay(duration);
 
     // Stop the tone
-    ledcWriteTone(0, 0);
+    ledcWrite(TONE_PWM_CHANNEL, 0);
+    ledcDetachPin(TONE_PIN);  // Detach the pin after use
 
     isPlayingSound = false;  // Reset flag after sound stops
 }
@@ -1099,7 +1117,6 @@ void updateLEDs() {
         leds[5] = BASE_8_COLORS[minOnes];
         
         // Calendar day (1-31)
-        // For day 1: dayTens = 0, dayOnes = 1
         int dayTens = (timeInfo->tm_mday - 1) / 8;
         int dayOnes = (timeInfo->tm_mday - 1) % 8 + 1;  // Add 1 to start at 1
         leds[7] = BASE_8_COLORS[dayTens];
@@ -1168,13 +1185,14 @@ void exitSleepMode() {
 void loop() {
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
-    updateHoverAnimation();
+    
+    RoverManager::updateHoverAnimation();
+    readEncoder();  // Make sure we're reading the encoder in the loop
 
     // Update display and check inputs
     if (currentMillis - lastDisplayUpdate >= 50) {
-        readEncoder();
         handleSideButton();
-        checkSleepState();  // Check if we need to enter sleep mode
+        checkSleepState();
         
         if (currentSleepState == AWAKE || currentSleepState == DIM_DISPLAY) {
             drawSprite();
@@ -1184,7 +1202,7 @@ void loop() {
         lastDisplayUpdate = currentMillis;
     }
     
-    // Rest of your existing loop code...
+    // Handle audio
     if (isPlayingSound) {
         audio.loop();
     }
@@ -1205,13 +1223,13 @@ void audio_eof_mp3(const char *info) {
 
 // Make sure setEarsUp and setEarsDown are defined only once
 void setEarsUp() {
-    earsPerked = true;
-    drawSprite();  // Redraw to show perked ears
-    FastLED.show(); // Update LEDs if needed
+    RoverManager::earsPerked = true;
+    drawSprite();
+    FastLED.show();
 }
 
 void setEarsDown() {
-    earsPerked = false;
-    drawSprite();  // Redraw to show normal ears
-    FastLED.show(); // Update LEDs if needed
+    RoverManager::earsPerked = false;
+    drawSprite();
+    FastLED.show();
 }
