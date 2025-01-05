@@ -1,48 +1,49 @@
-#ifndef ROVER_MANAGER_H
-#define ROVER_MANAGER_H
-
-#include "TFT_eSPI.h"
-#include "utilities.h"
-#include <time.h>
+#pragma once
 #include <FastLED.h>
+#include "TFT_eSPI.h"
 
-// Forward declarations
+// Forward declare the sprite
 extern TFT_eSprite spr;
-extern const CRGB MONTH_COLORS[][2];
 
 class RoverManager {
 public:
     static bool earsPerked;
-    
-    // Static initialization
-    static void init();
-
-    // Mood management
+    static const char* getCurrentMood();
     static void nextMood();
     static void previousMood();
-    static const char* getCurrentMood();
-
-    // Animation and drawing
     static void updateHoverAnimation();
-    static void drawRover(String mood = "happy", bool earsPerked = false);
+    static void drawRover(const char* mood, bool earsPerked = false, bool large = false, int x = 85, int y = 120);
 
 private:
-    // Constants
-    
-    static const int MAX_OFFSET = 5;
-    static const int HOVER_SPEED = 90;
-    static const int numMoods = 4;
+    static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale);
+    static void drawNoseAndMouth(String mood, int roverX, int currentY, float scale);
     
     // Static member variables
     static int currentMood;
-    static int roverYOffset;
+    static int hoverOffset;
     static bool movingDown;
     static unsigned long lastHoverUpdate;
     static const char* moods[];
-
-    // Helper methods
-    static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor);
-    static void drawNoseAndMouth(String mood, int roverX, int currentY);
+    static const int NUM_MOODS = 6;
+    
+    // Color definitions
+    static const uint16_t monthColors[12][2];
+    static const uint16_t color1;
 };
 
-#endif // ROVER_MANAGER_H
+// Define the static const arrays outside the class
+inline const uint16_t RoverManager::monthColors[12][2] = {
+    {0xF800, 0xF800},  // January   - Red/Red
+    {0xF800, 0xFD20},  // February  - Red/Orange
+    {0xFD20, 0xFD20},  // March     - Orange/Orange
+    {0xFD20, 0xFFE0},  // April     - Orange/Yellow
+    {0xFFE0, 0xFFE0},  // May       - Yellow/Yellow
+    {0x07E0, 0x07E0},  // June      - Green/Green
+    {0x07E0, 0x001F},  // July      - Green/Blue
+    {0x001F, 0x001F},  // August    - Blue/Blue
+    {0x001F, 0x4810},  // September - Blue/Indigo
+    {0x4810, 0x4810},  // October   - Indigo/Indigo
+    {0x4810, 0x780F},  // November  - Indigo/Violet
+    {0x780F, 0x780F}   // December  - Violet/Violet
+};
+inline const uint16_t RoverManager::color1 = 0xC638;  // Silver color for eye plate

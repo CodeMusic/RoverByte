@@ -1,149 +1,151 @@
- #include "RoverManager.h"
+#include "RoverManager.h"
+#include "utilities.h"
+#include <time.h>
+#include "ColorUtilities.h"
 
 // Initialize static members
-int RoverManager::currentMood = 0;
-int RoverManager::roverYOffset = 0;
-bool RoverManager::movingDown = true;
 bool RoverManager::earsPerked = false;
+int RoverManager::currentMood = 0;
+int RoverManager::hoverOffset = 0;
+bool RoverManager::movingDown = true;
 unsigned long RoverManager::lastHoverUpdate = 0;
 const char* RoverManager::moods[] = {"happy", "looking_left", "looking_right", "intense"};
 
-void RoverManager::init() {
-    LOG_PROD("Initializing RoverManager");
-    currentMood = 0;
-    roverYOffset = 0;
-    movingDown = true;
-    lastHoverUpdate = 0;
-    LOG_DEBUG("RoverManager initialized with default mood: %s", moods[currentMood]);
+extern bool isLowBrightness;
+
+void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
+    String moodStr(mood);
+    float scale = large ? 1.5 : 1.0;
+    
+    // Get current month for eye colors and day color
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    uint16_t leftEyeColor = monthColors[timeInfo->tm_mon][0];
+    uint16_t rightEyeColor = monthColors[timeInfo->tm_mon][1];
+    
+    // Get day color from ColorUtilities
+    CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+    uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
+    
+    // Small rover always shows time, large rover never shows time
+    if (!large) {  // If small rover
+        // Convert to 12-hour format
+        int hours = timeInfo->tm_hour % 12;
+        if (hours == 0) hours = 12;  // Convert 0 to 12 for midnight
+        
+        char timeStr[6];
+        sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
+        spr.setTextFont(7);
+        spr.fillRect(x - 50, 25, 100, 40, TFT_BLACK);  // Black background for time
+        spr.setTextColor(timeColor, TFT_BLACK);  // Use day color with black background
+        spr.drawString(timeStr, x, 30);  // Moved time down to y=30
+        y = 80;  // Moved small rover down to y=80
+    } else {
+        y = 40;  // Large rover position unchanged
+    }
+    
+    int roverX = x - (50 * scale);
+    int currentY = y + hoverOffset;
+    
+    // Draw Rover's body
+    spr.fillRect(roverX, currentY, 100 * scale, 70 * scale, TFT_WHITE);
+    
+    // Draw ears
+    if (earsPerked) {
+        spr.fillTriangle(roverX + 10*scale, currentY - 25*scale, 
+                        roverX + 25*scale, currentY, 
+                        roverX + 40*scale, currentY - 25*scale, TFT_WHITE);
+        spr.fillTriangle(roverX + 60*scale, currentY - 25*scale, 
+                        roverX + 75*scale, currentY, 
+                        roverX + 90*scale, currentY - 25*scale, TFT_WHITE);
+    } else {
+        spr.fillTriangle(roverX + 10*scale, currentY - 10*scale, 
+                        roverX + 25*scale, currentY + 5*scale, 
+                        roverX + 40*scale, currentY - 10*scale, TFT_WHITE);
+        spr.fillTriangle(roverX + 60*scale, currentY - 10*scale, 
+                        roverX + 75*scale, currentY + 5*scale, 
+                        roverX + 90*scale, currentY - 10*scale, TFT_WHITE);
+    }
+    
+    // Draw eye panel
+    spr.fillRect(roverX + 15*scale, currentY + 5*scale, 70*scale, 30*scale, color1);
+    
+    drawEyes(moodStr, roverX, currentY, leftEyeColor, rightEyeColor, scale);
+    drawNoseAndMouth(moodStr, roverX, currentY, scale);
 }
 
-void RoverManager::nextMood() {
-    currentMood = (currentMood + 1) % numMoods;
-    LOG_DEBUG("Mood changed to: %s", moods[currentMood]);
+void RoverManager::drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale) {
+    // Draw white background circles for eyes
+    spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
+    spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
+    
+    if (mood == "sleeping") {
+        spr.drawLine(roverX + 25*scale, currentY + 20*scale, 
+                    roverX + 35*scale, currentY + 20*scale, TFT_BLACK);
+        spr.drawLine(roverX + 65*scale, currentY + 20*scale, 
+                    roverX + 75*scale, currentY + 20*scale, TFT_BLACK);
+    } else if (mood == "looking_left") {
+        spr.fillCircle(roverX + 25*scale, currentY + 20*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 65*scale, currentY + 20*scale, 5*scale, rightEyeColor);
+    } else if (mood == "looking_right") {
+        spr.fillCircle(roverX + 35*scale, currentY + 20*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 75*scale, currentY + 20*scale, 5*scale, rightEyeColor);
+    } else if (mood == "intense") {
+        spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 3*scale, leftEyeColor);
+        spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 3*scale, rightEyeColor);
+    } else {
+        spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 5*scale, rightEyeColor);
+    }
 }
 
-void RoverManager::previousMood() {
-    currentMood = (currentMood - 1 + numMoods) % numMoods;
-    LOG_DEBUG("Mood changed to: %s", moods[currentMood]);
+void RoverManager::drawNoseAndMouth(String mood, int roverX, int currentY, float scale) {
+    // Draw triangular nose
+    spr.fillTriangle(roverX + 45*scale, currentY + 35*scale, 
+                    roverX + 40*scale, currentY + 45*scale, 
+                    roverX + 50*scale, currentY + 45*scale, TFT_BLACK);
+    
+    // Draw mouth based on mood
+    if (mood == "happy") {
+        spr.drawArc(roverX + 50*scale, currentY + 55*scale, 15*scale, 10*scale, 270, 450, TFT_BLACK, TFT_BLACK);
+    } else if (mood == "sad") {
+        spr.drawArc(roverX + 50*scale, currentY + 70*scale, 20*scale, 15*scale, 180, 360, TFT_BLACK, TFT_BLACK);
+    } else if (mood == "intense") {
+        spr.drawLine(roverX + 35*scale, currentY + 60*scale, 
+                    roverX + 65*scale, currentY + 60*scale, TFT_BLACK);
+    } else if (mood == "sleeping") {
+        spr.drawArc(roverX + 50*scale, currentY + 60*scale, 15*scale, 10*scale, 0, 180, TFT_BLACK, TFT_BLACK);
+    } else {
+        spr.drawLine(roverX + 50*scale, currentY + 45*scale, 
+                    roverX + 50*scale, currentY + 55*scale, TFT_BLACK);
+    }
+}
+
+void RoverManager::updateHoverAnimation() {
+    if (millis() - lastHoverUpdate >= 100) {  // Update every 100ms
+        if (movingDown) {
+            hoverOffset++;
+            if (hoverOffset >= 3) {  // Reduced from 5 to 3
+                movingDown = false;
+            }
+        } else {
+            hoverOffset--;
+            if (hoverOffset <= -3) {  // Reduced from -5 to -3
+                movingDown = true;
+            }
+        }
+        lastHoverUpdate = millis();
+    }
 }
 
 const char* RoverManager::getCurrentMood() {
     return moods[currentMood];
 }
 
-void RoverManager::updateHoverAnimation() {
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastHoverUpdate >= HOVER_SPEED) {
-        lastHoverUpdate = currentMillis;
-        
-        LOG_SCOPE("Updating hover animation: offset=%d, moving%s", 
-                  roverYOffset, movingDown ? "Down" : "Up");
-        
-        if (movingDown) {
-            roverYOffset++;
-            if (roverYOffset >= MAX_OFFSET) {
-                movingDown = false;
-                LOG_DEBUG("Hover animation reached bottom, reversing");
-            }
-        } else {
-            roverYOffset--;
-            if (roverYOffset <= -MAX_OFFSET) {
-                movingDown = true;
-                LOG_DEBUG("Hover animation reached top, reversing");
-            }
-        }
-    }
+void RoverManager::nextMood() {
+    currentMood = (currentMood + 1) % NUM_MOODS;
 }
 
-void RoverManager::drawRover(String mood, bool earsPerked) {
-    LOG_SCOPE("Drawing Rover with mood: %s, ears: %s", 
-              mood.c_str(), earsPerked ? "perked" : "down");
-
-    // Get current month for eye colors
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    CRGB leftEye = MONTH_COLORS[timeInfo->tm_mon][0];
-    CRGB rightEye = MONTH_COLORS[timeInfo->tm_mon][1];
-    
-    // Convert CRGB to uint16_t for TFT display
-    uint16_t leftEyeColor = ((leftEye.r & 0xF8) << 8) | ((leftEye.g & 0xFC) << 3) | (leftEye.b >> 3);
-    uint16_t rightEyeColor = ((rightEye.r & 0xF8) << 8) | ((rightEye.g & 0xFC) << 3) | (rightEye.b >> 3);
-    
-    int roverX = SCREEN_CENTER_X - 50;
-    int baseY = 80;
-    int currentY = baseY + roverYOffset;
-    
-    // Draw Rover's body
-    spr.fillRect(roverX, currentY, 100, 70, TFT_WHITE);
-    
-    // Draw ears
-    if (earsPerked) {
-        LOG_SCOPE("Drawing perked ears");
-        spr.fillTriangle(roverX + 10, currentY - 25, roverX + 25, currentY, roverX + 40, currentY - 25, TFT_WHITE);
-        spr.fillTriangle(roverX + 60, currentY - 25, roverX + 75, currentY, roverX + 90, currentY - 25, TFT_WHITE);
-    } else {
-        LOG_SCOPE("Drawing relaxed ears");
-        spr.fillTriangle(roverX + 10, currentY - 10, roverX + 25, currentY + 5, roverX + 40, currentY - 10, TFT_WHITE);
-        spr.fillTriangle(roverX + 60, currentY - 10, roverX + 75, currentY + 5, roverX + 90, currentY - 10, TFT_WHITE);
-    }
-    
-    // Draw eye panel
-    spr.fillRect(roverX + 15, currentY + 5, 70, 30, 0xC618);
-    
-    // Draw eyes and face
-    drawEyes(mood, roverX, currentY, leftEyeColor, rightEyeColor);
-    drawNoseAndMouth(mood, roverX, currentY);
-}
-
-void RoverManager::drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor) {
-    LOG_SCOPE("Drawing eyes for mood: %s", mood.c_str());
-    
-    if (mood == "cool") {
-        spr.fillRect(roverX + 20, currentY + 15, 60, 15, TFT_BLACK);
-        spr.fillCircle(roverX + 30, currentY + 20, 10, TFT_BLACK);
-        spr.fillCircle(roverX + 70, currentY + 20, 10, TFT_BLACK);
-        spr.drawLine(roverX + 25, currentY + 15, roverX + 30, currentY + 15, TFT_WHITE);
-        spr.drawLine(roverX + 65, currentY + 15, roverX + 70, currentY + 15, TFT_WHITE);
-    } else {
-        spr.fillCircle(roverX + 30, currentY + 20, 10, TFT_WHITE);
-        spr.fillCircle(roverX + 70, currentY + 20, 10, TFT_WHITE);
-        
-        if (mood == "sleeping") {
-            spr.drawLine(roverX + 25, currentY + 20, roverX + 35, currentY + 20, TFT_BLACK);
-            spr.drawLine(roverX + 65, currentY + 20, roverX + 75, currentY + 20, TFT_BLACK);
-        } else if (mood == "looking_left") {
-            spr.fillCircle(roverX + 25, currentY + 20, 5, leftEyeColor);
-            spr.fillCircle(roverX + 65, currentY + 20, 5, rightEyeColor);
-        } else if (mood == "looking_right") {
-            spr.fillCircle(roverX + 35, currentY + 20, 5, leftEyeColor);
-            spr.fillCircle(roverX + 75, currentY + 20, 5, rightEyeColor);
-        } else if (mood == "intense") {
-            spr.fillCircle(roverX + 30, currentY + 20, 3, leftEyeColor);
-            spr.fillCircle(roverX + 70, currentY + 20, 3, rightEyeColor);
-        } else {
-            spr.fillCircle(roverX + 30, currentY + 20, 5, leftEyeColor);
-            spr.fillCircle(roverX + 70, currentY + 20, 5, rightEyeColor);
-        }
-    }
-}
-
-void RoverManager::drawNoseAndMouth(String mood, int roverX, int currentY) {
-    LOG_SCOPE("Drawing nose and mouth for mood: %s", mood.c_str());
-    
-    // Draw nose
-    spr.fillTriangle(roverX + 45, currentY + 35, roverX + 40, currentY + 45, 
-                    roverX + 50, currentY + 45, TFT_BLACK);
-    
-    // Draw mouth based on mood
-    if (mood == "happy") {
-        spr.drawArc(roverX + 50, currentY + 55, 15, 10, 270, 450, TFT_BLACK, TFT_BLACK);
-    } else if (mood == "sad") {
-        spr.drawArc(roverX + 50, currentY + 70, 20, 15, 180, 360, TFT_BLACK, TFT_BLACK);
-    } else if (mood == "intense") {
-        spr.drawLine(roverX + 35, currentY + 60, roverX + 65, currentY + 60, TFT_BLACK);
-    } else if (mood == "sleeping") {
-        spr.drawArc(roverX + 50, currentY + 60, 15, 10, 0, 180, TFT_BLACK, TFT_BLACK);
-    } else {
-        spr.drawLine(roverX + 50, currentY + 45, roverX + 50, currentY + 55, TFT_BLACK);
-    }
+void RoverManager::previousMood() {
+    currentMood = (currentMood - 1 + NUM_MOODS) % NUM_MOODS;
 }
