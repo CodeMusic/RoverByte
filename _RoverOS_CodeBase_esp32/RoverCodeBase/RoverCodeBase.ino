@@ -10,6 +10,8 @@
 #include <XPowersLib.h>
 #include "driver/i2s.h"
 #include "RoverManager.h"
+#include "PowerManager.h"
+#include "RoverViewManager.h"
 // Add FastLED SPI definitions
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_BUS VSPI
@@ -572,7 +574,13 @@ void tryWiFiConnection() {
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("Starting setup...");
+    
+    // Set logging level (can be changed via commands later)
+    #ifdef DEBUG_MODE
+        CURRENT_LOG_LEVEL = LOG_DEBUG;
+    #endif
+    
+    LOG_PROD("Rover starting up...");
     
     // Initialize FastLED first for status indicators
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
@@ -737,6 +745,9 @@ void setup() {
     updateLEDs();  // Initial LED update
 
     setupBacklight();
+
+    PowerManager::init();
+    RoverViewManager::init();
 }
 
 void syncLEDsForDay() {
@@ -789,23 +800,26 @@ void readEncoder() {
     int newPos = encoder.getPosition();
     
     if (newPos != lastPos) {
-        wakeFromSleep();  // Wake on rotation
+        PowerManager::wakeFromSleep();
+        tft.writecommand(TFT_DISPON);
+        setBacklight(255);
+        
         if (newPos > lastPos) {
             RoverManager::nextMood();
             // Ascending tones for right turn
-            playTone(1047, 50);  // C6
+            playTone(1047, 50);
             delay(10);
-            playTone(1319, 50);  // E6
+            playTone(1319, 50);
             delay(10);
-            playTone(1568, 50);  // G6
+            playTone(1568, 50);
         } else {
             RoverManager::previousMood();
             // Descending tones for left turn
-            playTone(1568, 50);  // G6
+            playTone(1568, 50);
             delay(10);
-            playTone(1319, 50);  // E6
+            playTone(1319, 50);
             delay(10);
-            playTone(1047, 50);  // C6
+            playTone(1047, 50);
         }
         lastPos = newPos;
         drawSprite();
@@ -850,7 +864,7 @@ void readEncoder() {
 
 
 void drawSprite() {
-    if (currentSleepState != AWAKE) return;
+    if (PowerManager::getCurrentSleepState() != PowerManager::AWAKE) return;
     
     spr.fillSprite(TFT_BLACK);
     
@@ -858,32 +872,32 @@ void drawSprite() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
-    // Set time color and update LEDs
-    uint16_t timeColor;
-    switch(timeInfo->tm_wday) {
-        case 0: timeColor = SUNDAY; break;
-        case 1: timeColor = MONDAY; break;
-        case 2: timeColor = TUESDAY; break;
-        case 3: timeColor = WEDNESDAY; break;
-        case 4: timeColor = THURSDAY; break;
-        case 5: timeColor = FRIDAY; break;
-        case 6: timeColor = SATURDAY; break;
-        default: timeColor = TFT_WHITE; break;
-    }
-    
-    // Draw time at top (centered)
+    // Draw time at top
     char timeStr[6];
     int hour12 = (timeInfo->tm_hour % 12) ? (timeInfo->tm_hour % 12) : 12;
     sprintf(timeStr, "%02d:%02d", hour12, timeInfo->tm_min);
     
+    // Use day of week color
+    CRGB rgbColor = DAY_COLORS[timeInfo->tm_wday];
+    
+    // Convert CRGB to TFT color format (RGB565)
+    uint16_t timeColor = ((rgbColor.r & 0xF8) << 8) | 
+                        ((rgbColor.g & 0xFC) << 3) | 
+                        (rgbColor.b >> 3);
+    
+    // Set font and draw time
+    //spr.setFreeFont(&Orbitron_Light_24);
     spr.setTextColor(timeColor, TFT_BLACK);
     spr.drawString(timeStr, SCREEN_CENTER_X, 30, 7);
     
-    // Draw Rover in middle (centered)
+    // Draw Rover in middle
     RoverManager::drawRover(RoverManager::getCurrentMood(), RoverManager::earsPerked);
     
-    // Draw status bar (which now includes the countdown)
+    // Draw status bar
     drawStatusBar();
+    
+    // Draw current view in the calendar frame
+    RoverViewManager::drawCurrentView();
     
     spr.pushSprite(0, 0);
 }
@@ -970,7 +984,7 @@ void playTone(int frequency, int duration) {
 void drawStatusBar() {
     int barY = 160;
     int barHeight = 160;
-    int dateWidth = 45;
+    int statusX = SCREEN_CENTER_X + 27;  // Define statusX here
     
     // Get current time for color
     time_t now = time(nullptr);
@@ -994,22 +1008,13 @@ void drawStatusBar() {
     sprintf(dateStr, "%d", timeInfo->tm_mday);
     spr.drawString(dateStr, 25, barY + 15);
     
-    // Update battery info if initialized
-    if (batteryInitialized) {
-        batteryPercentage = calculateBatteryPercentage(PPM.getBattVoltage());
-        chargeStatus = PPM.getChargeStatusString();
-    }
-
-    // Draw black status area - make it even wider and more right-shifted
-    spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);  // Keep background same position
-    
-    // Move text position further right
-    int statusX = SCREEN_CENTER_X + 27; 
+    // Draw black status area
+    spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);
     
     // Alternate between different status displays
     static int statusRotation = 0;
     if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
-        statusRotation = (statusRotation + 1) % 3; // Now rotating between 3 states
+        statusRotation = (statusRotation + 1) % 3;
         lastStatusUpdate = millis();
     }
 
@@ -1024,18 +1029,15 @@ void drawStatusBar() {
             spr.drawString("XP: 1337/2000", statusX, barY + 15);
             break;
         case 2:
-            if (batteryInitialized) {
-                String batteryText = String(batteryPercentage) + "% ";
-                if (PPM.isVbusIn()) {
-                    batteryText += chargeStatus;
-                }
-                spr.drawString(batteryText, statusX, barY + 15);
-            } else {
-                spr.drawString("Battery: Not Found", statusX, barY + 15);
+            // Update battery info using PowerManager
+            String batteryText = String(PowerManager::getBatteryPercentage()) + "% ";
+            if (PowerManager::isCharging()) {
+                batteryText += PowerManager::getChargeStatus();
             }
+            spr.drawString(batteryText, statusX, barY + 15);
             break;
     }
-
+    
     // Draw todo list section
     spr.fillRect(2, 195, 280, 120, 0xC618);
     spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);
@@ -1187,22 +1189,47 @@ void loop() {
     unsigned long currentMillis = millis();
     
     RoverManager::updateHoverAnimation();
-    readEncoder();  // Make sure we're reading the encoder in the loop
+    readEncoder();
 
-    // Update display and check inputs
     if (currentMillis - lastDisplayUpdate >= 50) {
+        LOG_SCOPE("Main loop update cycle");
         handleSideButton();
-        checkSleepState();
+        PowerManager::checkSleepState();
         
-        if (currentSleepState == AWAKE || currentSleepState == DIM_DISPLAY) {
-            drawSprite();
-            updateLEDs();
+        switch (PowerManager::getCurrentSleepState()) {
+            case PowerManager::AWAKE:
+                LOG_DEBUG("Display state: AWAKE");
+                setBacklight(255);
+                drawSprite();
+                updateLEDs();
+                break;
+                
+            case PowerManager::DIM_DISPLAY:
+                LOG_DEBUG("Display state: DIM");
+                setBacklight(64);
+                drawSprite();
+                updateLEDs();
+                break;
+                
+            case PowerManager::DISPLAY_OFF:
+                LOG_DEBUG("Display state: OFF");
+                tft.writecommand(TFT_DISPOFF);
+                setBacklight(0);
+                updateLEDs();
+                break;
+                
+            case PowerManager::DEEP_SLEEP:
+                LOG_DEBUG("Display state: DEEP SLEEP");
+                tft.writecommand(TFT_DISPOFF);
+                setBacklight(0);
+                fill_solid(leds, WS2812_NUM_LEDS, CRGB::Black);
+                FastLED.show();
+                break;
         }
         
         lastDisplayUpdate = currentMillis;
     }
     
-    // Handle audio
     if (isPlayingSound) {
         audio.loop();
     }
