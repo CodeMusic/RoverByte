@@ -3,6 +3,9 @@
 #include <time.h>
 #include "ColorUtilities.h"
 
+// Forward declare the drawSprite function from the .ino file
+void drawSprite();
+
 // Initialize static members
 bool RoverManager::earsPerked = false;
 int RoverManager::currentMood = 0;
@@ -150,4 +153,9 @@ void RoverManager::nextMood() {
 
 void RoverManager::previousMood() {
     currentMood = (currentMood - 1 + NUM_MOODS) % NUM_MOODS;
+}
+
+void RoverManager::setRandomMood() {
+    currentMood = random(0, NUM_MOODS);
+    drawSprite();  // Now we can call it directly
 }

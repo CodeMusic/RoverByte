@@ -13,6 +13,7 @@ public:
     static void previousMood();
     static void updateHoverAnimation();
     static void drawRover(const char* mood, bool earsPerked = false, bool large = false, int x = 85, int y = 120);
+    static void setRandomMood();
 
 private:
     static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale);
@@ -24,7 +25,7 @@ private:
     static bool movingDown;
     static unsigned long lastHoverUpdate;
     static const char* moods[];
-    static const int NUM_MOODS = 6;
+    static const int NUM_MOODS = 5;
     
     // Color definitions
     static const uint16_t monthColors[12][2];

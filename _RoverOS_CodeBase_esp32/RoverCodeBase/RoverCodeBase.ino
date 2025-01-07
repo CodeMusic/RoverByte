@@ -141,6 +141,10 @@ const uint32_t PWM_FREQUENCY = 5000;
 bool isDimmed = false;
 const int NUM_LEDS = 8;  // 8 LEDs total
 
+// Add near other global variables
+unsigned long lastExpressionChange = 0;
+unsigned long nextExpressionInterval = 60000;  // Start with 1 minute
+
 void setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
     ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
@@ -774,49 +778,36 @@ void syncLEDsForDay() {
 }
 
 void readEncoder() {
-    encoder.tick();
+    encoder.tick();  // Call this more frequently
 
     // Handle rotation
-    static int lastPos = 0;
     int newPos = encoder.getPosition();
+    static int lastPos = 0;
     
     if (newPos != lastPos) {
-        PowerManager::wakeFromSleep();
-        
+        // Minimize operations in this block
         if (newPos > lastPos) {
-            RoverManager::nextMood();  // Make sure this is being called
-            // Ascending tones for right turn
-            playTone(1047, 50);
-            delay(10);
-            playTone(1319, 50);
-            delay(10);
-            playTone(1568, 50);
+            RoverViewManager::nextView();
+            playTone(1047, 20);  // Shorter tone duration
         } else {
-            RoverManager::previousMood();  // Make sure this is being called
-            // Descending tones for left turn
-            playTone(1568, 50);
-            delay(10);
-            playTone(1319, 50);
-            delay(10);
-            playTone(1047, 50);
+            RoverViewManager::previousView();
+            playTone(1568, 20);  // Shorter tone duration
         }
-        lastPos = newPos;
-        drawSprite();  // Make sure we redraw after mood change
+        lastPos = newPos;  // Update position
     }
 
-    // Handle button press
+    // Handle button press (keep existing button handling)
     static bool lastButtonState = HIGH;
     bool buttonState = digitalRead(ENCODER_KEY);
     
     if (buttonState != lastButtonState) {
         delay(50); // Simple debounce
-        if (buttonState == LOW) { // Button pressed
-            showTime = true;  // Enable time display on button press
-            isWeekMode = !isWeekMode;  // Toggle between week and full view
-            updateLEDs();  // Update LED display with new mode
-            drawSprite();  // Refresh display with new mode
+        if (buttonState == LOW) {
+            showTime = true;
+            isWeekMode = !isWeekMode;
+            updateLEDs();
+            drawSprite();
             
-            // Play different tones for each mode
             if (isWeekMode) {
                 playTone(1000, 100);
             } else {
@@ -834,21 +825,17 @@ void drawSprite() {
     // Draw status bar at top
     drawStatusBar();
     
-    // Get current time
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    
-    // Show small rover with time when showTime is true and not in dim display state
-    bool showSmallWithTime = showTime && (currentSleepState == AWAKE);
-    
     // Draw Rover - large when !showTime, small when showTime
     RoverManager::drawRover(
         RoverManager::getCurrentMood(),
         RoverManager::earsPerked,
-        !showSmallWithTime,  // Reversed logic: large when NOT showing time
+        !showTime,  // Reversed logic: large when NOT showing time
         tft.width() / 2,
-        showSmallWithTime ? 50 : 80
+        showTime ? 50 : 80
     );
+    
+    // Draw current view in bottom section
+    RoverViewManager::drawCurrentView();
     
     spr.pushSprite(0, 0);
 }
@@ -1131,8 +1118,9 @@ void exitSleepMode() {
 }
 
 void loop() {
-    // Handle all inputs first for maximum responsiveness
-    readEncoder();
+    // Call encoder reading more frequently
+    readEncoder();  // At start of loop
+
     handleSideButton();
 
     static unsigned long lastDisplayUpdate = 0;
@@ -1183,6 +1171,15 @@ void loop() {
     }
     
     tryWiFiConnection();
+
+    if (currentMillis - lastExpressionChange >= nextExpressionInterval) {
+        RoverManager::setRandomMood();  // Assuming this exists, if not we'll need to create it
+        lastExpressionChange = currentMillis;
+        // Set next interval between 1-10 minutes (60000-600000 ms)
+        nextExpressionInterval = random(60000, 600000);
+    }
+
+    readEncoder();  // At end of loop too
 }
 
 // Add audio callback
