@@ -220,12 +220,20 @@ void checkSleepState() {
 void wakeFromSleep() {
     lastActivityTime = millis();
     if (currentSleepState != AWAKE) {
-        currentSleepState = AWAKE;
+        // Immediately turn on display and backlight
         tft.writecommand(TFT_DISPON);
-        setBacklight(255);
+        ledcWrite(PWM_CHANNEL, 255);  // Full brightness immediately
+        
+        // Reset sleep state
+        currentSleepState = AWAKE;
+        
+        // Restore LED brightness
         FastLED.setBrightness(50);
         FastLED.show();
+        
+        // Force an immediate display update
         drawSprite();
+        currentSleepState = AWAKE;
     }
 }
 
@@ -702,6 +710,18 @@ void setup() {
     updateLEDs();  // Initial LED update
 
     setupBacklight();
+    
+    // Initialize buttons with internal pull-ups
+    pinMode(BOARD_USER_KEY, INPUT_PULLUP);
+    pinMode(ENCODER_KEY, INPUT_PULLUP);
+    delay(100);  // Give time for pins to stabilize
+    
+    // Configure both buttons as wake sources with pull-ups enabled
+    const uint64_t ext_wakeup_pin_mask = 
+        (1ULL << BOARD_USER_KEY) | 
+        (1ULL << ENCODER_KEY);
+    esp_sleep_enable_ext1_wakeup(ext_wakeup_pin_mask, ESP_EXT1_WAKEUP_ALL_LOW);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
 
     PowerManager::init();
     RoverViewManager::init();
@@ -921,11 +941,11 @@ void drawStatusBar() {
     }
     
     // Draw date number with smaller font
-    spr.setTextFont(2);  // Changed to font 2 for smaller size
+    spr.setTextFont(2); 
     spr.setTextColor(TFT_BLACK);
     char dateStr[3];
     sprintf(dateStr, "%d", timeInfo->tm_mday);
-    spr.drawString(dateStr, 25, barY + 15);
+    spr.drawString(dateStr, 25, barY + 15, 4);
     
     // Draw black status area
     spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);
@@ -977,38 +997,98 @@ void updateLEDs() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
+    // Create a 3-state blink cycle (0, 1, 2) using integer division of seconds
+    int blinkState = (timeInfo->tm_sec % 3);
+    
     if (isWeekMode) {
-        // LED 0: Month color blinking at 25% brightness
+        // Week Mode
+        // LED 0: Month color - blink in sync with current day
         CRGB color1, color2;
         ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, color1, color2);
-        if (timeInfo->tm_sec % 2 == 0) {
-            color1.nscale8(64);  // 25% brightness
-            leds[0] = color1;
+        
+        if (color1 == color2) {
+            if (timeInfo->tm_sec % 2 == 0) {
+                color1.nscale8(232);
+                leds[0] = color1;
+            } else {
+                leds[0] = CRGB::Black;
+            }
         } else {
-            leds[0] = CRGB::Black;
+            switch(blinkState) {
+                case 0: leds[0] = color1; break;
+                case 1: leds[0] = color2; break;
+                case 2: leds[0] = CRGB::Black; break;
+            }
         }
         
-        // LEDs 1-7: Days of week
-        for (int i = 0; i < 7; i++) {
-            CRGB dayColor = ColorUtilities::getDayColor(i + 1);
+        // LEDs 1-7: Days of week (Sunday=1, Monday=2, etc.)
+        for (int i = 1; i <= 7; i++) {
+            CRGB dayColor = ColorUtilities::getDayColor(i);
             
-            if (i < timeInfo->tm_wday) {
-                // Past days - 0% brightness
-                leds[i + 1] = CRGB::Black;
+            if (i - 1 < timeInfo->tm_wday) {
+                leds[i] = CRGB::Black;
             } 
-            else if (i == timeInfo->tm_wday) {
-                // Current day - blinking at 91% brightness
+            else if (i - 1 == timeInfo->tm_wday) {
                 if (timeInfo->tm_sec % 2 == 0) {
-                    dayColor.nscale8(232);  // 91% brightness
-                    leds[i + 1] = dayColor;
+                    dayColor.nscale8(232);
+                    leds[i] = dayColor;
                 } else {
-                    leds[i + 1] = CRGB::Black;
+                    leds[i] = CRGB::Black;
                 }
             }
             else {
-                // Future days - 70% brightness
-                dayColor.nscale8(179);  // 70% brightness
-                leds[i + 1] = dayColor;
+                dayColor.nscale8(138);
+                leds[i] = dayColor;
+            }
+        }
+    } else {
+        // Full Mode
+        // LED 0: Battery charge level
+        leds[0] = CRGB::Green;  // Placeholder for charge status
+        
+        // LED 1: Current day of week (Sunday = 1 = Red, etc.)
+        leds[1] = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+        
+        // LED 2: Hours (base 12) - only blink if colors are different
+        int hour12 = timeInfo->tm_hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        CRGB hourColor1, hourColor2;
+        ColorUtilities::getMonthColors(hour12, hourColor1, hourColor2);
+        
+        if (hourColor1 == hourColor2) {
+            leds[2] = hourColor1;
+        } else {
+            switch(blinkState) {
+                case 0: leds[2] = hourColor1; break;
+                case 1: leds[2] = hourColor2; break;
+                case 2: leds[2] = CRGB::Black; break;
+            }
+        }
+        
+        // LED 3-4: Minutes (base 8)
+        int minutes = timeInfo->tm_min;
+        int minTens = minutes / 8;
+        int minOnes = minutes % 8;
+        leds[3] = ColorUtilities::getBase8Color(minTens);
+        leds[4] = ColorUtilities::getBase8Color(minOnes);
+        
+        // LED 5-6: Day of month (base 8)
+        int dayTens = (timeInfo->tm_mday - 1) / 8;
+        int dayOnes = (timeInfo->tm_mday - 1) % 8 + 1;
+        leds[5] = ColorUtilities::getBase8Color(dayTens);
+        leds[6] = ColorUtilities::getBase8Color(dayOnes);
+        
+        // LED 7: Month color - only blink if colors are different
+        CRGB monthColor1, monthColor2;
+        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+        
+        if (monthColor1 == monthColor2) {
+            leds[7] = monthColor1;  // Solid color if both are the same
+        } else {
+            switch(blinkState) {
+                case 0: leds[7] = monthColor1; break;
+                case 1: leds[7] = monthColor2; break;
+                case 2: leds[7] = CRGB::Black; break;
             }
         }
     }
@@ -1051,19 +1131,20 @@ void exitSleepMode() {
 }
 
 void loop() {
+    // Handle all inputs first for maximum responsiveness
+    readEncoder();
+    handleSideButton();
+
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
-    
+
     if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) {
-        RoverManager::updateHoverAnimation();  // Make sure this is called
+        RoverManager::updateHoverAnimation();
         drawSprite();
     }
     
-    readEncoder();
-
     if (currentMillis - lastDisplayUpdate >= 50) {
         LOG_SCOPE("Main loop update cycle");
-        handleSideButton();
         PowerManager::checkSleepState();
         
         switch (PowerManager::getCurrentSleepState()) {
@@ -1090,10 +1171,7 @@ void loop() {
                 
             case PowerManager::DEEP_SLEEP:
                 LOG_DEBUG("Display state: DEEP SLEEP");
-                tft.writecommand(TFT_DISPOFF);
-                setBacklight(0);
-                fill_solid(leds, WS2812_NUM_LEDS, CRGB::Black);
-                FastLED.show();
+                goToSleep();
                 break;
         }
         
@@ -1129,4 +1207,20 @@ void setEarsDown() {
     RoverManager::earsPerked = false;
     drawSprite();
     FastLED.show();
+}
+
+void goToSleep() {
+    // Ensure all pending operations are complete
+    FastLED.clear(true);
+    tft.writecommand(TFT_DISPOFF);
+    tft.writecommand(TFT_SLPIN);
+    
+    // Wait for any buttons to be released and debounce
+    while (digitalRead(BOARD_USER_KEY) == LOW || digitalRead(ENCODER_KEY) == LOW) {
+        delay(10);
+    }
+    delay(100);  // Additional debounce delay
+    
+    // Go to deep sleep - will wake on any configured button press
+    esp_deep_sleep_start();
 }

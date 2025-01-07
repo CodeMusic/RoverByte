@@ -17,31 +17,33 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
     String moodStr(mood);
     float scale = large ? 1.5 : 1.0;
     
-    // Get current month for eye colors and day color
+    // Get current time and colors
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
+    
+    // Get eye colors from current month
     uint16_t leftEyeColor = monthColors[timeInfo->tm_mon][0];
     uint16_t rightEyeColor = monthColors[timeInfo->tm_mon][1];
     
-    // Get day color from ColorUtilities
-    CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
-    uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
-    
     // Small rover always shows time, large rover never shows time
-    if (!large) {  // If small rover
+    if (!large) {
         // Convert to 12-hour format
         int hours = timeInfo->tm_hour % 12;
-        if (hours == 0) hours = 12;  // Convert 0 to 12 for midnight
+        if (hours == 0) hours = 12;
+        
+        // Get day color for time display (0 = Sunday, 6 = Saturday)
+        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);  // +1 because getDayColor expects 1-7
+        uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
         
         char timeStr[6];
         sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
         spr.setTextFont(7);
-        spr.fillRect(x - 50, 25, 100, 40, TFT_BLACK);  // Black background for time
-        spr.setTextColor(timeColor, TFT_BLACK);  // Use day color with black background
-        spr.drawString(timeStr, x, 30);  // Moved time down to y=30
-        y = 80;  // Moved small rover down to y=80
+        spr.fillRect(x - 50, 25, 100, 40, TFT_BLACK);
+        spr.setTextColor(timeColor, TFT_BLACK);
+        spr.drawString(timeStr, x, 30);
+        y = 80;
     } else {
-        y = 40;  // Large rover position unchanged
+        y = 40;
     }
     
     int roverX = x - (50 * scale);

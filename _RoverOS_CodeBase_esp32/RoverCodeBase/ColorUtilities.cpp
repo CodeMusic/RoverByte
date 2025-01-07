@@ -28,13 +28,13 @@ const CRGB ColorUtilities::MONTH_COLORS[][2] = {
 };
 
 const CRGB ColorUtilities::DAY_COLORS[] = {
-    CRGB::Red,           // Sunday
-    CRGB(255, 140, 0),  // Monday
-    CRGB::Yellow,       // Tuesday
-    CRGB::Green,        // Wednesday
-    CRGB::Blue,         // Thursday
-    CRGB(75, 0, 130),   // Friday
-    CRGB(148, 0, 211)   // Saturday
+    CRGB::Red,                  // Sunday (1)
+    CRGB(255, 100, 0),         // Monday (2) - Distinct orange
+    CRGB::Yellow,              // Tuesday (3)
+    CRGB::Green,               // Wednesday (4)
+    CRGB::Blue,                // Thursday (5)
+    CRGB(75, 0, 130),          // Friday (6) - Indigo
+    CRGB(148, 0, 211)          // Saturday (7) - Violet
 };
 
 const CRGB ColorUtilities::CHROMATIC_COLORS[][2] = {
@@ -57,11 +57,11 @@ CRGB ColorUtilities::getBase8Color(uint8_t value) {
 }
 
 CRGB ColorUtilities::getDayColor(uint8_t day) {
-    return DAY_COLORS[day % 7];
+    return DAY_COLORS[(day - 1) % 7];
 }
 
 void ColorUtilities::getMonthColors(uint8_t month, CRGB& color1, CRGB& color2) {
-    month = month % 12;
+    month = (month - 1) % 12;
     color1 = MONTH_COLORS[month][0];
     color2 = MONTH_COLORS[month][1];
 }
