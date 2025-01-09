@@ -18,6 +18,7 @@ void drawDiligenceSymbol(int x, int y, int size);
 void drawForgivenessSymbol(int x, int y, int size);
 void drawKindnessSymbol(int x, int y, int size);
 void drawHumilitySymbol(int x, int y, int size);
+void drawBatteryCharging(int x, int y, int size);
 
 // Update array names to match header
 const RoverViewManager::ChakraInfo RoverViewManager::CHAKRA_DATA[] = {
@@ -222,6 +223,16 @@ void drawHumilitySymbol(int x, int y, int size) {
     // Bowed head or kneeling figure - using simpler shape since drawArc needs more parameters
     spr.drawCircle(x, y, size/2, 0x780F);
     spr.drawLine(x, y, x, y + size/2, 0x780F);
+}
+
+void drawBatteryCharging(int x, int y, int size) {
+    // Battery outline
+    spr.drawRect(x - size/2, y - size/4, size, size/2, TFT_BLACK);
+    spr.drawRect(x + size/2, y - size/8, size/8, size/4, TFT_BLACK);
+    
+    // Lightning bolt
+    spr.fillTriangle(x, y - size/8, x - size/4, y, x, y, TFT_YELLOW);
+    spr.fillTriangle(x, y, x + size/4, y, x, y + size/8, TFT_YELLOW);
 }
 
 void RoverViewManager::drawChakras() {

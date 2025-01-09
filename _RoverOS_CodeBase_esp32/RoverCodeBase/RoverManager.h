@@ -7,6 +7,33 @@ extern TFT_eSprite spr;
 
 class RoverManager {
 public:
+    // Enum must be declared before it's used as a type
+    enum Expression {
+        HAPPY,
+        LOOKING_LEFT,
+        LOOKING_RIGHT,
+        INTENSE,
+        LOOKING_UP,      // New - not idle
+        LOOKING_DOWN,    // New - not idle
+        BIG_SMILE,      // New - not idle
+        NUM_EXPRESSIONS
+    };
+
+private:
+    // Now we can use Expression as a type
+    static Expression currentExpression;
+    static Expression previousExpression;
+
+public:
+    static bool isIdleExpression(Expression exp) {
+        return exp <= INTENSE;  // Only first 4 are idle expressions
+    }
+
+    static void setTemporaryExpression(Expression exp, int duration = 1000);
+    static void showThinking() { setTemporaryExpression(LOOKING_UP); }
+    static void showError() { setTemporaryExpression(LOOKING_DOWN, 1000); }
+    static void showSuccess() { setTemporaryExpression(BIG_SMILE, 1000); }
+    
     static bool earsPerked;
     static const char* getCurrentMood();
     static void nextMood();

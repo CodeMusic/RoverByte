@@ -16,6 +16,9 @@ const char* RoverManager::moods[] = {"happy", "looking_left", "looking_right", "
 
 extern bool isLowBrightness;
 
+RoverManager::Expression RoverManager::currentExpression = RoverManager::HAPPY;
+RoverManager::Expression RoverManager::previousExpression = RoverManager::HAPPY;
+
 void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
     String moodStr(mood);
     float scale = large ? 1.5 : 1.0;
@@ -84,7 +87,17 @@ void RoverManager::drawEyes(String mood, int roverX, int currentY, uint16_t left
     spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
     spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
     
-    if (mood == "sleeping") {
+    if (mood == "looking_up") {
+        spr.fillCircle(roverX + 30*scale, currentY + 15*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 70*scale, currentY + 15*scale, 5*scale, rightEyeColor);
+    } else if (mood == "looking_down") {
+        spr.fillCircle(roverX + 30*scale, currentY + 25*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 70*scale, currentY + 25*scale, 5*scale, rightEyeColor);
+    } else if (mood == "big_smile") {
+        // Normal eye position with bigger smile
+        spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 5*scale, leftEyeColor);
+        spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 5*scale, rightEyeColor);
+    } else if (mood == "sleeping") {
         spr.drawLine(roverX + 25*scale, currentY + 20*scale, 
                     roverX + 35*scale, currentY + 20*scale, TFT_BLACK);
         spr.drawLine(roverX + 65*scale, currentY + 20*scale, 
@@ -120,6 +133,9 @@ void RoverManager::drawNoseAndMouth(String mood, int roverX, int currentY, float
                     roverX + 65*scale, currentY + 60*scale, TFT_BLACK);
     } else if (mood == "sleeping") {
         spr.drawArc(roverX + 50*scale, currentY + 60*scale, 15*scale, 10*scale, 0, 180, TFT_BLACK, TFT_BLACK);
+    } else if (mood == "big_smile") {
+        // Wider, bigger smile
+        spr.drawArc(roverX + 50*scale, currentY + 55*scale, 20*scale, 15*scale, 270, 450, TFT_BLACK, TFT_BLACK);
     } else {
         spr.drawLine(roverX + 50*scale, currentY + 45*scale, 
                     roverX + 50*scale, currentY + 55*scale, TFT_BLACK);
@@ -158,4 +174,14 @@ void RoverManager::previousMood() {
 void RoverManager::setRandomMood() {
     currentMood = random(0, NUM_MOODS);
     drawSprite();  // Now we can call it directly
+}
+
+// New function to handle temporary expressions
+void RoverManager::setTemporaryExpression(Expression exp, int duration) {
+    previousExpression = currentExpression;
+    currentExpression = exp;
+    drawSprite();
+    delay(duration);
+    currentExpression = previousExpression;
+    drawSprite();
 }

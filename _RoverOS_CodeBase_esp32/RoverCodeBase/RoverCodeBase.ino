@@ -1,4 +1,11 @@
+#include <SPI.h>
 #include <Wire.h>
+
+// FastLED SPI definitions for ESP32-S3
+#define FASTLED_ESP32_SPI_BUS FSPI  // Use FSPI instead of VSPI for ESP32-S3
+#define FASTLED_ALL_PINS_HARDWARE_SPI
+#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
+
 #include <FastLED.h>
 #include "TFT_eSPI.h"
 #include <RotaryEncoder.h>
@@ -17,6 +24,7 @@
 // Add FastLED SPI definitions
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_BUS VSPI
+#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -144,6 +152,9 @@ const int NUM_LEDS = 8;  // 8 LEDs total
 // Add near other global variables
 unsigned long lastExpressionChange = 0;
 unsigned long nextExpressionInterval = 60000;  // Start with 1 minute
+
+// Add this near the top with other function declarations
+void drawBatteryCharging(int x, int y, int size);
 
 void setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
@@ -541,6 +552,74 @@ void tryWiFiConnection() {
     }
 }
 
+void connectToWiFi() {
+    LOG_DEBUG("Connecting to WiFi...");
+    RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP);  // Looking up while thinking
+    
+    WiFi.begin(primary_ssid, primary_password);  // Try primary network first
+    int attempts = 0;
+    
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        attempts++;
+    }
+    
+    // If primary fails, try backup
+    if (WiFi.status() != WL_CONNECTED) {
+        LOG_DEBUG("Primary WiFi failed, trying backup...");
+        WiFi.disconnect();
+        delay(1000);
+        WiFi.begin(backup_ssid, backup_password);
+        attempts = 0;
+        
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+            delay(500);
+            attempts++;
+        }
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        LOG_PROD("WiFi connected!");
+        RoverManager::setTemporaryExpression(RoverManager::BIG_SMILE, 1000);  // Success smile
+    } else {
+        LOG_PROD("WiFi connection failed!");
+        RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);  // Error expression
+    }
+}
+
+// Generic error handler
+void handleError(const char* errorMessage) {
+    LOG_PROD("Error: %s", errorMessage);
+    RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
+}
+
+// For radio button release
+void handleRadioButtonRelease() {
+    // ... existing radio button code ...
+    
+    delay(1000);  // Wait a second
+    RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP, 1000);
+}
+
+// Example usage in various scenarios
+void processAPIRequest(bool success = false) {  // Parameter with default value
+    RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP);  // Looking up while thinking
+    
+    if (success) {
+        RoverManager::setTemporaryExpression(RoverManager::BIG_SMILE, 1000);
+    } else {
+        handleError("API request failed");
+    }
+}
+
+void handleSDCardOperation() {
+    if (!SD.begin()) {
+        handleError("SD Card initialization failed");
+        return;
+    }
+    // ... rest of SD card code ...
+}
+
 void setup() {
     Serial.begin(115200);
     
@@ -778,40 +857,46 @@ void syncLEDsForDay() {
 }
 
 void readEncoder() {
-    encoder.tick();  // Call this more frequently
+    encoder.tick();
 
     // Handle rotation
     int newPos = encoder.getPosition();
     static int lastPos = 0;
     
     if (newPos != lastPos) {
-        // Minimize operations in this block
         if (newPos > lastPos) {
             RoverViewManager::nextView();
-            playTone(1047, 20);  // Shorter tone duration
+            playTone(1047, 20);
         } else {
             RoverViewManager::previousView();
-            playTone(1568, 20);  // Shorter tone duration
+            playTone(1568, 20);
         }
-        lastPos = newPos;  // Update position
+        lastPos = newPos;
     }
 
-    // Handle button press (keep existing button handling)
+    // Handle button press with proper mode switching
     static bool lastButtonState = HIGH;
     bool buttonState = digitalRead(ENCODER_KEY);
     
     if (buttonState != lastButtonState) {
         delay(50); // Simple debounce
         if (buttonState == LOW) {
-            showTime = true;
-            isWeekMode = !isWeekMode;
-            updateLEDs();
+            isWeekMode = !isWeekMode;  // Toggle mode
+            showTime = true;           // Show time when mode changes
+            
+            // Force immediate LED updates
+            FastLED.clear();  // Clear existing LED states
+            updateLEDs();     // Update with new mode
+            FastLED.show();   // Make sure changes are displayed
             drawSprite();
             
+            // Play different tones for different modes
             if (isWeekMode) {
-                playTone(1000, 100);
+                playTone(1000, 100);  // Higher tone for week mode
+                Serial.println("Switched to Week Mode");
             } else {
-                playTone(800, 100);
+                playTone(800, 100);   // Lower tone for full mode
+                Serial.println("Switched to Full Mode");
             }
         }
         lastButtonState = buttonState;
@@ -822,10 +907,7 @@ void readEncoder() {
 void drawSprite() {
     spr.fillSprite(TFT_BLACK);
     
-    // Draw status bar at top
-    drawStatusBar();
-    
-    // Draw Rover - large when !showTime, small when showTime
+    // Draw Rover in top section
     RoverManager::drawRover(
         RoverManager::getCurrentMood(),
         RoverManager::earsPerked,
@@ -834,10 +916,201 @@ void drawSprite() {
         showTime ? 50 : 80
     );
     
+    // Draw status bar between rover and view
+    drawStatusBar();
+    
     // Draw current view in bottom section
     RoverViewManager::drawCurrentView();
     
     spr.pushSprite(0, 0);
+}
+
+void drawStatusBar() {
+    // Get current time
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    
+    // Status bar positioning - move it up slightly
+    int statusBarY = 170;  // Adjusted from 180 to 170
+    
+    // Left side: Month color square with day number
+    CRGB monthColor1, monthColor2;
+    ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+    
+    int dateWidth = 40;
+    int dateHeight = 30;
+    int dateX = 2;  // Keep at far left edge
+    
+    // Draw month color square
+    uint32_t monthTftColor;  // Store the color for text background
+    if (monthColor1.r == monthColor2.r && 
+        monthColor1.g == monthColor2.g && 
+        monthColor1.b == monthColor2.b) {
+        monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
+        spr.fillRect(dateX, statusBarY, dateWidth, dateHeight, monthTftColor);
+    } else {
+        // For gradient, use first color for text background
+        monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
+        for (int i = 0; i < dateWidth; i++) {
+            float ratio = (float)i / dateWidth;
+            uint8_t r = monthColor1.r + (monthColor2.r - monthColor1.r) * ratio;
+            uint8_t g = monthColor1.g + (monthColor2.g - monthColor1.g) * ratio;
+            uint8_t b = monthColor1.b + (monthColor2.b - monthColor1.b) * ratio;
+            uint32_t tftColor = spr.color565(r, g, b);
+            spr.drawFastVLine(dateX + i, statusBarY, dateHeight, tftColor);
+        }
+    }
+    
+    // Draw day number with month color as background
+    char dayStr[3];
+    sprintf(dayStr, "%d", timeInfo->tm_mday);
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE, monthTftColor);
+    spr.drawString(dayStr, dateX + dateWidth/2, statusBarY + dateHeight/2);
+    
+    // Center/Right side: Rotating status display
+    int statusX = 120;  // Center position
+    
+    // Alternate between different status displays
+    static int statusRotation = 0;
+    if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
+        statusRotation = (statusRotation + 1) % 3;
+        lastStatusUpdate = millis();
+    }
+
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    
+    switch (statusRotation) {
+        case 0:
+            spr.drawString("Level: 21", statusX, statusBarY + dateHeight/2);
+            break;
+        case 1:
+            spr.drawString("XP: 1337/2000", statusX, statusBarY + dateHeight/2);
+            break;
+        case 2:
+            // Battery status with white outline and yellow charging bolt
+            if (PowerManager::isCharging()) {
+                int batteryWidth = 25;
+                int batteryHeight = 12;
+                int batteryX = statusX - batteryWidth/2;
+                int batteryY = statusBarY + dateHeight/2 - batteryHeight/2;
+                
+                // Draw white outline for main battery body
+                spr.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, TFT_WHITE);
+                
+                // Draw white battery tip
+                spr.fillRect(batteryX + batteryWidth, batteryY + 3, 2, 6, TFT_WHITE);
+                
+                // Draw yellow lightning bolt
+                spr.fillTriangle(
+                    batteryX + 10, batteryY + 2,      // Top point
+                    batteryX + 15, batteryY + 6,      // Middle right
+                    batteryX + 12, batteryY + 6,      // Middle left
+                    TFT_YELLOW
+                );
+                spr.fillTriangle(
+                    batteryX + 12, batteryY + 6,      // Middle top
+                    batteryX + 15, batteryY + 6,      // Middle right
+                    batteryX + 10, batteryY + 10,     // Bottom point
+                    TFT_YELLOW
+                );
+                
+                // Draw battery percentage text
+                char batteryStr[5];
+                sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
+                spr.drawString(batteryStr, statusX + 20, statusBarY + dateHeight/2);
+            } else {
+                // Draw battery icon with white outline
+                int batteryWidth = 25;
+                int batteryHeight = 12;
+                int batteryX = statusX - batteryWidth/2;
+                int batteryY = statusBarY + dateHeight/2 - batteryHeight/2;
+                
+                // Draw white outline for main battery body
+                spr.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, TFT_WHITE);
+                
+                // Draw white battery tip
+                spr.fillRect(batteryX + batteryWidth, batteryY + 3, 2, 6, TFT_WHITE);
+                
+                // Fill battery based on percentage
+                int fillWidth = (batteryWidth - 4) * PowerManager::getBatteryPercentage() / 100;
+                spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, batteryHeight - 4, TFT_WHITE);
+                
+                // Draw battery percentage text
+                char batteryStr[5];
+                sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
+                spr.drawString(batteryStr, statusX + 20, statusBarY + dateHeight/2);
+            }
+            break;
+    }
+
+    // Draw todo list section with word wrapping
+    spr.fillRect(2, 195, 280, 120, 0xC618);
+    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);
+    
+    // Draw title
+    spr.setTextFont(4);
+    spr.setTextColor(TFT_BLACK, 0xC618);
+    
+    // For virtues and chakras, implement word wrapping
+    const int maxWidth = 260;  // Maximum width for text
+    const int lineHeight = 20; // Height between lines
+    int currentY = 225;        // Starting Y position for text
+    
+    spr.setTextFont(2);
+    
+    // Replace getCurrentViewText() with actual text based on current view
+    String text;
+    int currentView = RoverViewManager::getCurrentView();
+    
+    if (currentView == 1) {  // Virtues view
+        text = "Virtues: Wisdom, Justice, Courage, Temperance, Faith, Hope, and Love. These guide our actions and shape our character.";
+    } else if (currentView == 2) {  // Chakras view
+        text = "Chakras: Root, Sacral, Solar Plexus, Heart, Throat, Third Eye, and Crown. Energy centers for balance and healing.";
+    } else {  // Default view
+        text = "Today's Tasks: 1. Update Code 2. Test Features 3. Fix Bugs";
+    }
+    
+    // Word wrap implementation
+    String line = "";
+    String currentWord = "";
+    int lineWidth = 0;
+    
+    for (int i = 0; i < text.length(); i++) {
+        if (text[i] == ' ' || i == text.length() - 1) {
+            // Add last character if at end of text
+            if (i == text.length() - 1) {
+                currentWord += text[i];
+            }
+            
+            // Check if adding this word would exceed width
+            int wordWidth = spr.textWidth(currentWord.c_str());
+            if (lineWidth + wordWidth > maxWidth) {
+                // Draw current line and start new one
+                spr.drawString(line, SCREEN_CENTER_X, currentY);
+                currentY += lineHeight;
+                line = currentWord;
+                lineWidth = wordWidth;
+            } else {
+                // Add word to current line
+                if (line.length() > 0) {
+                    line += " ";
+                    lineWidth += spr.textWidth(" ");
+                }
+                line += currentWord;
+                lineWidth += wordWidth;
+            }
+            currentWord = "";
+        } else {
+            currentWord += text[i];
+        }
+    }
+    
+    // Draw any remaining text
+    if (line.length() > 0) {
+        spr.drawString(line, SCREEN_CENTER_X, currentY);
+    }
 }
 
 void handleSideButton() {
@@ -902,84 +1175,6 @@ void playTone(int frequency, int duration) {
     isPlayingSound = false;
 }
 
-void drawStatusBar() {
-    int barY = 160;
-    int barHeight = 160;
-    int statusX = SCREEN_CENTER_X + 27;
-    
-    // Get current time for color
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    
-    // Draw outer rectangle with month colors
-    CRGB color1, color2;
-    ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, color1, color2);
-    uint16_t monthColor1 = ColorUtilities::convertToRGB565(color1);
-    uint16_t monthColor2 = ColorUtilities::convertToRGB565(color2);
-    
-    if (timeInfo->tm_mon == timeInfo->tm_mon) {
-        spr.fillRect(0, barY, tft.width(), barHeight, monthColor1);
-    } else {
-        for (int i = 0; i < tft.width(); i++) {
-            uint8_t mix = (i * 255) / tft.width();
-            uint16_t color = spr.alphaBlend(mix, monthColor1, monthColor2);
-            spr.drawFastVLine(i, barY, barHeight, color);
-        }
-    }
-    
-    // Draw date number with smaller font
-    spr.setTextFont(2); 
-    spr.setTextColor(TFT_BLACK);
-    char dateStr[3];
-    sprintf(dateStr, "%d", timeInfo->tm_mday);
-    spr.drawString(dateStr, 25, barY + 15, 4);
-    
-    // Draw black status area
-    spr.fillRect(50, barY - 2, 145, 35, TFT_BLACK);
-    
-    // Alternate between different status displays
-    static int statusRotation = 0;
-    if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
-        statusRotation = (statusRotation + 1) % 3;
-        lastStatusUpdate = millis();
-    }
-
-    spr.setTextFont(2);
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
-    
-    switch (statusRotation) {
-        case 0:
-            spr.drawString("Level: 21", statusX, barY + 15);
-            break;
-        case 1:
-            spr.drawString("XP: 1337/2000", statusX, barY + 15);
-            break;
-        case 2:
-            // Update battery info using PowerManager
-            String batteryText = String(PowerManager::getBatteryPercentage()) + "% ";
-            if (PowerManager::isCharging()) {
-                batteryText += PowerManager::getChargeStatus();
-            }
-            spr.drawString(batteryText, statusX, barY + 15);
-            break;
-    }
-    
-    // Draw todo list section
-    spr.fillRect(2, 195, 280, 120, 0xC618);
-    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);
-    
-    // Draw todo items
-    spr.setTextFont(4);
-    spr.setTextColor(TFT_BLACK, 0xC618);
-    spr.drawString("Today's Tasks:", SCREEN_CENTER_X, 210);
-    
-    spr.setTextFont(2);
-    // Sample todo items (these could be made dynamic later)
-    spr.drawString("1. Migrate Home", SCREEN_CENTER_X, 225);
-    spr.drawString("2. Organize My Place", SCREEN_CENTER_X, 245);
-    spr.drawString("3. Update Rover", SCREEN_CENTER_X, 265);
-}
-
 void updateLEDs() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
@@ -989,95 +1184,134 @@ void updateLEDs() {
     
     if (isWeekMode) {
         // Week Mode
-        // LED 0: Month color - blink in sync with current day
-        CRGB color1, color2;
-        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, color1, color2);
+        // LED 0: Month color - blink between colors or solid
+        CRGB monthColor1, monthColor2;
+        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
         
-        if (color1 == color2) {
+        if (monthColor1 == monthColor2) {
+            // Solid color month - blink between color and off
             if (timeInfo->tm_sec % 2 == 0) {
-                color1.nscale8(232);
-                leds[0] = color1;
+                monthColor1.nscale8(184);  // 72% brightness
+                leds[0] = monthColor1;
             } else {
                 leds[0] = CRGB::Black;
             }
         } else {
+            // Two-color month - cycle between colors and off
             switch(blinkState) {
-                case 0: leds[0] = color1; break;
-                case 1: leds[0] = color2; break;
-                case 2: leds[0] = CRGB::Black; break;
+                case 0: 
+                    monthColor1.nscale8(184);  // 72% brightness
+                    leds[0] = monthColor1; 
+                    break;
+                case 1: 
+                    monthColor2.nscale8(184);  // 72% brightness
+                    leds[0] = monthColor2; 
+                    break;
+                case 2: 
+                    leds[0] = CRGB::Black; 
+                    break;
             }
         }
         
-        // LEDs 1-7: Days of week (Sunday=1, Monday=2, etc.)
+        // LEDs 1-7: Days of week (Sunday=1 to Saturday=7)
+        CRGB dayColors[] = {
+            CRGB::Red,          // Sunday
+            CRGB::Orange,       // Monday
+            CRGB::Yellow,       // Tuesday
+            CRGB::Green,        // Wednesday
+            CRGB::Blue,         // Thursday
+            CRGB(75, 0, 130),   // Friday (Indigo)
+            CRGB(148, 0, 211)   // Saturday (Violet)
+        };
+        
         for (int i = 1; i <= 7; i++) {
-            CRGB dayColor = ColorUtilities::getDayColor(i);
-            
             if (i - 1 < timeInfo->tm_wday) {
+                // Past days are off
                 leds[i] = CRGB::Black;
             } 
             else if (i - 1 == timeInfo->tm_wday) {
+                // Current day blinks at 72% brightness
                 if (timeInfo->tm_sec % 2 == 0) {
-                    dayColor.nscale8(232);
+                    CRGB dayColor = dayColors[i - 1];
+                    dayColor.nscale8(184);  // 72% brightness
                     leds[i] = dayColor;
                 } else {
                     leds[i] = CRGB::Black;
                 }
             }
             else {
-                dayColor.nscale8(138);
+                // Future days at 30% brightness
+                CRGB dayColor = dayColors[i - 1];
+                dayColor.nscale8(77);  // 30% brightness
                 leds[i] = dayColor;
             }
         }
     } else {
-        // Full Mode
-        // LED 0: Battery charge level
-        leds[0] = CRGB::Green;  // Placeholder for charge status
+        // LED 0: Day of week color
+        leds[0] = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
         
-        // LED 1: Current day of week (Sunday = 1 = Red, etc.)
-        leds[1] = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+        // LED 1: Week number of month (base 8)
+        int weekOfMonth = (timeInfo->tm_mday - 1) / 7;  // 0-3 or 4
+        switch(weekOfMonth) {
+            case 0: leds[1] = CRGB::Red; break;
+            case 1: leds[1] = CRGB(255, 100, 0); break;  // Orange
+            case 2: leds[1] = CRGB::Yellow; break;
+            case 3: leds[1] = CRGB::Green; break;
+            default: leds[1] = CRGB::Blue; break;  // 5th week if exists
+        }
         
-        // LED 2: Hours (base 12) - only blink if colors are different
-        int hour12 = timeInfo->tm_hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        CRGB hourColor1, hourColor2;
-        ColorUtilities::getMonthColors(hour12, hourColor1, hourColor2);
-        
-        if (hourColor1 == hourColor2) {
-            leds[2] = hourColor1;
+        // LED 2: Month (base 12)
+        CRGB monthColor1, monthColor2;
+        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+        if (monthColor1 == monthColor2) {
+            leds[2] = monthColor1;  // Solid color if both are the same
         } else {
             switch(blinkState) {
-                case 0: leds[2] = hourColor1; break;
-                case 1: leds[2] = hourColor2; break;
+                case 0: leds[2] = monthColor1; break;
+                case 1: leds[2] = monthColor2; break;
                 case 2: leds[2] = CRGB::Black; break;
             }
         }
         
-        // LED 3-4: Minutes (base 8)
+        // LED 3: Hours (base 12)
+        int hour12 = timeInfo->tm_hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        CRGB hourColor1, hourColor2;
+        ColorUtilities::getMonthColors(hour12, hourColor1, hourColor2);
+        if (hourColor1 == hourColor2) {
+            leds[3] = hourColor1;  // Solid color if both are the same
+        } else {
+            switch(blinkState) {
+                case 0: leds[3] = hourColor1; break;
+                case 1: leds[3] = hourColor2; break;
+                case 2: leds[3] = CRGB::Black; break;
+            }
+        }
+        
+        // LED 4-5: Minutes (base 8)
         int minutes = timeInfo->tm_min;
         int minTens = minutes / 8;
         int minOnes = minutes % 8;
-        leds[3] = ColorUtilities::getBase8Color(minTens);
-        leds[4] = ColorUtilities::getBase8Color(minOnes);
+        leds[4] = ColorUtilities::getBase8Color(minTens);
+        leds[5] = ColorUtilities::getBase8Color(minOnes);
         
-        // LED 5-6: Day of month (base 8)
-        int dayTens = (timeInfo->tm_mday - 1) / 8;
-        int dayOnes = (timeInfo->tm_mday - 1) % 8 + 1;
-        leds[5] = ColorUtilities::getBase8Color(dayTens);
-        leds[6] = ColorUtilities::getBase8Color(dayOnes);
+        // LED 6-7: Day of month (base 8)
+        int day = timeInfo->tm_mday;  // 8
+        int dayTens = day / 8;        // 8/8 = 1 (red)
+        int dayOnes = day % 8;        // 8%8 = 0 (off)
         
-        // LED 7: Month color - only blink if colors are different
-        CRGB monthColor1, monthColor2;
-        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+        // Base-8 colors:
+        // 0 = off/black
+        // 1 = red
+        // 2 = orange
+        // 3 = yellow
+        // 4 = green
+        // 5 = blue
+        // 6 = indigo
+        // 7 = violet
         
-        if (monthColor1 == monthColor2) {
-            leds[7] = monthColor1;  // Solid color if both are the same
-        } else {
-            switch(blinkState) {
-                case 0: leds[7] = monthColor1; break;
-                case 1: leds[7] = monthColor2; break;
-                case 2: leds[7] = CRGB::Black; break;
-            }
-        }
+        leds[6] = ColorUtilities::getBase8Color(dayOnes);  // Should be off (0)
+        leds[7] = ColorUtilities::getBase8Color(dayTens);  // Should be red (1)
     }
     
     FastLED.show();
@@ -1221,3 +1455,6 @@ void goToSleep() {
     // Go to deep sleep - will wake on any configured button press
     esp_deep_sleep_start();
 }
+
+// Just declare the function (near other function declarations)
+void drawBatteryCharging(int x, int y, int size);
