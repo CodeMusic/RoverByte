@@ -156,6 +156,44 @@ unsigned long nextExpressionInterval = 60000;  // Start with 1 minute
 // Add this near the top with other function declarations
 void drawBatteryCharging(int x, int y, int size);
 
+// Add near other global variables
+bool timeInitialized = false;
+
+// Add this new function
+void drawLoadingScreen() {
+    spr.fillSprite(TFT_BLACK);
+    
+    // Draw bone
+    int boneX = SCREEN_CENTER_X;
+    int boneY = 80;
+    int boneWidth = 60;
+    int boneHeight = 20;
+    int circleRadius = 12;
+    
+    // Main bone rectangle
+    spr.fillRect(boneX - boneWidth/2, boneY - boneHeight/2, 
+                 boneWidth, boneHeight, TFT_WHITE);
+    
+    // Left circles
+    spr.fillCircle(boneX - boneWidth/2, boneY - boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    spr.fillCircle(boneX - boneWidth/2, boneY + boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    
+    // Right circles
+    spr.fillCircle(boneX + boneWidth/2, boneY - boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    spr.fillCircle(boneX + boneWidth/2, boneY + boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    
+    // Loading text
+    spr.setTextFont(4);
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    spr.drawString("...Loading", SCREEN_CENTER_X, 140);
+    
+    spr.pushSprite(0, 0);
+}
+
 void setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
     ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
@@ -749,10 +787,12 @@ void setup() {
             FastLED.show();
             delay(250);
             attempts++;
+            drawLoadingScreen();  // Update loading screen while waiting
         }
         
         if (time(nullptr) > 1000000000) {
             Serial.println("\nTime synchronized!");
+            timeInitialized = true;  // Set initialized flag
             time_t now = time(nullptr);
             struct tm* timeInfo = localtime(&now);
             Serial.printf("Current time: %02d:%02d:%02d\n", 
@@ -905,6 +945,11 @@ void readEncoder() {
 
 
 void drawSprite() {
+    if (!timeInitialized) {
+        drawLoadingScreen();
+        return;
+    }
+    
     spr.fillSprite(TFT_BLACK);
     
     // Draw Rover in top section
