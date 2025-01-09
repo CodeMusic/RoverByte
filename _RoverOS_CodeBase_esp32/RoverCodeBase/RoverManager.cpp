@@ -185,3 +185,16 @@ void RoverManager::setTemporaryExpression(Expression exp, int duration) {
     currentExpression = previousExpression;
     drawSprite();
 }
+
+const char* RoverManager::expressionToMood(Expression exp) {
+    switch(exp) {
+        case HAPPY: return "happy";
+        case LOOKING_UP: return "looking_up";
+        case LOOKING_DOWN: return "looking_down";
+        case LOOKING_LEFT: return "looking_left";
+        case LOOKING_RIGHT: return "looking_right";
+        case INTENSE: return "intense";
+        case BIG_SMILE: return "big_smile";
+        default: return "happy";
+    }
+}

@@ -21,6 +21,7 @@
 #include "RoverViewManager.h"
 #include "ColorUtilities.h"
 #include "DisplayConfig.h"
+#include "SoundFxManager.h"
 // Add FastLED SPI definitions
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_BUS VSPI
@@ -162,7 +163,7 @@ bool timeInitialized = false;
 // Add this new function
 void drawLoadingScreen() {
     spr.fillSprite(TFT_BLACK);
-    
+    SoundFxManager::playJingle();
     // Draw bone
     int boneX = SCREEN_CENTER_X;
     int boneY = 80;
@@ -346,27 +347,15 @@ void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_ra
 void playErrorSound(int type) {
     switch(type) {
         case 1: // Recording error
-            playTone(1000, 200);
-            delay(100);
-            playTone(800, 200);
-            delay(100);
-            playTone(600, 400);
+            SoundFxManager::playErrorSound(1);
             break;
             
         case 2: // SD card error
-            playTone(800, 200);
-            delay(100);
-            playTone(800, 200);
-            delay(100);
-            playTone(400, 400);
+            SoundFxManager::playErrorSound(2);
             break;
             
         case 3: // Playback error
-            playTone(600, 200);
-            delay(100);
-            playTone(600, 200);
-            delay(100);
-            playTone(300, 400);
+            SoundFxManager::playErrorSound(3);
             break;
     }
 }
@@ -399,7 +388,7 @@ void startRecording() {
 
     if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
         Serial.println("ERROR: Failed to install I2S driver");
-        playErrorSound(1);
+        SoundFxManager::playErrorSound(1);
         setEarsDown();
         return;
     }
@@ -407,7 +396,7 @@ void startRecording() {
     if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
         Serial.println("ERROR: Failed to set I2S pins");
         i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        playErrorSound(1);
+        SoundFxManager::playErrorSound(1);
         setEarsDown();
         return;
     }
@@ -417,7 +406,7 @@ void startRecording() {
     if (!recordFile) {
         Serial.println("ERROR: Failed to open file for recording");
         i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        playErrorSound(2);
+        SoundFxManager::playErrorSound(2);
         setEarsDown();
         return;
     }
@@ -448,7 +437,7 @@ void stopRecording() {
         Serial.println("ERROR: Failed to seek in file");
         recordFile.close();
         i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        playErrorSound(2);
+        SoundFxManager::playErrorSound(2);
         setEarsDown();
         return;
     }
@@ -457,7 +446,7 @@ void stopRecording() {
         Serial.println("ERROR: Failed to write WAV header");
         recordFile.close();
         i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        playErrorSound(2);
+        SoundFxManager::playErrorSound(2);
         setEarsDown();
         return;
     }
@@ -473,13 +462,13 @@ void stopRecording() {
         Serial.println("Found recording file, playing...");
         if (!audio.connecttoFS(SD, RECORD_FILENAME)) {
             Serial.println("ERROR: Failed to start playback");
-            playErrorSound(3);
+            SoundFxManager::playErrorSound(3);
             setEarsDown();
             return;
         }
     } else {
         Serial.println("ERROR: Recording file not found!");
-        playErrorSound(3);
+        SoundFxManager::playErrorSound(3);
         setEarsDown();
         return;
     }
@@ -714,12 +703,12 @@ void setup() {
 
     leds[0] = CRGB::Red;
     leds[1] = CRGB::White;
-    leds[2] = CRGB::Red;
-    leds[3] = CRGB::Green;
+    leds[2] = CRGB::White;
+    leds[3] = CRGB::White;
     leds[4] = CRGB::Red;
-    leds[5] = CRGB::Blue;
-    leds[6] = CRGB::Red;
-    leds[7] = CRGB::Red;
+    leds[5] = CRGB::White;
+    leds[6] = CRGB::White;
+    leds[7] = CRGB::White;
     FastLED.setBrightness(50);
     FastLED.show();
     drawSprite();
@@ -732,6 +721,7 @@ void setup() {
     unsigned long startAttemptTime = millis();
     while (WiFi.status() != WL_CONNECTED && 
            millis() - startAttemptTime < 20000) {  // 20 second timeout
+        
         delay(500);
         Serial.print(".");
         // Flash first LED to show we're trying to connect
@@ -744,6 +734,7 @@ void setup() {
     }
     
     if (WiFi.status() != WL_CONNECTED) {
+        RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 500);
         Serial.println("\nPrimary WiFi failed, trying backup...");
         WiFi.disconnect();
         delay(1000);
@@ -764,6 +755,7 @@ void setup() {
     }
     
     if (WiFi.status() == WL_CONNECTED) {
+        RoverManager::setTemporaryExpression(RoverManager::BIG_SMILE, 500);
         Serial.println("\nWiFi connected!");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
@@ -788,6 +780,7 @@ void setup() {
             delay(250);
             attempts++;
             drawLoadingScreen();  // Update loading screen while waiting
+            
         }
         
         if (time(nullptr) > 1000000000) {
@@ -804,7 +797,7 @@ void setup() {
         }
     } else {
         Serial.println("\nWiFi connection failed! Setting default time...");
-        
+        RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 500);
         // Set default time to December 31st, 5:45 PM
         struct tm timeinfo = { 0 };
         timeinfo.tm_year = 2023 - 1900;  // Years since 1900
@@ -906,10 +899,10 @@ void readEncoder() {
     if (newPos != lastPos) {
         if (newPos > lastPos) {
             RoverViewManager::nextView();
-            playTone(1047, 20);
+            SoundFxManager::playRotaryTurnSound(true);
         } else {
             RoverViewManager::previousView();
-            playTone(1568, 20);
+            SoundFxManager::playRotaryTurnSound(false);
         }
         lastPos = newPos;
     }
@@ -932,10 +925,10 @@ void readEncoder() {
             
             // Play different tones for different modes
             if (isWeekMode) {
-                playTone(1000, 100);  // Higher tone for week mode
+                SoundFxManager::playRotaryPressSound(1);
                 Serial.println("Switched to Week Mode");
             } else {
-                playTone(800, 100);   // Lower tone for full mode
+                SoundFxManager::playRotaryTurnSound(0);
                 Serial.println("Switched to Full Mode");
             }
         }
@@ -1174,52 +1167,21 @@ void handleSideButton() {
             if (currentState == LOW) {
                 if (!RoverManager::earsPerked) {
                     setEarsUp();
+                    RoverManager::setTemporaryExpression(RoverManager::HAPPY);
                     drawSprite();
-
-                    // Radio-style chirp sequence
-                    playTone(2500, 30);  // High chirp
-                    delay(20);
-                    playTone(1800, 40);  // Medium chirp
-                    delay(20);
-                    playTone(2200, 35);  // Response chirp
-                    delay(15);
-                    playTone(2600, 25);  // Final blip
+                    SoundFxManager::playSideButtonSound(true);
                 }
             } else {
                 if (RoverManager::earsPerked) {
                     setEarsDown();
+                    RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP, 1000);
                     drawSprite();
-                    
-                    // Radio sign-off chirp
-                    playTone(2200, 35);
-                    delay(20);
-                    playTone(1800, 45);  // Lower tone for "down"
+                    SoundFxManager::playSideButtonSound(false);
                 }
             }
         }
     }
 }
-
-void playTone(int frequency, int duration) {
-    isPlayingSound = true;
-
-    // Set LED color based on frequency
-    leds[0] = ColorUtilities::getColorForFrequency(frequency);
-    FastLED.show();
-
-    // Configure PWM for tone
-    ledcSetup(TONE_PWM_CHANNEL, frequency, 8);
-    ledcAttachPin(TONE_PIN, TONE_PWM_CHANNEL);
-    ledcWrite(TONE_PWM_CHANNEL, 127);
-
-    delay(duration);
-
-    ledcWrite(TONE_PWM_CHANNEL, 0);
-    ledcDetachPin(TONE_PIN);
-
-    isPlayingSound = false;
-}
-
 void updateLEDs() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
@@ -1398,9 +1360,8 @@ void exitSleepMode() {
 
 void loop() {
     // Call encoder reading more frequently
-    readEncoder();  // At start of loop
-
     handleSideButton();
+    readEncoder();  // At start of loop
 
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();

@@ -19,6 +19,8 @@ public:
         NUM_EXPRESSIONS
     };
 
+    static const char* expressionToMood(Expression exp);
+
 private:
     // Now we can use Expression as a type
     static Expression currentExpression;
