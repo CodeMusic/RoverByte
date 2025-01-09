@@ -923,11 +923,36 @@ void readEncoder() {
         if (buttonState == LOW) {  // Button pressed
             PowerManager::wakeFromSleep();  // Wake on button press
             PowerManager::updateLastActivityTime();
-            LEDManager::nextMode();
-            SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+            
+            if (showTime) {  // If currently showing small rover with time
+                LEDManager::nextMode();  // Start LED mode cycling
+                SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+            } else {  // If in LED mode
+                showTime = true;
+            }
             drawSprite();
         }
         lastButtonState = buttonState;
+    }
+
+    handleRotaryButton();
+}
+
+void handleRotaryButton() {
+    if (rotaryButtonPressed) {
+        rotaryButtonPressed = false;
+        
+        // Toggle between showing time and LED modes
+        if (!showTime) {
+            showTime = true;
+        } else {
+            LEDManager::nextMode();
+            SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+        }
+        drawSprite();
+        
+        // Reset sleep timer on button press
+        PowerManager::updateLastActivityTime();
     }
 }
 

@@ -189,11 +189,14 @@ void LEDManager::updateTimerMode() {
         // Clear all LEDs first
         FastLED.clear();
         
+        // Safety check for array bounds
+        completedCycles = static_cast<uint8_t>(min(static_cast<int>(completedCycles), static_cast<int>(WS2812_NUM_LEDS)));
+        filledPositions = static_cast<uint8_t>(min(static_cast<int>(filledPositions), static_cast<int>(WS2812_NUM_LEDS - 1)));
+        
         // Draw completed cycles (white LEDs)
         for (int i = 0; i < completedCycles && i < WS2812_NUM_LEDS; i++) {
-            // Blink white LED if it's in the current animation path
             if (i >= filledPositions && i < WS2812_NUM_LEDS) {
-                if ((currentTime / 100) % 2 == 0) {  // Fast blink every 100ms
+                if ((currentTime / 100) % 2 == 0) {
                     leds[i] = CRGB::White;
                 }
             } else {
@@ -203,35 +206,35 @@ void LEDManager::updateTimerMode() {
         
         // If we haven't completed all cycles
         if (completedCycles < WS2812_NUM_LEDS) {
-            CRGB currentColor = getRainbowColor(currentColorIndex);
+            CRGB currentColor = getRainbowColor(currentColorIndex % NUM_RAINBOW_COLORS);
             
-            // Fill background with current color for all filled positions
+            // Fill background with current color
             for (int i = filledPositions; i < WS2812_NUM_LEDS; i++) {
-                if (i >= completedCycles) {  // Don't overwrite white LEDs
+                if (i >= completedCycles) {
                     leds[i] = currentColor;
                 }
             }
             
-            // Update position counter
-            if (currentPosition >= STEP_DELAY * 8) {  // Slow down the filling
+            // Update position with overflow protection
+            if (currentPosition < STEP_DELAY * 8) {
+                currentPosition++;
+            } else {
                 if (filledPositions > 0) {
                     filledPositions--;
                 } else {
-                    // When we've filled all positions with current color
-                    if (currentColorIndex == NUM_RAINBOW_COLORS - 1) {  // If we're at violet
-                        completedCycles++;  // Add a white LED
-                        currentColorIndex = 0;  // Start over with red
+                    if (currentColorIndex >= NUM_RAINBOW_COLORS - 1) {
+                        completedCycles = min(completedCycles + 1, WS2812_NUM_LEDS);
+                        currentColorIndex = 0;
                     } else {
-                        currentColorIndex++;  // Move to next color
+                        currentColorIndex++;
                     }
-                    filledPositions = WS2812_NUM_LEDS - 1;  // Start filling from right again
+                    filledPositions = WS2812_NUM_LEDS - 1;
                 }
                 currentPosition = 0;
             }
-            currentPosition++;
             
-            // Add blinking effect for the current filling position
-            if ((millis() / 100) % 2 == 0) {  // Blink every 100ms
+            // Add blinking effect with bounds check
+            if (filledPositions < WS2812_NUM_LEDS && (millis() / 100) % 2 == 0) {
                 leds[filledPositions] = CRGB::White;
             }
         }
