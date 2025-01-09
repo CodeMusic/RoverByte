@@ -186,56 +186,29 @@ void LEDManager::updateTimerMode() {
     if (currentTime - lastStepTime >= STEP_DELAY) {
         lastStepTime = currentTime;
         
-        // Clear all LEDs first
-        FastLED.clear();
+        // Get current rainbow color
+        CRGB currentColor = getRainbowColor(currentColorIndex);
         
-        // Safety check for array bounds
-        completedCycles = static_cast<uint8_t>(min(static_cast<int>(completedCycles), static_cast<int>(WS2812_NUM_LEDS)));
-        filledPositions = static_cast<uint8_t>(min(static_cast<int>(filledPositions), static_cast<int>(WS2812_NUM_LEDS - 1)));
-        
-        // Draw completed cycles (white LEDs)
-        for (int i = 0; i < completedCycles && i < WS2812_NUM_LEDS; i++) {
-            if (i >= filledPositions && i < WS2812_NUM_LEDS) {
-                if ((currentTime / 100) % 2 == 0) {
+        // Fill one LED at a time from left to right
+        if (currentPosition < WS2812_NUM_LEDS) {
+            leds[currentPosition] = currentColor;
+            currentPosition++;
+        } else {
+            // When we've filled all LEDs with current color
+            currentPosition = 0;
+            currentColorIndex++;
+            
+            // If we've gone through all colors
+            if (currentColorIndex >= NUM_RAINBOW_COLORS) {
+                currentColorIndex = 0;
+                // Add traveling white LED effect
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
                     leds[i] = CRGB::White;
+                    FastLED.show();
+                    delay(50);
+                    leds[i] = getRainbowColor(currentColorIndex);
+                    FastLED.show();
                 }
-            } else {
-                leds[i] = CRGB::White;
-            }
-        }
-        
-        // If we haven't completed all cycles
-        if (completedCycles < WS2812_NUM_LEDS) {
-            CRGB currentColor = getRainbowColor(currentColorIndex % NUM_RAINBOW_COLORS);
-            
-            // Fill background with current color
-            for (int i = filledPositions; i < WS2812_NUM_LEDS; i++) {
-                if (i >= completedCycles) {
-                    leds[i] = currentColor;
-                }
-            }
-            
-            // Update position with overflow protection
-            if (currentPosition < STEP_DELAY * 8) {
-                currentPosition++;
-            } else {
-                if (filledPositions > 0) {
-                    filledPositions--;
-                } else {
-                    if (currentColorIndex >= NUM_RAINBOW_COLORS - 1) {
-                        completedCycles = min(completedCycles + 1, WS2812_NUM_LEDS);
-                        currentColorIndex = 0;
-                    } else {
-                        currentColorIndex++;
-                    }
-                    filledPositions = WS2812_NUM_LEDS - 1;
-                }
-                currentPosition = 0;
-            }
-            
-            // Add blinking effect with bounds check
-            if (filledPositions < WS2812_NUM_LEDS && (millis() / 100) % 2 == 0) {
-                leds[filledPositions] = CRGB::White;
             }
         }
         
