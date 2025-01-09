@@ -2,6 +2,7 @@
 #include "utilities.h"
 #include <time.h>
 #include "ColorUtilities.h"
+#include "PowerManager.h"
 
 // Forward declare the drawSprite function from the .ino file
 void drawSprite();
@@ -143,6 +144,9 @@ void RoverManager::drawNoseAndMouth(String mood, int roverX, int currentY, float
 }
 
 void RoverManager::updateHoverAnimation() {
+    // Only update hover animation when device is awake
+    if (PowerManager::getCurrentSleepState() != PowerManager::AWAKE) return;
+    
     if (millis() - lastHoverUpdate >= 100) {  // Update every 100ms
         if (movingDown) {
             hoverOffset++;

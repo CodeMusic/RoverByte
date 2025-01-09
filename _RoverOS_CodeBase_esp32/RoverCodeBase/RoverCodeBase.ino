@@ -2,7 +2,7 @@
 #include <Wire.h>
 
 // FastLED SPI definitions for ESP32-S3
-#define FASTLED_ESP32_SPI_BUS FSPI  // Use FSPI instead of VSPI for ESP32-S3
+#define FASTLED_ESP32_SPI_BUS FSPI
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
 
@@ -22,10 +22,7 @@
 #include "ColorUtilities.h"
 #include "DisplayConfig.h"
 #include "SoundFxManager.h"
-// Add FastLED SPI definitions
-#define FASTLED_ALL_PINS_HARDWARE_SPI
-#define FASTLED_ESP32_SPI_BUS VSPI
-#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
+#include "LEDManager.h"
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -83,12 +80,6 @@ bool showLevel = true;  // Toggle between level and experience
 unsigned long lastWiFiAttempt = 0;
 const unsigned long WIFI_RETRY_INTERVAL = 300000;  // Try every 5 minutes
 bool isWiFiConnected = false;
-
-bool isWeekMode = false;  // false = full mode, true = week mode
-const uint8_t PAST_BRIGHTNESS = 0;      // 0%
-const uint8_t FUTURE_BRIGHTNESS = 178;  // 70%
-const uint8_t TODAY_BRIGHTNESS = 232;   // 91%
-const uint8_t MONTH_DIM = 64;          // 25%
 
 // Add at top with other global variables
 XPowersPPM PPM;
@@ -274,13 +265,12 @@ void checkSleepState() {
 void wakeFromSleep() {
     lastActivityTime = millis();
     if (currentSleepState != AWAKE) {
-        // Immediately turn on display and backlight
-        tft.writecommand(TFT_DISPON);
+        tft.writecommand(TFT_SLPOUT);  // Wake from sleep
+        delay(120);                     // Delay needed after sleep out
+        tft.writecommand(TFT_DISPON);  // Turn display on
+
         ledcWrite(PWM_CHANNEL, 255);  // Full brightness immediately
-        
-        // Reset sleep state
-        currentSleepState = AWAKE;
-        
+        lastActivityTime = millis();
         // Restore LED brightness
         FastLED.setBrightness(50);
         FastLED.show();
@@ -713,6 +703,10 @@ void setup() {
     FastLED.show();
     drawSprite();
 
+    // Draw loading screen and start LED animation
+    drawLoadingScreen();
+    LEDManager::startLoadingAnimation();
+    
     // Connect to WiFi with visual feedback and retries
     Serial.println("Connecting to WiFi...");
     WiFi.begin(primary_ssid, primary_password);  // Try primary network first
@@ -823,7 +817,7 @@ void setup() {
     // Initialize LEDs
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
     FastLED.setBrightness(50);
-    updateLEDs();  // Initial LED update
+    LEDManager::updateLEDs();  // Initial LED update
 
     setupBacklight();
     
@@ -845,6 +839,17 @@ void setup() {
     // Initialize display with time hidden and large rover
     showTime = false;
     drawSprite();
+
+    // Initialize LED manager
+    LEDManager::init();
+
+    // After WiFi and time are configured
+    if (isWiFiConnected) {
+        LEDManager::stopLoadingAnimation();  // This will switch to FULL_MODE
+    } else {
+        // If WiFi failed, still stop animation but maybe show an error state
+        LEDManager::stopLoadingAnimation();
+    }
 }
 
 void syncLEDsForDay() {
@@ -897,6 +902,9 @@ void readEncoder() {
     static int lastPos = 0;
     
     if (newPos != lastPos) {
+        PowerManager::wakeFromSleep();  // Wake on any rotation
+        PowerManager::updateLastActivityTime();
+        
         if (newPos > lastPos) {
             RoverViewManager::nextView();
             SoundFxManager::playRotaryTurnSound(true);
@@ -907,30 +915,17 @@ void readEncoder() {
         lastPos = newPos;
     }
 
-    // Handle button press with proper mode switching
+    // Handle button press
     static bool lastButtonState = HIGH;
     bool buttonState = digitalRead(ENCODER_KEY);
     
     if (buttonState != lastButtonState) {
-        delay(50); // Simple debounce
-        if (buttonState == LOW) {
-            isWeekMode = !isWeekMode;  // Toggle mode
-            showTime = true;           // Show time when mode changes
-            
-            // Force immediate LED updates
-            FastLED.clear();  // Clear existing LED states
-            updateLEDs();     // Update with new mode
-            FastLED.show();   // Make sure changes are displayed
+        if (buttonState == LOW) {  // Button pressed
+            PowerManager::wakeFromSleep();  // Wake on button press
+            PowerManager::updateLastActivityTime();
+            LEDManager::nextMode();
+            SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
             drawSprite();
-            
-            // Play different tones for different modes
-            if (isWeekMode) {
-                SoundFxManager::playRotaryPressSound(1);
-                Serial.println("Switched to Week Mode");
-            } else {
-                SoundFxManager::playRotaryTurnSound(0);
-                Serial.println("Switched to Full Mode");
-            }
         }
         lastButtonState = buttonState;
     }
@@ -1160,7 +1155,8 @@ void handleSideButton() {
     
     if ((millis() - lastDebounceTime) > debounceDelay) {
         if (currentState != lastState) {
-            wakeFromSleep();
+            PowerManager::wakeFromSleep();  // Wake on side button
+            PowerManager::updateLastActivityTime();
             lastDebounceTime = millis();
             lastState = currentState;
             
@@ -1181,147 +1177,6 @@ void handleSideButton() {
             }
         }
     }
-}
-void updateLEDs() {
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    
-    // Create a 3-state blink cycle (0, 1, 2) using integer division of seconds
-    int blinkState = (timeInfo->tm_sec % 3);
-    
-    if (isWeekMode) {
-        // Week Mode
-        // LED 0: Month color - blink between colors or solid
-        CRGB monthColor1, monthColor2;
-        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
-        
-        if (monthColor1 == monthColor2) {
-            // Solid color month - blink between color and off
-            if (timeInfo->tm_sec % 2 == 0) {
-                monthColor1.nscale8(184);  // 72% brightness
-                leds[0] = monthColor1;
-            } else {
-                leds[0] = CRGB::Black;
-            }
-        } else {
-            // Two-color month - cycle between colors and off
-            switch(blinkState) {
-                case 0: 
-                    monthColor1.nscale8(184);  // 72% brightness
-                    leds[0] = monthColor1; 
-                    break;
-                case 1: 
-                    monthColor2.nscale8(184);  // 72% brightness
-                    leds[0] = monthColor2; 
-                    break;
-                case 2: 
-                    leds[0] = CRGB::Black; 
-                    break;
-            }
-        }
-        
-        // LEDs 1-7: Days of week (Sunday=1 to Saturday=7)
-        CRGB dayColors[] = {
-            CRGB::Red,          // Sunday
-            CRGB::Orange,       // Monday
-            CRGB::Yellow,       // Tuesday
-            CRGB::Green,        // Wednesday
-            CRGB::Blue,         // Thursday
-            CRGB(75, 0, 130),   // Friday (Indigo)
-            CRGB(148, 0, 211)   // Saturday (Violet)
-        };
-        
-        for (int i = 1; i <= 7; i++) {
-            if (i - 1 < timeInfo->tm_wday) {
-                // Past days are off
-                leds[i] = CRGB::Black;
-            } 
-            else if (i - 1 == timeInfo->tm_wday) {
-                // Current day blinks at 72% brightness
-                if (timeInfo->tm_sec % 2 == 0) {
-                    CRGB dayColor = dayColors[i - 1];
-                    dayColor.nscale8(184);  // 72% brightness
-                    leds[i] = dayColor;
-                } else {
-                    leds[i] = CRGB::Black;
-                }
-            }
-            else {
-                // Future days at 30% brightness
-                CRGB dayColor = dayColors[i - 1];
-                dayColor.nscale8(77);  // 30% brightness
-                leds[i] = dayColor;
-            }
-        }
-    } else {
-        // LED 0: Day of week color
-        leds[0] = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
-        
-        // LED 1: Week number of month (base 8)
-        int weekOfMonth = (timeInfo->tm_mday - 1) / 7;  // 0-3 or 4
-        switch(weekOfMonth) {
-            case 0: leds[1] = CRGB::Red; break;
-            case 1: leds[1] = CRGB(255, 100, 0); break;  // Orange
-            case 2: leds[1] = CRGB::Yellow; break;
-            case 3: leds[1] = CRGB::Green; break;
-            default: leds[1] = CRGB::Blue; break;  // 5th week if exists
-        }
-        
-        // LED 2: Month (base 12)
-        CRGB monthColor1, monthColor2;
-        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
-        if (monthColor1 == monthColor2) {
-            leds[2] = monthColor1;  // Solid color if both are the same
-        } else {
-            switch(blinkState) {
-                case 0: leds[2] = monthColor1; break;
-                case 1: leds[2] = monthColor2; break;
-                case 2: leds[2] = CRGB::Black; break;
-            }
-        }
-        
-        // LED 3: Hours (base 12)
-        int hour12 = timeInfo->tm_hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        CRGB hourColor1, hourColor2;
-        ColorUtilities::getMonthColors(hour12, hourColor1, hourColor2);
-        if (hourColor1 == hourColor2) {
-            leds[3] = hourColor1;  // Solid color if both are the same
-        } else {
-            switch(blinkState) {
-                case 0: leds[3] = hourColor1; break;
-                case 1: leds[3] = hourColor2; break;
-                case 2: leds[3] = CRGB::Black; break;
-            }
-        }
-        
-        // LED 4-5: Minutes (base 8)
-        int minutes = timeInfo->tm_min;
-        int minTens = minutes / 8;
-        int minOnes = minutes % 8;
-        leds[4] = ColorUtilities::getBase8Color(minTens);
-        leds[5] = ColorUtilities::getBase8Color(minOnes);
-        
-        // LED 6-7: Day of month (base 8)
-        int day = timeInfo->tm_mday;  // 8
-        int dayTens = day / 8;        // 8/8 = 1 (red)
-        int dayOnes = day % 8;        // 8%8 = 0 (off)
-        
-        // Base-8 colors:
-        // 0 = off/black
-        // 1 = red
-        // 2 = orange
-        // 3 = yellow
-        // 4 = green
-        // 5 = blue
-        // 6 = indigo
-        // 7 = violet
-        
-        leds[6] = ColorUtilities::getBase8Color(dayOnes);  // Should be off (0)
-        leds[7] = ColorUtilities::getBase8Color(dayTens);  // Should be red (1)
-    }
-    
-    FastLED.show();
 }
 
 void enterSleepMode() {
@@ -1351,7 +1206,7 @@ void exitSleepMode() {
     drawSprite();  // Redraw the display
     
     // Restore LED state
-    updateLEDs();
+    LEDManager::updateLEDs();
     
     // Reset button states
     rotaryButtonPressed = false;
@@ -1380,21 +1235,21 @@ void loop() {
                 LOG_DEBUG("Display state: AWAKE");
                 setBacklight(255);
                 drawSprite();
-                updateLEDs();
+                LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DIM_DISPLAY:
                 LOG_DEBUG("Display state: DIM");
                 setBacklight(64);
                 drawSprite();
-                updateLEDs();
+                LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DISPLAY_OFF:
                 LOG_DEBUG("Display state: OFF");
                 tft.writecommand(TFT_DISPOFF);
                 setBacklight(0);
-                updateLEDs();
+                LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DEEP_SLEEP:
