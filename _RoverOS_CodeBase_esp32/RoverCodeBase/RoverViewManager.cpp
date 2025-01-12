@@ -1,7 +1,16 @@
 #include "RoverViewManager.h"
+#include "utilities.h"
+#include "PowerManager.h"
+#include "DisplayConfig.h"
+#include "RoverManager.h"
+
+// Add at the top with other includes
+extern bool showTime;  // Declare the external variable
 
 // Initialize static members
 RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
+unsigned long RoverViewManager::lastStatusUpdate = 0;
+int RoverViewManager::statusRotation = 0;
 
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
@@ -19,30 +28,40 @@ void drawForgivenessSymbol(int x, int y, int size);
 void drawKindnessSymbol(int x, int y, int size);
 void drawHumilitySymbol(int x, int y, int size);
 void drawBatteryCharging(int x, int y, int size);
+void drawBattery(int x, int y, int size);
 
 // Update array names to match header
 const RoverViewManager::ChakraInfo RoverViewManager::CHAKRA_DATA[] = {
-    {"Root Chakra", "Survival, Grounding, Stability, Comfort, Safety", TFT_RED, drawRootChakra},
-    {"Sacral Chakra", "Sensuality, Sexuality, Pleasure, Creativity, Emotions", 0xFDA0, drawSacralChakra},
-    {"Solar Plexus Chakra", "Strength, Ego, Power, Self-esteem, Digestion", 0xFFE0, drawSolarChakra},
-    {"Heart Chakra", "Love, Acceptance, Compassion, Kindness, Peace", 0x07E0, drawHeartChakra},
-    {"Throat Chakra", "Communication, Expression, Honesty, Purification", 0x001F, drawThroatChakra},
-    {"Third Eye Chakra", "Intuition, Visualization, Imagination, Clairvoyance", 0x180E, drawThirdEyeChakra},
-    {"Crown Chakra", "Knowledge, Fulfillment, Spirituality, Reality", 0x780F, drawCrownChakra}
+    {"Root Chakra", "Survival, Grounding, \nStability, Comfort, Safety", TFT_RED, drawRootChakra},
+    {"Sacral Chakra", "Sensuality, Sexuality, \nPleasure, Creativity, Emotions", 0xFDA0, drawSacralChakra},
+    {"Solar Plexus Chakra", "Strength, Ego, Power, \nSelf-esteem, Digestion", 0xFFE0, drawSolarChakra},
+    {"Heart Chakra", "Love, Acceptance, Compassion, \nKindness, Peace", 0x07E0, drawHeartChakra},
+    {"Throat Chakra", "Communication, Expression, \nHonesty, Purification", 0x001F, drawThroatChakra},
+    {"Third Eye Chakra", "Intuition, Visualization, \nImagination, Clairvoyance", 0x180E, drawThirdEyeChakra},
+    {"Crown Chakra", "Knowledge, Fulfillment, \nSpirituality, Reality", 0x780F, drawCrownChakra}
 };
 
 const RoverViewManager::VirtueInfo RoverViewManager::VIRTUE_DATA[] = {
-    {"Chastity cures Lust", "Acting purely quells excessive sexual appetites", TFT_RED, drawChastitySymbol},
-    {"Temperance cures Gluttony", "Practicing self-restraint quells over-indulgence", 0xFDA0, drawTemperanceSymbol},
-    {"Charity cures Greed", "Giving quells avarice", 0xFFE0, drawCharitySymbol},
-    {"Diligence cures Sloth", "Your integrity and attention to detail quells laziness", 0x07E0, drawDiligenceSymbol},
-    {"Forgiveness cures Wrath", "Practice keeping your composure to quell anger", 0x001F, drawForgivenessSymbol},
-    {"Kindness cures Envy", "Practice admiration to quell jealousy", 0x180E, drawKindnessSymbol},
-    {"Humility cures Pride", "Show humbleness to quell vanity", 0x780F, drawHumilitySymbol}
+    {"Chastity cures Lust", "Purity \nquells \nexcessive sexual appetites", TFT_RED, drawChastitySymbol},
+    {"Temperance cures Gluttony", "Self-restraint \nquells \nover-indulgence", 0xFDA0, drawTemperanceSymbol},
+    {"Charity cures Greed", "Giving \nquells \navarice", 0xFFE0, drawCharitySymbol},
+    {"Diligence cures Sloth", "Integrity and effort \nquells \nlaziness", 0x07E0, drawDiligenceSymbol},
+    {"Forgiveness cures Wrath", "Keep composure \nto quell \nanger", 0x001F, drawForgivenessSymbol},
+    {"Kindness cures Envy", "Admiration \nquells \njealousy", 0x180E, drawKindnessSymbol},
+    {"Humility cures Pride", "Humbleness \nquells \nvanity", 0x780F, drawHumilitySymbol}
 };
 
 void RoverViewManager::init() {
     LOG_PROD("Initializing RoverViewManager");
+    
+    // Create sprite with screen dimensions
+    spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
+    spr.fillSprite(TFT_BLACK);
+    spr.pushSprite(0, 0);
+    
+    // Draw initial frame
+    drawFrame();
+    drawCurrentView();
 }
 
 void RoverViewManager::setCurrentView(ViewType view) {
@@ -67,55 +86,100 @@ void RoverViewManager::previousView() {
 void RoverViewManager::drawCurrentView() {
     LOG_DEBUG("Drawing view %d", currentView);
     
-    // Draw the frame first
-    drawFrame();
-    
-    // Set common text properties - changed to black text on frame color background
-    spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    
-    switch (currentView) {
-        case ViewType::TODO_LIST:
-            LOG_DEBUG("Drawing TODO_LIST view");
-            drawTodoList();
-            break;
-        case ViewType::CHAKRAS:
-            LOG_DEBUG("Drawing CHAKRAS view");
-            spr.setTextFont(2);  // Smaller font
-            drawChakras();
-            break;
-        case ViewType::VIRTUES:
-            LOG_DEBUG("Drawing VIRTUES view");
-            spr.setTextFont(2);  // Smaller font
-            drawVirtues();
-            break;
-        case ViewType::QUOTES:
-            LOG_DEBUG("Drawing QUOTES view");
-            drawQuotes();
-            break;
-        case ViewType::WEATHER:
-            LOG_DEBUG("Drawing WEATHER view");
-            drawWeather();
-            break;
-        case ViewType::STATS:
-            LOG_DEBUG("Drawing STATS view");
-            drawStats();
-            break;
-        case ViewType::NEXTMEAL:
-            LOG_DEBUG("Drawing NEXTMEAL view");
-            drawNextMeal();
-            break;
-        default:
-            LOG_DEBUG("Unknown view %d", currentView);
-            break;
+    try {
+        // Clear sprite first
+        spr.fillSprite(TFT_BLACK);
+
+        RoverManager::drawRover(
+            RoverManager::getCurrentMood(),
+            RoverManager::earsPerked,
+            !showTime,  // Large when not showing time
+            SCREEN_CENTER_X - 20,  // Moved left 20px
+            showTime ? 50 : 80
+        );
+        
+        // Draw the frame
+        drawFrame();
+        
+        // Set common text properties
+        spr.setTextColor(TFT_BLACK, FRAME_COLOR);
+        spr.setTextDatum(MC_DATUM);  // Middle-Center alignment
+        
+        // Draw view content
+        switch (currentView) {
+            case ViewType::TODO_LIST:
+                LOG_DEBUG("Drawing TODO_LIST view");
+                drawTodoList();
+                break;
+            case ViewType::CHAKRAS:
+                LOG_DEBUG("Drawing CHAKRAS view");
+                spr.setTextFont(2);  // Smaller font
+                drawChakras();
+                break;
+            case ViewType::VIRTUES:
+                LOG_DEBUG("Drawing VIRTUES view");
+                spr.setTextFont(2);  // Smaller font
+                drawVirtues();
+                break;
+            case ViewType::QUOTES:
+                LOG_DEBUG("Drawing QUOTES view");
+                drawQuotes();
+                break;
+            case ViewType::WEATHER:
+                LOG_DEBUG("Drawing WEATHER view");
+                drawWeather();
+                break;
+            case ViewType::STATS:
+                LOG_DEBUG("Drawing STATS view");
+                drawStats();
+                break;
+            case ViewType::NEXTMEAL:
+                LOG_DEBUG("Drawing NEXTMEAL view");
+                drawNextMeal();
+                break;
+            default:
+                LOG_DEBUG("Unknown view %d", currentView);
+                // Draw a fallback view instead of leaving screen blank
+                spr.setTextFont(2);
+                spr.drawString("Error: Invalid View", SCREEN_CENTER_X, FRAME_Y + 45);
+                break;
+        }
+        
+        // Draw status bar last
+        drawStatusBar();
+        
+        spr.pushSprite(0, 0);
+        
+    } catch (const std::exception& e) {
+        LOG_PROD("Error in drawCurrentView: %s", e.what());
+        
+        // Draw error message
+        spr.fillSprite(TFT_BLACK);
+        spr.setTextFont(2);
+        spr.setTextColor(TFT_WHITE, TFT_BLACK);
+        spr.drawString("Display Error - Recovering", SCREEN_CENTER_X, FRAME_Y + FRAME_HEIGHT/2);
+        spr.pushSprite(0, 0);
+        
+        // Reset to default view
+        currentView = VIRTUES;
+        delay(1000);  // Give user time to see error
+        
+        // Try to redraw
+        drawCurrentView();
     }
-    
-    spr.pushSprite(0, 0);
 }
 
 void RoverViewManager::drawFrame() {
     LOG_SCOPE("Drawing view frame");
-    spr.fillRect(FRAME_X, FRAME_Y + 5, FRAME_WIDTH, FRAME_HEIGHT - 5, FRAME_COLOR);  // Move frame down 5 pixels
-    spr.drawRect(FRAME_X + 2, FRAME_Y + 3, FRAME_WIDTH + 4, FRAME_HEIGHT - 1, FRAME_BORDER_COLOR);
+    
+    try {
+        // Center the frame on screen
+        int frameX = (SCREEN_WIDTH - FRAME_WIDTH) / 2;
+        spr.fillRect(frameX, FRAME_Y + 5, FRAME_WIDTH, FRAME_HEIGHT - 5, FRAME_COLOR);
+        spr.drawRect(frameX + 2, FRAME_Y + 3, FRAME_WIDTH + 4, FRAME_HEIGHT - 1, FRAME_BORDER_COLOR);
+    } catch (const std::exception& e) {
+        LOG_PROD("Error in drawFrame: %s", e.what());
+    }
 }
 
 void RoverViewManager::drawTodoList() {
@@ -123,12 +187,12 @@ void RoverViewManager::drawTodoList() {
     
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString("Today's Tasks:", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET);
+    spr.drawString("Today's Tasks:", SCREEN_CENTER_X - 10, FRAME_Y + TITLE_Y_OFFSET);  // Moved left and up
     
     spr.setTextFont(2);
-    spr.drawString("1. Service Canada", SCREEN_CENTER_X, FRAME_Y + 30);
-    spr.drawString("2. Call Doctor", SCREEN_CENTER_X, FRAME_Y + 50);
-    spr.drawString("3. Call Therapist", SCREEN_CENTER_X, FRAME_Y + 70);
+    spr.drawString("1. Service Canada", SCREEN_CENTER_X - 10, FRAME_Y + 35);     // Adjusted Y positions
+    spr.drawString("2. Call Doctor", SCREEN_CENTER_X - 10, FRAME_Y + 55);        // and moved left
+    spr.drawString("3. Call Therapist", SCREEN_CENTER_X - 10, FRAME_Y + 75);
 }
 
 void RoverViewManager::drawQuotes() {
@@ -136,13 +200,12 @@ void RoverViewManager::drawQuotes() {
     
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString("Quote of the Day", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET);
+    spr.drawString("Quote of the Day", SCREEN_CENTER_X - 10, FRAME_Y + TITLE_Y_OFFSET);
     
     spr.setTextFont(2);
-    // You could have an array of quotes and randomly select one
-    spr.drawString("\"The best way to predict", SCREEN_CENTER_X, FRAME_Y + 40);
-    spr.drawString("the future is to create it.\"", SCREEN_CENTER_X, FRAME_Y + 60);
-    spr.drawString("- Peter Drucker", SCREEN_CENTER_X, FRAME_Y + 80);
+    spr.drawString("\"The best way to predict", SCREEN_CENTER_X - 10, FRAME_Y + 45);
+    spr.drawString("the future is to create it.\"", SCREEN_CENTER_X - 10, FRAME_Y + 65);
+    spr.drawString("- Peter Drucker", SCREEN_CENTER_X - 10, FRAME_Y + 85);
 }
 
 void RoverViewManager::drawWeather() {
@@ -150,13 +213,12 @@ void RoverViewManager::drawWeather() {
     
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString("Weather", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET);
+    spr.drawString("Weather", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET + 15);
     
     spr.setTextFont(2);
-    // This could be updated with real weather data
-    spr.drawString("Sunny", SCREEN_CENTER_X, FRAME_Y + 40);
-    spr.drawString("72°F / 22°C", SCREEN_CENTER_X, FRAME_Y + 60);
-    spr.drawString("Humidity: 45%", SCREEN_CENTER_X, FRAME_Y + 80);
+    spr.drawString("Sunny", SCREEN_CENTER_X, FRAME_Y + 55);
+    spr.drawString("72°F / 22°C", SCREEN_CENTER_X, FRAME_Y + 75);
+    spr.drawString("Humidity: 45%", SCREEN_CENTER_X, FRAME_Y + 95);
 }
 
 void RoverViewManager::drawStats() {
@@ -164,13 +226,12 @@ void RoverViewManager::drawStats() {
     
     spr.setTextFont(4);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString("System Stats", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET);
+    spr.drawString("System Stats", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET + 15);
     
     spr.setTextFont(2);
-    // This could show various system statistics
-    spr.drawString("Uptime: 3d 12h", SCREEN_CENTER_X, FRAME_Y + 40);
-    spr.drawString("Memory: 65% free", SCREEN_CENTER_X, FRAME_Y + 60);
-    spr.drawString("WiFi: Connected", SCREEN_CENTER_X, FRAME_Y + 80);
+    spr.drawString("Uptime: 3d 12h", SCREEN_CENTER_X, FRAME_Y + 55);
+    spr.drawString("Memory: 65% free", SCREEN_CENTER_X, FRAME_Y + 75);
+    spr.drawString("WiFi: Connected", SCREEN_CENTER_X, FRAME_Y + 95);
 }
 
 // Define symbols for each virtue
@@ -227,12 +288,27 @@ void drawHumilitySymbol(int x, int y, int size) {
 
 void drawBatteryCharging(int x, int y, int size) {
     // Battery outline
-    spr.drawRect(x - size/2, y - size/4, size, size/2, TFT_BLACK);
-    spr.drawRect(x + size/2, y - size/8, size/8, size/4, TFT_BLACK);
+    spr.drawRect(x - size/2, y - size/4, size, size/2, TFT_WHITE);
+    spr.drawRect(x + size/2, y - size/8, size/8, size/4, TFT_WHITE);
     
     // Lightning bolt
     spr.fillTriangle(x, y - size/8, x - size/4, y, x, y, TFT_YELLOW);
     spr.fillTriangle(x, y, x + size/4, y, x, y + size/8, TFT_YELLOW);
+}
+
+void drawBattery(int x, int y, int size) {
+
+    int batteryWidth = size;
+    int sizeY = size;
+    int batteryX = x;
+    int batteryY = y;
+    
+    spr.drawRect(batteryX, batteryY, size, sizeY, TFT_WHITE);
+    spr.fillRect(batteryX + size, batteryY + 3, 2, 6, TFT_WHITE);
+    
+    int fillWidth = (size - 4) * PowerManager::getBatteryPercentage() / 100;
+    spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, sizeY - 4, TFT_WHITE);
+
 }
 
 void RoverViewManager::drawChakras() {
@@ -246,81 +322,70 @@ void RoverViewManager::drawChakras() {
     const ChakraInfo& todayChakra = CHAKRA_DATA[dayIndex];
     
     // Draw title in black with smaller font
-    spr.setTextFont(2);  // Smaller font for title
-    spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString(todayChakra.name, SCREEN_CENTER_X, 210);
-    
-    // Draw chakra symbol
-    todayChakra.drawSymbol(SCREEN_CENTER_X, 240, 40);
-    
-    // Draw attributes in black
     spr.setTextFont(2);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
+    spr.drawString(todayChakra.name, SCREEN_CENTER_X - 10, FRAME_Y + 15);  // Adjusted position
     
-    // Split attributes into multiple lines if needed
-    String attributes = todayChakra.attributes;
-    int y = 270;
+    // Draw chakra symbol
+    todayChakra.drawSymbol(SCREEN_CENTER_X - 10, FRAME_Y + 45, 40);  // Adjusted position
+    
+    // Draw attributes with line breaks
+    String description = todayChakra.attributes;
+    int y = FRAME_Y + 75;  // Start attributes lower
     int startPos = 0;
-    int lastSpace = -1;
+    int nextLine;
     
-    for(int i = 0; i < attributes.length(); i++) {
-        if(attributes[i] == ' ') {
-            lastSpace = i;
-        }
-        
-        // Check if we need to wrap (more than 25 chars or end of string)
-        if(i - startPos > 25 || i == attributes.length() - 1) {
-            String currentLine;
-            if(i == attributes.length() - 1) {
-                // Last line includes the final character
-                currentLine = attributes.substring(startPos);
-            } else {
-                // Use last space for clean word break
-                currentLine = attributes.substring(startPos, lastSpace);
-                i = lastSpace;
-            }
-            spr.drawString(currentLine, SCREEN_CENTER_X, y);
-            y += 20;
-            startPos = lastSpace + 1;
-        }
+    while ((nextLine = description.indexOf('\n', startPos)) != -1) {
+        spr.drawString(description.substring(startPos, nextLine), SCREEN_CENTER_X - 10, y);
+        startPos = nextLine + 1;
+        y += 20;
+    }
+    if (startPos < description.length()) {
+        spr.drawString(description.substring(startPos), SCREEN_CENTER_X - 10, y);
     }
 }
 
 void RoverViewManager::drawVirtues() {
     LOG_SCOPE("Drawing virtues view");
     
-    // Get current day of week (0 = Sunday)
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     int dayIndex = timeInfo->tm_wday;
     
     const VirtueInfo& todayVirtue = VIRTUE_DATA[dayIndex];
     
-    // Draw virtue title in black
-    spr.setTextFont(2);  // Smaller font
-    spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString(todayVirtue.virtue, SCREEN_CENTER_X, 210);  // Moved down 5 pixels
-    
-    // Draw virtue symbol
-    todayVirtue.drawSymbol(SCREEN_CENTER_X, 240, 40);  // Moved down 5 pixels
-    
-    // Draw description in black
+    // Draw virtue title higher and more left
     spr.setTextFont(2);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString(todayVirtue.description, SCREEN_CENTER_X, 270);  // Moved down 5 pixels
+    spr.drawString(todayVirtue.virtue, SCREEN_CENTER_X - 15, FRAME_Y + 15);
+    
+    // Draw virtue symbol higher
+    todayVirtue.drawSymbol(SCREEN_CENTER_X - 15, FRAME_Y + 45, 40);
+    
+    // Draw description with line breaks, higher and more left
+    String description = todayVirtue.description;
+    int y = FRAME_Y + 75;  // Start higher
+    int startPos = 0;
+    int nextLine;
+    
+    while ((nextLine = description.indexOf('\n', startPos)) != -1) {
+        spr.drawString(description.substring(startPos, nextLine), SCREEN_CENTER_X - 15, y);
+        startPos = nextLine + 1;
+        y += 20;
+    }
+    if (startPos < description.length()) {
+        spr.drawString(description.substring(startPos), SCREEN_CENTER_X - 15, y);
+    }
 }
 
 void RoverViewManager::drawNextMeal() {
     LOG_SCOPE("Drawing recipe view");
     
-    // Draw recipe title
     spr.setTextFont(4);
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
-    spr.drawString("Garlic Pasta", SCREEN_CENTER_X, 200);
+    spr.setTextColor(TFT_BLACK, FRAME_COLOR);
+    spr.drawString("Garlic Pasta", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET + 15);
     
-    // Draw ingredients list
     spr.setTextFont(2);
-    spr.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
     
     const char* ingredients[] = {
         "8 oz Spaghetti",
@@ -329,8 +394,8 @@ void RoverViewManager::drawNextMeal() {
         "Salt & Pepper",
     };
     
-    int y = 230;
-    for(int i = 0; i < 5; i++) {
+    int y = FRAME_Y + 55;
+    for(int i = 0; i < 4; i++) {
         spr.drawString(ingredients[i], SCREEN_CENTER_X, y);
         y += 20;
     }
@@ -387,4 +452,92 @@ void drawCrownChakra(int x, int y, int size) {
         spr.drawLine(x1, y + size/2, x1, y - size/2, 0x780F);
     }
     spr.drawLine(x - size/2, y - size/2, x + size/2, y - size/2, 0x780F);
+}
+
+void RoverViewManager::drawStatusBar() {
+    try {
+        time_t now = time(nullptr);
+        if (now == -1) {
+            LOG_PROD("Error getting time in drawStatusBar");
+            return;
+        }
+        
+        struct tm* timeInfo = localtime(&now);
+        if (!timeInfo) {
+            LOG_PROD("Error converting time in drawStatusBar");
+            return;
+        }
+        
+        // Status bar positioning
+        int dateWidth = 40;
+        int dateHeight = 30;
+        int dateX = 2;
+        
+        // Get month colors
+        CRGB monthColor1, monthColor2;
+        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+        
+        // Draw month color square
+        uint32_t monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
+        if (monthColor1.r == monthColor2.r && 
+            monthColor1.g == monthColor2.g && 
+            monthColor1.b == monthColor2.b) {
+            spr.fillRect(dateX, STATUS_BAR_Y, dateWidth, dateHeight, monthTftColor);
+        } else {
+            for (int i = 0; i < dateWidth; i++) {
+                float ratio = (float)i / dateWidth;
+                uint8_t r = monthColor1.r + (monthColor2.r - monthColor1.r) * ratio;
+                uint8_t g = monthColor1.g + (monthColor2.g - monthColor1.g) * ratio;
+                uint8_t b = monthColor1.b + (monthColor2.b - monthColor1.b) * ratio;
+                uint32_t tftColor = spr.color565(r, g, b);
+                spr.drawFastVLine(dateX + i, STATUS_BAR_Y, dateHeight, tftColor);
+            }
+        }
+        
+        // Draw day number
+        char dayStr[3];
+        sprintf(dayStr, "%d", timeInfo->tm_mday);
+        spr.setTextFont(2);
+        spr.setTextColor(TFT_WHITE, monthTftColor);
+        spr.drawString(dayStr, dateX + dateWidth/2, STATUS_BAR_Y + dateHeight/2);
+        
+        // Status text section
+        int statusX = dateX + dateWidth + 30;
+        
+        if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
+            statusRotation = (statusRotation + 1) % 2;
+            lastStatusUpdate = millis();
+        }
+        
+        spr.setTextFont(2);
+        spr.setTextColor(TFT_WHITE, TFT_BLACK);
+        
+        switch (statusRotation) 
+        {
+            case 0:
+                spr.drawString("Lvl:11 Exp:1,537", 
+                              statusX + 35, STATUS_BAR_Y + dateHeight/2);
+                break;
+                   
+            case 1:
+                if (PowerManager::isCharging()) 
+                {
+                    drawBatteryCharging(statusX, STATUS_BAR_Y + dateHeight/2, 19);
+                    char batteryStr[5];
+                    sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
+                    spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
+                } 
+                else 
+                {
+                    drawBattery(statusX, STATUS_BAR_Y + dateHeight/2, 19);
+                    char batteryStr[5];
+                    sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
+                    spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
+                }
+                break;  
+        }
+        
+    } catch (const std::exception& e) {
+        LOG_PROD("Error in drawStatusBar: %s", e.what());
+    }
 }   

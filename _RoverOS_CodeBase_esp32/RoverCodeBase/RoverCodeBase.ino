@@ -16,9 +16,10 @@
 #include "Audio.h"
 #include <XPowersLib.h>
 #include "driver/i2s.h"
-#include "RoverManager.h"
+
 #include "PowerManager.h"
 #include "RoverViewManager.h"
+#include "RoverManager.h"
 #include "ColorUtilities.h"
 #include "DisplayConfig.h"
 #include "SoundFxManager.h"
@@ -927,15 +928,18 @@ void readEncoder() {
     
     if (buttonState != lastButtonState) {
         if (buttonState == LOW) {  // Button pressed
-            PowerManager::wakeFromSleep();  // Wake on button press
-            PowerManager::updateLastActivityTime();
-            
-            if (showTime) {  // If currently showing small rover with time
-                LEDManager::nextMode();  // Start LED mode cycling
-                SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
-            } else {  // If in LED mode
-                showTime = true;
+
+            if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) { 
+                if (showTime) {  // If currently showing small rover with time
+                    LEDManager::nextMode();  // Start LED mode cycling
+                    SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+                } else {  // If in LED mode
+                    showTime = true;
+                }
+            } else {            
+                PowerManager::wakeFromSleep();  // Wake on button press
             }
+           PowerManager::updateLastActivityTime();
             drawSprite();
         }
         lastButtonState = buttonState;
@@ -968,213 +972,22 @@ void drawSprite() {
         drawLoadingScreen();
         return;
     }
-    
     spr.fillSprite(TFT_BLACK);
     
     // Draw Rover in top section
     RoverManager::drawRover(
         RoverManager::getCurrentMood(),
         RoverManager::earsPerked,
-        !showTime,  // Reversed logic: large when NOT showing time
+        !showTime,
         tft.width() / 2,
         showTime ? 50 : 80
     );
     
-    // Draw status bar between rover and view
-    drawStatusBar();
-    
-    // Draw current view in bottom section
+    // Draw status bar and current view
+    RoverViewManager::drawStatusBar();
     RoverViewManager::drawCurrentView();
     
     spr.pushSprite(0, 0);
-}
-
-void drawStatusBar() {
-    // Get current time
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    
-    // Status bar positioning - move it up slightly
-    int statusBarY = 170;  // Adjusted from 180 to 170
-    
-    // Left side: Month color square with day number
-    CRGB monthColor1, monthColor2;
-    ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
-    
-    int dateWidth = 40;
-    int dateHeight = 30;
-    int dateX = 2;  // Keep at far left edge
-    
-    // Draw month color square
-    uint32_t monthTftColor;  // Store the color for text background
-    if (monthColor1.r == monthColor2.r && 
-        monthColor1.g == monthColor2.g && 
-        monthColor1.b == monthColor2.b) {
-        monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
-        spr.fillRect(dateX, statusBarY, dateWidth, dateHeight, monthTftColor);
-    } else {
-        // For gradient, use first color for text background
-        monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
-        for (int i = 0; i < dateWidth; i++) {
-            float ratio = (float)i / dateWidth;
-            uint8_t r = monthColor1.r + (monthColor2.r - monthColor1.r) * ratio;
-            uint8_t g = monthColor1.g + (monthColor2.g - monthColor1.g) * ratio;
-            uint8_t b = monthColor1.b + (monthColor2.b - monthColor1.b) * ratio;
-            uint32_t tftColor = spr.color565(r, g, b);
-            spr.drawFastVLine(dateX + i, statusBarY, dateHeight, tftColor);
-        }
-    }
-    
-    // Draw day number with month color as background
-    char dayStr[3];
-    sprintf(dayStr, "%d", timeInfo->tm_mday);
-    spr.setTextFont(2);
-    spr.setTextColor(TFT_WHITE, monthTftColor);
-    spr.drawString(dayStr, dateX + dateWidth/2, statusBarY + dateHeight/2);
-    
-    // Center/Right side: Rotating status display
-    int statusX = 120;  // Center position
-    
-    // Alternate between different status displays
-    static int statusRotation = 0;
-    if (millis() - lastStatusUpdate >= STATUS_CHANGE_INTERVAL) {
-        statusRotation = (statusRotation + 1) % 3;
-        lastStatusUpdate = millis();
-    }
-
-    spr.setTextFont(2);
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
-    
-    switch (statusRotation) {
-        case 0:
-            spr.drawString("Level: 21", statusX, statusBarY + dateHeight/2);
-            break;
-        case 1:
-            spr.drawString("XP: 1337/2000", statusX, statusBarY + dateHeight/2);
-            break;
-        case 2:
-            // Battery status with white outline and yellow charging bolt
-            if (PowerManager::isCharging()) {
-                int batteryWidth = 25;
-                int batteryHeight = 12;
-                int batteryX = statusX - batteryWidth/2;
-                int batteryY = statusBarY + dateHeight/2 - batteryHeight/2;
-                
-                // Draw white outline for main battery body
-                spr.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, TFT_WHITE);
-                
-                // Draw white battery tip
-                spr.fillRect(batteryX + batteryWidth, batteryY + 3, 2, 6, TFT_WHITE);
-                
-                // Draw yellow lightning bolt
-                spr.fillTriangle(
-                    batteryX + 10, batteryY + 2,      // Top point
-                    batteryX + 15, batteryY + 6,      // Middle right
-                    batteryX + 12, batteryY + 6,      // Middle left
-                    TFT_YELLOW
-                );
-                spr.fillTriangle(
-                    batteryX + 12, batteryY + 6,      // Middle top
-                    batteryX + 15, batteryY + 6,      // Middle right
-                    batteryX + 10, batteryY + 10,     // Bottom point
-                    TFT_YELLOW
-                );
-                
-                // Draw battery percentage text
-                char batteryStr[5];
-                sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                spr.drawString(batteryStr, statusX + 20, statusBarY + dateHeight/2);
-            } else {
-                // Draw battery icon with white outline
-                int batteryWidth = 25;
-                int batteryHeight = 12;
-                int batteryX = statusX - batteryWidth/2;
-                int batteryY = statusBarY + dateHeight/2 - batteryHeight/2;
-                
-                // Draw white outline for main battery body
-                spr.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, TFT_WHITE);
-                
-                // Draw white battery tip
-                spr.fillRect(batteryX + batteryWidth, batteryY + 3, 2, 6, TFT_WHITE);
-                
-                // Fill battery based on percentage
-                int fillWidth = (batteryWidth - 4) * PowerManager::getBatteryPercentage() / 100;
-                spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, batteryHeight - 4, TFT_WHITE);
-                
-                // Draw battery percentage text
-                char batteryStr[5];
-                sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                spr.drawString(batteryStr, statusX + 20, statusBarY + dateHeight/2);
-            }
-            break;
-    }
-
-    // Draw todo list section with word wrapping
-    spr.fillRect(2, 195, 280, 120, 0xC618);
-    spr.drawRect(4, 193, 284, 124, TFT_DARKGREY);
-    
-    // Draw title
-    spr.setTextFont(4);
-    spr.setTextColor(TFT_BLACK, 0xC618);
-    
-    // For virtues and chakras, implement word wrapping
-    const int maxWidth = 260;  // Maximum width for text
-    const int lineHeight = 20; // Height between lines
-    int currentY = 225;        // Starting Y position for text
-    
-    spr.setTextFont(2);
-    
-    // Replace getCurrentViewText() with actual text based on current view
-    String text;
-    int currentView = RoverViewManager::getCurrentView();
-    
-    if (currentView == 1) {  // Virtues view
-        text = "Virtues: Wisdom, Justice, Courage, Temperance, Faith, Hope, and Love. These guide our actions and shape our character.";
-    } else if (currentView == 2) {  // Chakras view
-        text = "Chakras: Root, Sacral, Solar Plexus, Heart, Throat, Third Eye, and Crown. Energy centers for balance and healing.";
-    } else {  // Default view
-        text = "Today's Tasks: 1. Update Code 2. Test Features 3. Fix Bugs";
-    }
-    
-    // Word wrap implementation
-    String line = "";
-    String currentWord = "";
-    int lineWidth = 0;
-    
-    for (int i = 0; i < text.length(); i++) {
-        if (text[i] == ' ' || i == text.length() - 1) {
-            // Add last character if at end of text
-            if (i == text.length() - 1) {
-                currentWord += text[i];
-            }
-            
-            // Check if adding this word would exceed width
-            int wordWidth = spr.textWidth(currentWord.c_str());
-            if (lineWidth + wordWidth > maxWidth) {
-                // Draw current line and start new one
-                spr.drawString(line, SCREEN_CENTER_X, currentY);
-                currentY += lineHeight;
-                line = currentWord;
-                lineWidth = wordWidth;
-            } else {
-                // Add word to current line
-                if (line.length() > 0) {
-                    line += " ";
-                    lineWidth += spr.textWidth(" ");
-                }
-                line += currentWord;
-                lineWidth += wordWidth;
-            }
-            currentWord = "";
-        } else {
-            currentWord += text[i];
-        }
-    }
-    
-    // Draw any remaining text
-    if (line.length() > 0) {
-        spr.drawString(line, SCREEN_CENTER_X, currentY);
-    }
 }
 
 void handleSideButton() {
@@ -1186,7 +999,11 @@ void handleSideButton() {
     
     if ((millis() - lastDebounceTime) > debounceDelay) {
         if (currentState != lastState) {
-            PowerManager::wakeFromSleep();  // Wake on side button
+
+            if (PowerManager::getCurrentSleepState() != PowerManager::AWAKE)
+            {
+                PowerManager::wakeFromSleep();  // Wake on side button
+            }
             PowerManager::updateLastActivityTime();
             lastDebounceTime = millis();
             lastState = currentState;

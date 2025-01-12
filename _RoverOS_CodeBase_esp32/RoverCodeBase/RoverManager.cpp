@@ -38,22 +38,22 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
         int hours = timeInfo->tm_hour % 12;
         if (hours == 0) hours = 12;
         
-        // Get day color for time display (0 = Sunday, 6 = Saturday)
-        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);  // +1 because getDayColor expects 1-7
+        // Get day color for time display
+        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
         uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
         
         char timeStr[6];
         sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
         spr.setTextFont(7);
-        spr.fillRect(x - 50, 25, 100, 40, TFT_BLACK);
+        spr.fillRect(x - 70, 25, 140, 40, TFT_BLACK);
         spr.setTextColor(timeColor, TFT_BLACK);
-        spr.drawString(timeStr, x, 30);
+        spr.drawString(timeStr, x - 20, 30);
         y = 80;
     } else {
         y = 40;
     }
     
-    int roverX = x - (50 * scale);
+    int roverX = (x - 70) - (50 * scale);
     int currentY = y + hoverOffset;
     
     // Draw Rover's body

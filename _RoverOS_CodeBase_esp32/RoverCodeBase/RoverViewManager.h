@@ -3,9 +3,12 @@
 
 #include "TFT_eSPI.h"
 #include "utilities.h"
+#include "ColorUtilities.h"
+#include "PowerManager.h"
 
-// Forward declaration
+// Forward declarations
 extern TFT_eSprite spr;
+extern TFT_eSPI tft;
 
 class RoverViewManager {
 public:
@@ -21,11 +24,12 @@ public:
     };
 
     static ViewType currentView;
-
+    
     static void init();
     static void setCurrentView(ViewType view);
     static void nextView();
     static void previousView();
+    static void drawStatusBar();
     static void drawCurrentView();
     static ViewType getCurrentView() { return currentView; }
 
@@ -36,6 +40,12 @@ private:
         uint16_t color;
         void (*drawSymbol)(int x, int y, int size);
     };
+
+    static const int STATUS_BAR_Y = 170;
+    static const int STATUS_BAR_HEIGHT = 30;
+    static unsigned long lastStatusUpdate;
+    static const unsigned long STATUS_CHANGE_INTERVAL = 3000;
+    static int statusRotation;
 
     struct VirtueInfo {
         const char* virtue;
