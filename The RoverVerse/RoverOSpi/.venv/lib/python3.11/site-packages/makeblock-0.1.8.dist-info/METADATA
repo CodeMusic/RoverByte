@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: makeblock
+Version: 0.1.8
+Summary: libraries for makeblock electronic platform
+Home-page: https://makeblock.com
+Author: makeblock
+Author-email: flashindream@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Requires-Dist: pyserial
+
+UNKNOWN
+
+

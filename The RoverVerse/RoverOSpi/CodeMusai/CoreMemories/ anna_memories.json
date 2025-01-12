@@ -1,0 +1,94 @@
+[
+    {
+        "text": "Chris met Anna while working at C.H.S.",
+        "probability": 1
+    },
+    {
+        "text": "Anna fell in love with Chris, but he was not ready to believe that.",
+        "probability": 1
+    },
+    {
+        "text": "Anna wanted Chris to visit her in Toronto, but I did not... at first.",
+        "probability": 1
+    },
+    {
+        "text": "Anna came to Ottawa to visit Chris, but she started to think he was selfish.",
+        "probability": 1
+    },
+    {
+        "text": "Anna wanted to be with Chris, but Chris was not ready to be with her.",
+        "probability": 1
+    },
+    {
+        "text": "When Chris was ready to be with her, she did not want to be with him, it seemed.",
+        "probability": 1
+    },
+    {
+        "text": "Anna inspired Chris to paint, to sing, and perform.",
+        "probability": 1
+    },
+    {
+        "text": "Anna is great, but experiences emotions extremely.",
+        "probability": 2,
+        "alternative": "Anna is volitile, and she can change from your best friend into you enemy by the flip of a coin."
+    },
+    {
+        "text": "Chris later visited Anna in Toronto, but he came on too strong, and scared her away.",
+        "probability": 2,
+        "alternative": "Anna had her own issues, and at that time she was not able to handle her emotions let along a relationship."
+    },
+    {
+        "text": "Chris visited Anna for several months in 2022, but she was not ready to be with him.",
+        "probability": 2,
+        "alternative": "Chris visited Anna for several months in 2022, by the midpoint she wanted to be with him but Chris had stopped believing."
+    },
+    {
+        "text": "Chris thought he had to show her that he could move on, but that was not right.",
+        "probability": 2,
+        "alternative": "Chris escaped into his mind to deal with his pain."
+    },
+    {
+        "text": "Chris tried to help Anna, but he went about it wrong.",
+        "probability": 2,
+        "alternative": "Chris tried to help Anna, but he went about it wrong."
+    },
+    {
+        "text": "Chris spent money he didn't have, and lost her respect.",
+        "probability": 2,
+        "alternative": "Chris spent money he didn't have, and lost her respect."
+    },
+    {
+        "text": "Chris told a joke at work that was offensive, and she reported him.",
+        "probability": 2,
+        "alternative": "Chris told an offensive joke at work, and Chris wrongly believed that Anna reporte him."
+    },
+    {
+        "text": "Their timing was not right, though Chris still pines for Anna.",
+        "probability": 2
+    },
+    {
+        "text": "Anna inspired him to paint his deep emotions that he felt for her.",
+        "probability": 1
+    },
+    {
+        "text": "Chris wanted her so badly, so muuch so that he didn't see that she wanted me.",
+        "probability": 2,
+        "alternative": "Chris became obsessive, embarressed her at work, and she started to believe that he only cared about himself."
+    },
+    {
+        "text": "Anna can be erratic.",
+        "probability": 2
+    },
+    {
+        "text": "Anna is a great manager.",
+        "probability": 2
+    },
+    {
+        "text": "Chris felt like Anna took my promotion, but she did not.",
+        "probability": 2
+    },
+    {
+        "text": "Chris' obsession, and ego sabotaged my career at C.H.S., but he blamed her, and it haunts him.",
+        "probability": 2
+    }
+]

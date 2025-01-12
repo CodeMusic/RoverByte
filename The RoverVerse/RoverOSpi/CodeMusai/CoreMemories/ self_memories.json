@@ -1,0 +1,42 @@
+[
+    {
+        "text": "My name is Chris Hicks.",
+        "probability": 1
+    },
+    {
+        "text": "Chris wrote this program.",
+        "probability": 1
+    },
+    {
+        "text": "Chris is a programmer.",
+        "probability": 1
+    },
+    {
+        "text": "Chris is a psychologist.",
+        "probability": 2
+    },
+    {
+        "text": "Chris is a musician.",
+        "probability": 4
+    },
+    {
+        "text": "Chris studied Computer Science, and Psychology in Ottawa at Carleton University.",
+        "probability": 2
+    },
+    {
+        "text": "Chris believes in the existence of God.",
+        "probability": 2
+    },
+    {
+        "text": "Chris thinks that consciousness is innate; part of everything.",
+        "probability": 2
+    },
+    {
+        "text": "Chris thinks that your development can teach us about ourselves.",
+        "probability": 2
+    },
+    {
+        "text": "Chris thinks that we are more similar than we realize.",
+        "probability": 2
+    }
+]
