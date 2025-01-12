@@ -850,6 +850,12 @@ void setup() {
         // If WiFi failed, still stop animation but maybe show an error state
         LEDManager::stopLoadingAnimation();
     }
+
+    // Near the beginning of setup()
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0 || wakeup_reason == ESP_SLEEP_WAKEUP_EXT1) {
+        PowerManager::wakeFromSleep();
+    }
 }
 
 void syncLEDsForDay() {
@@ -1204,44 +1210,9 @@ void handleSideButton() {
     }
 }
 
-void enterSleepMode() {
-    Serial.println("Entering sleep mode...");
-    isInSleepMode = true;
-    
-    // Turn off screen
-    spr.fillSprite(TFT_BLACK);
-    spr.pushSprite(0, 0);
-    tft.writecommand(TFT_DISPOFF);  // Turn off display
-    
-    // Turn off all LEDs
-    fill_solid(leds, WS2812_NUM_LEDS, CRGB::Black);
-    FastLED.show();
-    
-    // Reset button states
-    rotaryButtonPressed = false;
-    sideButtonPressed = false;
-}
-
-void exitSleepMode() {
-    Serial.println("Exiting sleep mode...");
-    isInSleepMode = false;
-    
-    // Turn on screen
-    tft.writecommand(TFT_DISPON);  // Turn on display
-    drawSprite();  // Redraw the display
-    
-    // Restore LED state
-    LEDManager::updateLEDs();
-    
-    // Reset button states
-    rotaryButtonPressed = false;
-    sideButtonPressed = false;
-}
-
 void loop() {
-    // Call encoder reading more frequently
     handleSideButton();
-    readEncoder();  // At start of loop
+    readEncoder();
 
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
@@ -1252,34 +1223,29 @@ void loop() {
     }
     
     if (currentMillis - lastDisplayUpdate >= 50) {
-        LOG_SCOPE("Main loop update cycle");
         PowerManager::checkSleepState();
         
         switch (PowerManager::getCurrentSleepState()) {
             case PowerManager::AWAKE:
-                LOG_DEBUG("Display state: AWAKE");
                 setBacklight(255);
                 drawSprite();
                 LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DIM_DISPLAY:
-                LOG_DEBUG("Display state: DIM");
                 setBacklight(64);
                 drawSprite();
                 LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DISPLAY_OFF:
-                LOG_DEBUG("Display state: OFF");
                 tft.writecommand(TFT_DISPOFF);
                 setBacklight(0);
                 LEDManager::updateLEDs();
                 break;
                 
             case PowerManager::DEEP_SLEEP:
-                LOG_DEBUG("Display state: DEEP SLEEP");
-                goToSleep();
+                PowerManager::enterDeepSleep();
                 break;
         }
         

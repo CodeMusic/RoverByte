@@ -77,6 +77,19 @@ void PowerManager::wakeFromSleep() {
     LOG_PROD("Waking from sleep mode");
     lastActivityTime = millis();
     currentSleepState = AWAKE;
+    
+    // Restore display
+    tft.writecommand(0x11);  // TFT_SLPOUT
+    delay(120);
+    tft.writecommand(0x29);  // TFT_DISPON
+    
+    // Restore backlight and LEDs
+    setBacklight(255);
+    FastLED.setBrightness(50);
+    FastLED.show();
+    
+    // Force display update
+    drawSprite();
 }
 
 PowerManager::SleepState PowerManager::getCurrentSleepState() {
@@ -100,4 +113,24 @@ bool PowerManager::isCharging() {
 
 void PowerManager::updateLastActivityTime() {
     lastActivityTime = millis();
+}
+
+void PowerManager::enterDeepSleep() {
+    // Ensure all pending operations are complete
+    FastLED.clear(true);
+    tft.writecommand(0x28);  // TFT_DISPOFF
+    tft.writecommand(0x10);  // TFT_SLPIN
+    
+    // Configure wake-up sources
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_6, 0);  // Side button (BOARD_USER_KEY)
+    esp_sleep_enable_ext1_wakeup(1ULL << GPIO_NUM_0, ESP_EXT1_WAKEUP_ANY_HIGH);  // Rotary button
+    
+    // Wait for any buttons to be released and debounce
+    while (digitalRead(BOARD_USER_KEY) == LOW) {
+        delay(10);
+    }
+    delay(100);  // Additional debounce delay
+    
+    // Go to deep sleep
+    esp_deep_sleep_start();
 }

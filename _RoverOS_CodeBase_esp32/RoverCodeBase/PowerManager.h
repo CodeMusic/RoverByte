@@ -3,20 +3,28 @@
 
 #include <Arduino.h>
 #include <XPowersLib.h>
+#include <FastLED.h>
+#include "TFT_eSPI.h"
 #include "utilities.h"
+
+// Forward declarations
+extern TFT_eSPI tft;
+extern void setBacklight(uint8_t brightness);
+extern void drawSprite();
 
 class PowerManager {
 public:
     enum SleepState {
         AWAKE,
-        DIM_DISPLAY,    // 50% brightness
-        DISPLAY_OFF,    // Screen off, LEDs on
-        DEEP_SLEEP      // Screen and LEDs off
+        DIM_DISPLAY,    
+        DISPLAY_OFF,    
+        DEEP_SLEEP      
     };
 
     static void init();
     static void checkSleepState();
     static void wakeFromSleep();
+    static void enterDeepSleep();
     static SleepState getCurrentSleepState();
     static int getBatteryPercentage();
     static String getChargeStatus();
@@ -28,7 +36,7 @@ private:
     static bool batteryInitialized;
     static unsigned long lastActivityTime;
     static SleepState currentSleepState;
-    static const unsigned long IDLE_TIMEOUT = 60000;  // 60 seconds for each stage
+    static const unsigned long IDLE_TIMEOUT = 60000;
     
     static int calculateBatteryPercentage(int voltage);
     static void initializeBattery();
