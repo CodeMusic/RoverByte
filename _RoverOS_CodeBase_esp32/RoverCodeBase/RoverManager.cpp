@@ -3,9 +3,12 @@
 #include <time.h>
 #include "ColorUtilities.h"
 #include "PowerManager.h"
+#include "LEDManager.h"
+#include "SoundFxManager.h"
 
-// Forward declare the drawSprite function from the .ino file
-void drawSprite();
+// Forward declarations
+extern TFT_eSprite spr;
+extern bool showTime;
 
 // Initialize static members
 bool RoverManager::earsPerked = false;
@@ -21,7 +24,12 @@ RoverManager::Expression RoverManager::currentExpression = RoverManager::HAPPY;
 RoverManager::Expression RoverManager::previousExpression = RoverManager::HAPPY;
 
 void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
-    String moodStr(mood);
+    // Use currentExpression instead of mood parameter if it's set
+    const char* actualMood = currentExpression != previousExpression ? 
+                            expressionToMood(currentExpression) : 
+                            mood;
+    
+    String moodStr(actualMood);
     float scale = large ? 1.5 : 1.0;
     
     // Get current time and colors
@@ -38,22 +46,26 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
         int hours = timeInfo->tm_hour % 12;
         if (hours == 0) hours = 12;
         
-        // Get day color for time display
-        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
-        uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
-        
         char timeStr[6];
         sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
         spr.setTextFont(7);
-        spr.fillRect(x - 70, 25, 140, 40, TFT_BLACK);
+        
+        // Position time above rover, aligned with rover's position
+        int16_t timeWidth = spr.textWidth(timeStr);
+        spr.fillRect(x - 5, 25, timeWidth + 10, 40, TFT_BLACK);
+        
+        // Get day color for time display
+        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+        uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
         spr.setTextColor(timeColor, TFT_BLACK);
-        spr.drawString(timeStr, x - 20, 30);
+        spr.drawString(timeStr, x + (timeWidth/2), 30);
         y = 80;
     } else {
         y = 40;
     }
     
-    int roverX = (x - 70) - (50 * scale);
+    // Draw rover starting from x position
+    int roverX = x;  // Remove the offset calculation
     int currentY = y + hoverOffset;
     
     // Draw Rover's body

@@ -30,8 +30,15 @@ public:
     static String getChargeStatus();
     static bool isCharging();
     static void updateLastActivityTime();
+    static void setBacklight(uint8_t brightness);
+    static void setupBacklight();
     
 private:
+    static const uint8_t BACKLIGHT_PIN = 38;
+    static const uint8_t PWM_CHANNEL = 0;
+    static const uint8_t PWM_RESOLUTION = 8;
+    static const uint32_t PWM_FREQUENCY = 5000;
+
     static XPowersPPM PPM;
     static bool batteryInitialized;
     static unsigned long lastActivityTime;
@@ -41,5 +48,4 @@ private:
     static int calculateBatteryPercentage(int voltage);
     static void initializeBattery();
 };
-
 #endif

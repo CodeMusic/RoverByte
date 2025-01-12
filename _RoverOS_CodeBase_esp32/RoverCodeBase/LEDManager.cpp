@@ -3,32 +3,48 @@
 #include "ColorUtilities.h"
 #include "utilities.h"
 #include "FastLED.h"
+
 // Initialize static members
 LEDManager::Mode LEDManager::currentMode = Mode::FULL_MODE;
 CRGB LEDManager::leds[WS2812_NUM_LEDS];
 uint8_t LEDManager::currentColorIndex = 0;
 uint8_t LEDManager::currentPosition = 0;
 uint8_t LEDManager::completedCycles = 0;
-uint8_t LEDManager::activeTrails = 0;
 unsigned long LEDManager::lastStepTime = 0;
-uint8_t LEDManager::filledPositions = 0;
 bool LEDManager::isLoading = false;
+uint8_t LEDManager::filledPositions = 0;
+uint8_t LEDManager::activeTrails = 0;
 
 void LEDManager::init() {
+    // Use hardware SPI for ESP32
     FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
     FastLED.setBrightness(50);
     FastLED.clear();
+    
+    // Initialize all LEDs to off
+    for(int i = 0; i < WS2812_NUM_LEDS; i++) {
+        leds[i] = CRGB::Black;
+    }
     FastLED.show();
     
-    // Initialize timer animation state
+    // Reset animation variables
     currentColorIndex = 0;
     currentPosition = 0;
     completedCycles = 0;
-    activeTrails = 0;
     lastStepTime = 0;
+    isLoading = false;
+    
+    // Start with full mode
+    setMode(Mode::FULL_MODE);
+    updateLEDs();
 }
 
 void LEDManager::updateLEDs() {
+    if (isLoading) {
+        updateLoadingAnimation();
+        return;
+    }
+    
     switch (currentMode) {
         case Mode::FULL_MODE:
             updateFullMode();
@@ -65,22 +81,21 @@ void LEDManager::updateFullMode() {
     CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
     leds[0] = dayColor;
     
-    // Rest of the LEDs based on hour colors
     // LED 1: Week number (base 5)
-    int weekNum = (timeInfo->tm_mday + 6) / 7;  // Calculate week of month (1-5)
+    int weekNum = (timeInfo->tm_mday + 6) / 7;
     switch(weekNum) {
         case 1: leds[1] = CRGB::Red; break;
         case 2: leds[1] = CRGB::Orange; break;
         case 3: leds[1] = CRGB::Yellow; break;
         case 4: leds[1] = CRGB::Green; break;
-        default: leds[1] = CRGB::Blue; break;  // 5th week if exists
+        default: leds[1] = CRGB::Blue; break;
     }
     
-    // LED 2: Month (base 12)
+    // LED 2: Month colors
     CRGB monthColor1, monthColor2;
     ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
     if (monthColor1 == monthColor2) {
-        leds[2] = monthColor1;  // Solid color if both are the same
+        leds[2] = monthColor1;
     } else {
         switch(blinkState) {
             case 0: leds[2] = monthColor1; break;
@@ -89,13 +104,13 @@ void LEDManager::updateFullMode() {
         }
     }
     
-    // LED 3: Hours (base 12)
+    // LED 3: Hours
     int hour12 = timeInfo->tm_hour % 12;
     if (hour12 == 0) hour12 = 12;
     CRGB hourColor1, hourColor2;
     ColorUtilities::getHourColors(hour12, hourColor1, hourColor2);
     if (hourColor1 == hourColor2) {
-        leds[3] = hourColor1;  // Solid color if both are the same
+        leds[3] = hourColor1;
     } else {
         switch(blinkState) {
             case 0: leds[3] = hourColor1; break;
@@ -106,17 +121,13 @@ void LEDManager::updateFullMode() {
     
     // LED 4-5: Minutes (base 8)
     int minutes = timeInfo->tm_min;
-    int minTens = minutes / 8;
-    int minOnes = minutes % 8;
-    leds[4] = ColorUtilities::getBase8Color(minTens);
-    leds[5] = ColorUtilities::getBase8Color(minOnes);
+    leds[4] = ColorUtilities::getBase8Color(minutes / 8);
+    leds[5] = ColorUtilities::getBase8Color(minutes % 8);
     
     // LED 6-7: Day of month (base 8)
     int day = timeInfo->tm_mday;
-    int dayTens = day / 8;
-    int dayOnes = day % 8;
-    leds[6] = ColorUtilities::getBase8Color(dayOnes);
-    leds[7] = ColorUtilities::getBase8Color(dayTens);
+    leds[6] = ColorUtilities::getBase8Color(day % 8);
+    leds[7] = ColorUtilities::getBase8Color(day / 8);
     
     FastLED.show();
 }
@@ -180,6 +191,20 @@ void LEDManager::updateWeekMode() {
     FastLED.show();
 }
 
+void LEDManager::initializeLEDs()
+{
+leds[0] = CRGB::Red;
+    leds[1] = CRGB::White;
+    leds[2] = CRGB::White;
+    leds[3] = CRGB::White;
+    leds[4] = CRGB::Red;
+    leds[5] = CRGB::White;
+    leds[6] = CRGB::White;
+    leds[7] = CRGB::White;
+    FastLED.setBrightness(50);
+    FastLED.show();
+}
+
 void LEDManager::updateTimerMode() {
     unsigned long currentTime = millis();
     
@@ -232,7 +257,6 @@ CRGB LEDManager::getRainbowColor(uint8_t index) {
 void LEDManager::startLoadingAnimation() {
     currentColorIndex = 0;
     currentPosition = 0;
-    filledPositions = 0;
     completedCycles = 0;
     lastStepTime = 0;
     isLoading = true;
@@ -241,23 +265,22 @@ void LEDManager::startLoadingAnimation() {
 }
 
 void LEDManager::updateLoadingAnimation() {
-    if (!isLoading) return;
+    static int position = 0;
     
-    // No delay needed since it's a static display
-    
-    // Clear all LEDs first
-    FastLED.clear();
-    
-    // Set Canadian flag pattern
-    leds[0] = CRGB::Red;  // Left red stripe
-    leds[4] = CRGB::Red;  // Right red stripe
-    
-    // White center
-    leds[1] = CRGB::White;
-    leds[2] = CRGB::White;
-    leds[3] = CRGB::White;
-    
-    FastLED.show();
+    if (millis() - lastStepTime >= 100) {
+        FastLED.clear();
+        // Use different colors for loading animation
+        switch(position % 4) {
+            case 0: leds[position] = CRGB::Blue; break;
+            case 1: leds[position] = CRGB::Green; break;
+            case 2: leds[position] = CRGB::Yellow; break;
+            case 3: leds[position] = CRGB::Purple; break;
+        }
+        FastLED.show();
+        
+        position = (position + 1) % WS2812_NUM_LEDS;
+        lastStepTime = millis();
+    }
 }
 
 bool LEDManager::isLoadingComplete() {

@@ -7,6 +7,10 @@
 int SoundFxManager::currentNote = 0;
 unsigned long SoundFxManager::lastNoteTime = 0;
 bool SoundFxManager::jinglePlaying = false;
+Audio SoundFxManager::audio;
+bool SoundFxManager::isPlayingSound = false;
+const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
+
 
 const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
     // Opening flourish
@@ -213,3 +217,215 @@ void SoundFxManager::playJingle() {
         }
     }
 } 
+
+
+// Add audio callback
+void SoundFxManager::audio_eof_mp3(const char *info) {
+    Serial.printf("Audio playback finished: %s\n", info);
+    // Delete temporary recording after playback
+    if (!SD.remove(RECORD_FILENAME)) {
+        Serial.println("Failed to delete temporary recording file");
+        playErrorSound(2);
+    }
+    isPlayingSound = false;
+}
+
+
+void SoundFxManager::startRecording() {
+    if (isRecording) return;
+    
+    Serial.println("=== Starting Recording ===");
+    
+    // Initialize microphone
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+        .sample_rate = EXAMPLE_SAMPLE_RATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+        .dma_buf_count = 4,
+        .dma_buf_len = 64,
+        .use_apll = false,
+    };
+
+    i2s_pin_config_t pin_config = {
+        .mck_io_num = I2S_PIN_NO_CHANGE,
+        .bck_io_num = I2S_PIN_NO_CHANGE,
+        .ws_io_num = BOARD_MIC_CLK,
+        .data_out_num = I2S_PIN_NO_CHANGE,
+        .data_in_num = BOARD_MIC_DATA,
+    };
+
+    if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
+        Serial.println("ERROR: Failed to install I2S driver");
+        SoundFxManager::playErrorSound(1);
+        RoverManager::setEarsDown();
+        return;
+    }
+    
+    if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
+        Serial.println("ERROR: Failed to set I2S pins");
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        SoundFxManager::playErrorSound(1);
+        RoverManager::setEarsDown();
+        return;
+    }
+
+    // Create new WAV file
+    recordFile = SD.open(RECORD_FILENAME, FILE_WRITE);
+    if (!recordFile) {
+        Serial.println("ERROR: Failed to open file for recording");
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        SoundFxManager::playErrorSound(2);
+        RoverManager::setEarsDown();
+        return;
+    }
+
+    // Reserve space for the header
+    for (int i = 0; i < WAVE_HEADER_SIZE; i++) {
+        recordFile.write(0);
+    }
+
+    isRecording = true;
+    Serial.println("Recording started!");
+}
+
+void SoundFxManager::stopRecording() {
+    if (!isRecording) return;
+
+    Serial.println("=== Stopping Recording ===");
+    isRecording = false;
+    
+    // Get final size
+    uint32_t file_size = recordFile.size() - WAVE_HEADER_SIZE;
+    
+    // Generate and write header
+    char wav_header[WAVE_HEADER_SIZE];
+    generate_wav_header(wav_header, file_size, EXAMPLE_SAMPLE_RATE);
+    
+    if (!recordFile.seek(0)) {
+        Serial.println("ERROR: Failed to seek in file");
+        recordFile.close();
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        SoundFxManager::playErrorSound(2);
+        RoverManager::setEarsDown();
+        return;
+    }
+    
+    if (recordFile.write((uint8_t *)wav_header, WAVE_HEADER_SIZE) != WAVE_HEADER_SIZE) {
+        Serial.println("ERROR: Failed to write WAV header");
+        recordFile.close();
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        SoundFxManager::playErrorSound(2);
+        RoverManager::setEarsDown();
+        return;
+    }
+    
+    recordFile.close();
+    i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+
+    // Play the recording
+    Serial.println("Attempting to play recording...");
+    audio.setVolume(21);
+    
+    if (SD.exists(RECORD_FILENAME)) {
+        Serial.println("Found recording file, playing...");
+        if (!audio.connecttoFS(SD, RECORD_FILENAME)) {
+            Serial.println("ERROR: Failed to start playback");
+            SoundFxManager::playErrorSound(3);
+            RoverManager::setEarsDown();
+            return;
+        }
+    } else {
+        Serial.println("ERROR: Recording file not found!");
+        SoundFxManager::playErrorSound(3);
+        RoverManager::setEarsDown();
+        return;
+    }
+    
+    RoverManager::setEarsDown();  // Put ears down after successful recording/playback start
+}
+
+
+void SoundFxManager::init_microphone() {
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+        .sample_rate = EXAMPLE_SAMPLE_RATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+        .dma_buf_count = 8,
+        .dma_buf_len = 200,
+        .use_apll = 0
+    };
+
+    i2s_pin_config_t pin_config = {
+        .mck_io_num = I2S_PIN_NO_CHANGE,
+        .bck_io_num = I2S_PIN_NO_CHANGE,
+        .ws_io_num = BOARD_MIC_CLK,
+        .data_out_num = I2S_PIN_NO_CHANGE,
+        .data_in_num = BOARD_MIC_DATA
+    };
+
+    ESP_ERROR_CHECK(i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL));
+    ESP_ERROR_CHECK(i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config));
+    ESP_ERROR_CHECK(i2s_set_clk((i2s_port_t)EXAMPLE_I2S_CH, EXAMPLE_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO));
+}
+
+
+void SoundFxManager::generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate)
+{
+    // See this for reference: http://soundfile.sapp.org/doc/WaveFormat/
+    uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
+    uint32_t byte_rate = BYTE_RATE;
+
+    const char set_wav_header[] = {
+        'R','I','F','F', // ChunkID
+        (char)file_size, (char)(file_size >> 8), (char)(file_size >> 16), (char)(file_size >> 24), // ChunkSize
+        'W','A','V','E', // Format
+        'f','m','t',' ', // Subchunk1ID
+        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+        0x01, 0x00, // AudioFormat (1 for PCM)
+        0x01, 0x00, // NumChannels (1 channel)
+        (char)sample_rate, (char)(sample_rate >> 8), (char)(sample_rate >> 16), (char)(sample_rate >> 24), // SampleRate
+        (char)byte_rate, (char)(byte_rate >> 8), (char)(byte_rate >> 16), (char)(byte_rate >> 24), // ByteRate
+        0x02, 0x00, // BlockAlign
+        0x10, 0x00, // BitsPerSample (16 bits)
+        'd','a','t','a', // Subchunk2ID
+        (char)wav_size, (char)(wav_size >> 8), (char)(wav_size >> 16), (char)(wav_size >> 24), // Subchunk2Size
+    };
+
+    memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
+}
+
+void SoundFxManager::initializeAudio()
+{
+        // Initialize audio
+    audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
+    audio.setVolume(21); // 0...21
+    Serial.println("Audio initialized");
+}
+
+void SoundFxManager::init() {
+    // Initialize SPIFFS for sound files
+    if (!SPIFFS.begin(true)) {
+        LOG_ERROR("Failed to initialize SPIFFS");
+        return;
+    }
+
+    // Initialize audio hardware
+    pinMode(BOARD_VOICE_DIN, OUTPUT);
+    ledcSetup(TONE_PWM_CHANNEL, 5000, 8);  // 5KHz frequency, 8-bit resolution
+    ledcAttachPin(BOARD_VOICE_DIN, TONE_PWM_CHANNEL);
+
+    // Initialize microphone if needed
+    init_microphone();
+
+    // Play startup sound
+    playStartupSound();
+
+    LOG_DEBUG("SoundFxManager initialized");
+}
+

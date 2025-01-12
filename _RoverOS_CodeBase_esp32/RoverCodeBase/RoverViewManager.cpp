@@ -84,65 +84,78 @@ void RoverViewManager::previousView() {
 }
 
 void RoverViewManager::drawCurrentView() {
-    LOG_DEBUG("Drawing view %d", currentView);
+    static bool isRecovering = false;  // Add this at the start
     
     try {
+        if (isRecovering) {
+            // Simple error display without recursion
+            spr.fillSprite(TFT_BLACK);
+            spr.setTextFont(2);
+            spr.setTextColor(TFT_WHITE, TFT_BLACK);
+            spr.drawString("Display Error", SCREEN_CENTER_X, SCREEN_HEIGHT/2);
+            spr.pushSprite(0, 0);
+            delay(1000);
+            isRecovering = false;
+            return;
+        }
+        
         // Clear sprite first
         spr.fillSprite(TFT_BLACK);
-
+        
         RoverManager::drawRover(
             RoverManager::getCurrentMood(),
             RoverManager::earsPerked,
-            !showTime,  // Large when not showing time
-            SCREEN_CENTER_X - 20,  // Moved left 20px
+            !showTime,
+            10, //SCREEN_CENTER_X,  // Center position  //offset
             showTime ? 50 : 80
         );
         
         // Draw the frame
         drawFrame();
         
-        // Set common text properties
+        // Set text properties
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.setTextDatum(MC_DATUM);  // Middle-Center alignment
+        spr.setTextDatum(MC_DATUM);
         
-        // Draw view content
-        switch (currentView) {
+        // Draw view content with error handling
+        try {
+            switch (currentView) {
             case ViewType::TODO_LIST:
-                LOG_DEBUG("Drawing TODO_LIST view");
-                drawTodoList();
-                break;
-            case ViewType::CHAKRAS:
-                LOG_DEBUG("Drawing CHAKRAS view");
-                spr.setTextFont(2);  // Smaller font
-                drawChakras();
-                break;
-            case ViewType::VIRTUES:
-                LOG_DEBUG("Drawing VIRTUES view");
-                spr.setTextFont(2);  // Smaller font
-                drawVirtues();
-                break;
-            case ViewType::QUOTES:
-                LOG_DEBUG("Drawing QUOTES view");
-                drawQuotes();
-                break;
-            case ViewType::WEATHER:
-                LOG_DEBUG("Drawing WEATHER view");
-                drawWeather();
-                break;
-            case ViewType::STATS:
-                LOG_DEBUG("Drawing STATS view");
-                drawStats();
-                break;
-            case ViewType::NEXTMEAL:
-                LOG_DEBUG("Drawing NEXTMEAL view");
-                drawNextMeal();
-                break;
-            default:
-                LOG_DEBUG("Unknown view %d", currentView);
-                // Draw a fallback view instead of leaving screen blank
-                spr.setTextFont(2);
-                spr.drawString("Error: Invalid View", SCREEN_CENTER_X, FRAME_Y + 45);
-                break;
+                    LOG_DEBUG("Drawing TODO_LIST view");
+                    drawTodoList();
+                    break;
+                case ViewType::CHAKRAS:
+                    LOG_DEBUG("Drawing CHAKRAS view");
+                    spr.setTextFont(2);  // Smaller font
+                    drawChakras();
+                    break;
+                case ViewType::VIRTUES:
+                    LOG_DEBUG("Drawing VIRTUES view");
+                    spr.setTextFont(2);  // Smaller font
+                    drawVirtues();
+                    break;
+                case ViewType::QUOTES:
+                    LOG_DEBUG("Drawing QUOTES view");
+                    drawQuotes();
+                    break;
+                case ViewType::WEATHER:
+                    LOG_DEBUG("Drawing WEATHER view");
+                    drawWeather();
+                    break;
+                case ViewType::STATS:
+                    LOG_DEBUG("Drawing STATS view");
+                    drawStats();
+                    break;
+                case ViewType::NEXTMEAL:
+                    LOG_DEBUG("Drawing NEXTMEAL view");
+                    drawNextMeal();
+                    break;
+            }
+        } catch (const std::exception& e) {
+            LOG_PROD("Error drawing view content: %s", e.what());
+            spr.drawString("Error drawing view", 
+                          SCREEN_CENTER_X - CONTENT_LEFT_OFFSET, 
+                          FRAME_Y + 45);
         }
         
         // Draw status bar last
@@ -152,21 +165,47 @@ void RoverViewManager::drawCurrentView() {
         
     } catch (const std::exception& e) {
         LOG_PROD("Error in drawCurrentView: %s", e.what());
-        
-        // Draw error message
-        spr.fillSprite(TFT_BLACK);
-        spr.setTextFont(2);
-        spr.setTextColor(TFT_WHITE, TFT_BLACK);
-        spr.drawString("Display Error - Recovering", SCREEN_CENTER_X, FRAME_Y + FRAME_HEIGHT/2);
-        spr.pushSprite(0, 0);
-        
-        // Reset to default view
-        currentView = VIRTUES;
-        delay(1000);  // Give user time to see error
-        
-        // Try to redraw
-        drawCurrentView();
+        if (!isRecovering) {
+            isRecovering = true;
+            drawCurrentView();  // Only retry once
+        }
     }
+}
+
+
+// Add this new function
+void RoverViewManager::drawLoadingScreen() {
+    spr.fillSprite(TFT_BLACK);
+    
+    // Center bone vertically and horizontally
+    int boneX = tft.width() / 2;
+    int boneY = tft.height() / 2 - 20;  // Slightly above center
+    int boneWidth = 60;
+    int boneHeight = 20;
+    int circleRadius = 12;
+    
+    // Main bone rectangle
+    spr.fillRect(boneX - boneWidth/2, boneY - boneHeight/2, 
+                 boneWidth, boneHeight, TFT_WHITE);
+    
+    // Left circles
+    spr.fillCircle(boneX - boneWidth/2, boneY - boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    spr.fillCircle(boneX - boneWidth/2, boneY + boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    
+    // Right circles
+    spr.fillCircle(boneX + boneWidth/2, boneY - boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    spr.fillCircle(boneX + boneWidth/2, boneY + boneHeight/2, 
+                   circleRadius, TFT_WHITE);
+    
+    // Loading text centered below bone
+    spr.setTextFont(4);
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    spr.drawString("...Loading", boneX, boneY + 60);
+    
+    spr.pushSprite(0, 0);
 }
 
 void RoverViewManager::drawFrame() {
@@ -357,24 +396,32 @@ void RoverViewManager::drawVirtues() {
     // Draw virtue title higher and more left
     spr.setTextFont(2);
     spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-    spr.drawString(todayVirtue.virtue, SCREEN_CENTER_X - 15, FRAME_Y + 15);
+    spr.drawString(todayVirtue.virtue, 
+                  SCREEN_CENTER_X - CONTENT_LEFT_OFFSET, 
+                  FRAME_Y + 10);  // Moved up 5 pixels
     
-    // Draw virtue symbol higher
-    todayVirtue.drawSymbol(SCREEN_CENTER_X - 15, FRAME_Y + 45, 40);
+    // Draw virtue symbol
+    todayVirtue.drawSymbol(SCREEN_CENTER_X - CONTENT_LEFT_OFFSET, 
+                          FRAME_Y + 40, 
+                          40);
     
-    // Draw description with line breaks, higher and more left
+    // Draw description with line breaks
     String description = todayVirtue.description;
-    int y = FRAME_Y + 75;  // Start higher
+    int y = FRAME_Y + 70;  // Start higher
     int startPos = 0;
     int nextLine;
     
     while ((nextLine = description.indexOf('\n', startPos)) != -1) {
-        spr.drawString(description.substring(startPos, nextLine), SCREEN_CENTER_X - 15, y);
+        spr.drawString(description.substring(startPos, nextLine), 
+                      SCREEN_CENTER_X - CONTENT_LEFT_OFFSET, 
+                      y);
         startPos = nextLine + 1;
         y += 20;
     }
     if (startPos < description.length()) {
-        spr.drawString(description.substring(startPos), SCREEN_CENTER_X - 15, y);
+        spr.drawString(description.substring(startPos), 
+                      SCREEN_CENTER_X - CONTENT_LEFT_OFFSET, 
+                      y);
     }
 }
 

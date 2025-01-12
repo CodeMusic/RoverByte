@@ -5,6 +5,7 @@
 #include "utilities.h"
 #include "ColorUtilities.h"
 #include "PowerManager.h"
+#include "SoundFxManager.h"
 
 // Forward declarations
 extern TFT_eSprite spr;
@@ -32,6 +33,7 @@ public:
     static void drawStatusBar();
     static void drawCurrentView();
     static ViewType getCurrentView() { return currentView; }
+    static void drawLoadingScreen();
 
 private:
     struct ChakraInfo {
@@ -62,6 +64,7 @@ private:
     static const int FRAME_WIDTH = 280;
     static const int FRAME_HEIGHT = 120;
     static const int TITLE_Y_OFFSET = 15;
+    static const int CONTENT_LEFT_OFFSET = 35;
     static const uint16_t FRAME_COLOR = 0xC618;
     static const uint16_t FRAME_BORDER_COLOR = TFT_DARKGREY;
     

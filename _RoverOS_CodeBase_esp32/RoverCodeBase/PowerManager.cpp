@@ -1,4 +1,6 @@
 #include "PowerManager.h"
+#include "LEDManager.h"
+#include "RoverViewManager.h"
 
 // Initialize static members
 XPowersPPM PowerManager::PPM;
@@ -79,17 +81,19 @@ void PowerManager::wakeFromSleep() {
     currentSleepState = AWAKE;
     
     // Restore display
-    tft.writecommand(0x11);  // TFT_SLPOUT
-    delay(120);
-    tft.writecommand(0x29);  // TFT_DISPON
+    tft.writecommand(TFT_SLPOUT);  // Exit sleep
+    delay(120);  // Required delay
+    tft.writecommand(TFT_DISPON);  // Turn on display
     
     // Restore backlight and LEDs
     setBacklight(255);
-    FastLED.setBrightness(50);
-    FastLED.show();
+    LEDManager::init();  // This will handle LED initialization
     
     // Force display update
     drawSprite();
+    
+    // Re-initialize critical components
+    RoverViewManager::init();
 }
 
 PowerManager::SleepState PowerManager::getCurrentSleepState() {
@@ -117,7 +121,7 @@ void PowerManager::updateLastActivityTime() {
 
 void PowerManager::enterDeepSleep() {
     // Ensure all pending operations are complete
-    FastLED.clear(true);
+    LEDManager::clearLEDs();  // Use LEDManager instead of direct FastLED call
     tft.writecommand(0x28);  // TFT_DISPOFF
     tft.writecommand(0x10);  // TFT_SLPIN
     
@@ -133,4 +137,33 @@ void PowerManager::enterDeepSleep() {
     
     // Go to deep sleep
     esp_deep_sleep_start();
+}
+
+
+void goToSleep() {
+    // Ensure all pending operations are complete
+    FastLED.clear(true);
+    tft.writecommand(TFT_DISPOFF);
+    tft.writecommand(TFT_SLPIN);
+    
+    // Wait for any buttons to be released and debounce
+    while (digitalRead(BOARD_USER_KEY) == LOW || digitalRead(ENCODER_KEY) == LOW) {
+        delay(10);
+    }
+    delay(100);  // Additional debounce delay
+    
+    // Go to deep sleep - will wake on any configured button press
+    esp_deep_sleep_start();
+}
+
+void PowerManager::setupBacklight() {
+    ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
+    ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
+    ledcWrite(PWM_CHANNEL, 255);  // Full brightness
+    Serial.println("Backlight setup complete");
+}
+
+void PowerManager::setBacklight(uint8_t brightness) {
+    ledcWrite(PWM_CHANNEL, brightness);
+    drawSprite();
 }

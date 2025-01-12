@@ -102,5 +102,6 @@ void debugLog(LogLevel level, const char* format, ...);
 #define LOG_PROD(format, ...) debugLog(LOG_PRODUCTION, format, ##__VA_ARGS__)
 #define LOG_DEBUG(format, ...) debugLog(LOG_DEBUG, format, ##__VA_ARGS__)
 #define LOG_SCOPE(format, ...) debugLog(LOG_SCOPE, format, ##__VA_ARGS__)
+#define LOG_ERROR(format, ...) debugLog(LOG_PRODUCTION, "ERROR: " format, ##__VA_ARGS__)
 
 #endif

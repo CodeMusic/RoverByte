@@ -13,6 +13,7 @@ public:
     };
 
     static void init();
+    static void initializeLEDs();
     static void updateLEDs();
     static void setMode(Mode newMode);
     static Mode getMode() { return currentMode; }
@@ -23,6 +24,11 @@ public:
     static void updateLoadingAnimation();
     static bool isLoadingComplete();
     static void stopLoadingAnimation();
+    
+    static void clearLEDs() {
+        FastLED.clear(true);
+        FastLED.show();
+    }
     
 private:
     static void updateFullMode();
