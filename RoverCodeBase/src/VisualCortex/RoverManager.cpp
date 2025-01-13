@@ -9,7 +9,6 @@
 
 // Forward declarations
 extern TFT_eSprite spr;
-extern bool showTime;
 
 // Initialize static members
 bool RoverManager::earsPerked = false;
@@ -21,6 +20,7 @@ unsigned long RoverManager::expressionStartTime = 0;
 int RoverManager::expressionDuration = 0;
 uint16_t RoverManager::starColor = TFT_WHITE;
 const char* RoverManager::moods[] = {"happy", "looking_left", "looking_right", "intense"};
+bool RoverManager::showTime = false;
 
 extern bool isLowBrightness;
 

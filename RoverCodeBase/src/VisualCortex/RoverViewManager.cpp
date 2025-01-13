@@ -7,8 +7,6 @@
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "../VisualCortex/LEDManager.h"
 
-// Add at the top with other includes
-extern bool showTime;  // Declare the external variable
 
 // Initialize static members
 RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
@@ -84,7 +82,7 @@ void RoverViewManager::init() {
     
     // Draw initial frame
     drawFrame();
-    drawCurrentView();
+    //drawCurrentView();
 }
 
 void RoverViewManager::setCurrentView(ViewType view) {
@@ -126,9 +124,9 @@ void RoverViewManager::drawCurrentView() {
         RoverManager::drawRover(
             RoverManager::getCurrentMood(),
             RoverManager::earsPerked,
-            !showTime,
+            !RoverManager::showTime,
             10,
-            showTime ? 50 : 80
+            RoverManager::showTime ? 50 : 80
         );
         
         drawFrame();
@@ -181,12 +179,12 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
     boneSpr.createSprite(80, 80);
     boneSpr.fillSprite(TFT_BLACK);
     
-    // Draw bone in temporary sprite (same bone drawing code)
-    int tempX = 40;
-    int tempY = 40;
-    int boneWidth = 60;
-    int boneHeight = 20;
-    int circleRadius = 12;
+    // Draw bone centered in sprite
+    int tempX = 40;  // Center of sprite
+    int tempY = 40;  // Center of sprite
+    int boneWidth = 40;
+    int boneHeight = 15;
+    int circleRadius = 8;
     
     boneSpr.fillRect(tempX - boneWidth/2, tempY - boneHeight/2, boneWidth, boneHeight, TFT_WHITE);
     boneSpr.fillCircle(tempX - boneWidth/2, tempY - boneHeight/2, circleRadius, TFT_WHITE);
@@ -196,10 +194,11 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
     
     spr.fillSprite(TFT_BLACK);
     
-    // Adjust center positions - move bone up and left significantly more
-    int centerX = (tft.width() / 2) - 65;  // Move bone even more left
-    int centerY = tft.height() / 2 - 70;   // Move bone up significantly more
+    // Use SCREEN_CENTER_X for proper centering
+    int centerX = SCREEN_CENTER_X - boneWidth;
+    int topMargin = 25;
     
+    // Push rotated bone to main sprite - only use required parameters
     boneSpr.pushRotated(&spr, rotationAngle, TFT_BLACK);
     
     if (millis() - lastBoneRotation > 50) {
@@ -207,14 +206,14 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
         lastBoneRotation = millis();
     }
     
-    // Center text better by moving it right
+    // Center text using drawCentreString
     spr.setTextFont(2);
     spr.setTextColor(TFT_WHITE);
-    spr.drawCentreString("Loading...", centerX + 55, centerY + 70, 2);
+    spr.drawCentreString("Loading...", centerX, topMargin + 50, 2);
     
     if (statusText) {
         spr.setTextFont(1);
-        spr.drawCentreString(statusText, centerX + 55, centerY + 95, 1);
+        spr.drawCentreString(statusText, centerX, topMargin + 75, 1);
     }
     
     boneSpr.deleteSprite();

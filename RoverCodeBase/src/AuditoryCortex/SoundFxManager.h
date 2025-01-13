@@ -119,7 +119,9 @@ public:
         if (jinglePlaying) {
             updateJingle();
         }
-        
+        if (isPlayingSound) {
+            audio_eof_mp3("update");
+        }
     }
 };
 

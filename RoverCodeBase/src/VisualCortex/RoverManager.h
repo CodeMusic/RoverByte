@@ -21,6 +21,7 @@ public:
     };
 
     static const char* expressionToMood(Expression exp);
+    static bool showTime;  // Added here as it's related to rover display state
 
 private:
     // Now we can use Expression as a type
