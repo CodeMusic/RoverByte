@@ -305,26 +305,36 @@ void drawHumilitySymbol(int x, int y, int size) {
 }
 
 void drawBatteryCharging(int x, int y, int size) {
-    // Battery outline - moved up more
-    spr.drawRect(x - size/2, (y - 8) - size/4, size, size/2, TFT_WHITE);
-    spr.drawRect(x + size/2, (y - 8) - size/8, size/8, size/4, TFT_WHITE);
+    // Draw base battery first
+    drawBattery(x, y, size);
     
-    // Lightning bolt - adjusted for new position
-    spr.fillTriangle(x, (y - 8) - size/8, x - size/4, (y - 8), x, (y - 8), TFT_YELLOW);
-    spr.fillTriangle(x, (y - 8), x + size/4, (y - 8), x, (y - 8) + size/8, TFT_YELLOW);
+    // Add lightning bolt overlay
+    int batteryX = x - size/2;
+    int batteryY = y - size/4;
+    
+    // Lightning bolt
+    spr.fillTriangle(x - 2, batteryY + 2, x - size/4, y, x + 2, y, TFT_YELLOW);
+    spr.fillTriangle(x - 2, y, x + size/4, y, x + 2, batteryY + size/2 - 2, TFT_YELLOW);
 }
 
 void drawBattery(int x, int y, int size) {
     int batteryWidth = size;
-    int sizeY = size;
-    int batteryX = x;
-    int batteryY = y - 8;  // Moved up to -8 (was -12)
+    int batteryHeight = size/2;
+    int batteryX = x - size/2;
+    int batteryY = y - size/4;
     
-    spr.drawRect(batteryX, batteryY, size, sizeY, TFT_WHITE);
-    spr.fillRect(batteryX + size, batteryY + 3, 2, 6, TFT_WHITE);
+    // Main battery body
+    spr.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, TFT_WHITE);
     
-    int fillWidth = (size - 4) * PowerManager::getBatteryPercentage() / 100;
-    spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, sizeY - 4, TFT_WHITE);
+    // Battery terminal
+    int terminalWidth = size/8;
+    int terminalHeight = batteryHeight/2;
+    spr.fillRect(batteryX + batteryWidth, batteryY + (batteryHeight - terminalHeight)/2, 
+                 terminalWidth, terminalHeight, TFT_WHITE);
+    
+    // Fill level
+    int fillWidth = (batteryWidth - 4) * PowerManager::getBatteryPercentage() / 100;
+    spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, batteryHeight - 4, TFT_WHITE);
 }
 
 void RoverViewManager::drawChakras() {
@@ -546,12 +556,12 @@ void RoverViewManager::drawStatusBar() {
                     drawBatteryCharging(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2 - 12);
+                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2);
                 } else {
                     drawBattery(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2 - 12);
+                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2);
                 }
                 break;
         }

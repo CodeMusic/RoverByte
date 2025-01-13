@@ -23,6 +23,7 @@
 #include "src/AuditoryCortex/SoundFxManager.h"
 #include "src/VisualCortex/LEDManager.h"
 #include "src/PrefrontalCortex/WiFiManager.h"
+#include "src/PrefrontalCortex/SDManager.h"
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -197,6 +198,7 @@ void setup() {
     gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
     
     drawSprite();
+    SDManager::init();
 }
 
 void syncLEDsForDay() {
@@ -287,15 +289,20 @@ void handleRotaryButton() {
     if (rotaryButtonPressed) {
         rotaryButtonPressed = false;
         
-        // Toggle between showing time and LED modes
-        if (!PowerManager::getShowTime()) {
+        // If we just woke from sleep, first press should show time
+        if (PowerManager::getCurrentSleepState() == PowerManager::SleepState::AWAKE && 
+            !PowerManager::getShowTime()) {
             PowerManager::setShowTime(true);
         } else {
-            LEDManager::nextMode();
-            SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+            // Normal operation - toggle between time and LED modes
+            if (!PowerManager::getShowTime()) {
+                PowerManager::setShowTime(true);
+            } else {
+                LEDManager::nextMode();
+                SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
+            }
         }
         drawSprite();
-        
         PowerManager::updateLastActivityTime();
     }
 }
@@ -387,5 +394,22 @@ void loop() {
 
 // Just declare the function (near other function declarations)
 void drawBatteryCharging(int x, int y, int size);
+
+void startRecording() {
+    if (!SDManager::isInitialized()) return;
+    
+    File recordFile = SDManager::openFile(RECORD_FILENAME, "w");
+    if (!recordFile) {
+        LOG_ERROR("Failed to open record file");
+        return;
+    }
+    isRecording = true;
+}
+
+void stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    SDManager::closeFile(recordFile);
+}
 
 

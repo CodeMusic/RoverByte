@@ -221,32 +221,34 @@ void LEDManager::updateTimerMode() {
         
         CRGB currentColor = getRainbowColor(currentColorIndex);
         
-        // If starting a new color cycle
-        if (currentPosition == 0) {
-            filledPositions = 0;
-        }
-        
-        // Fill from right to left
+        // Move current color down one position
         if (currentPosition < WS2812_NUM_LEDS) {
-            leds[WS2812_NUM_LEDS - 1 - currentPosition] = currentColor;
-            currentPosition++;
-            FastLED.show();
+            // Clear previous position if not at bottom
+            if (currentPosition > 0) {
+                leds[currentPosition - 1] = CRGB::Black;
+            }
             
-            // When we've filled 8 positions with this color
+            // Set new position
+            leds[currentPosition] = currentColor;
+            currentPosition++;
+            
+            // When reaching bottom
             if (currentPosition >= WS2812_NUM_LEDS) {
-                filledPositions++;
-                currentPosition = 0;
+                // Keep the color at the bottom
+                leds[WS2812_NUM_LEDS - 1] = currentColor;
                 
-                // After 8 cycles of the same color, move to next color
-                if (filledPositions >= 8) {
-                    // The current color becomes the background
-                    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                        leds[i] = currentColor;
-                    }
+                // Start next drop
+                currentPosition = 0;
+                filledPositions++;
+                
+                // After 8 drops of same color
+                if (filledPositions >= WS2812_NUM_LEDS) {
+                    // Move to next color
                     currentColorIndex = (currentColorIndex + 1) % NUM_RAINBOW_COLORS;
                     filledPositions = 0;
                 }
             }
+            FastLED.show();
         }
     }
 }

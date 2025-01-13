@@ -133,31 +133,21 @@ PowerManager::SleepState PowerManager::getCurrentSleepState() {
 int PowerManager::getBatteryPercentage() {
     if (!batteryInitialized) return 0;
     
-    // Get both voltage and charging status
     float voltage = PPM.getBattVoltage();
     bool charging = PPM.isCharging();
     
-    // Define voltage ranges
-    const float MIN_VOLTAGE = 3300;  // 3.3V
-    const float MAX_VOLTAGE = 4200;  // 4.2V
-    
-    // Convert mV to V if needed
-    if (voltage > 100) {  // If voltage is in mV
-        voltage = voltage / 1000.0;
+    // Convert to millivolts if needed
+    if (voltage < 100.0) {  // If voltage is in volts
+        voltage *= 1000.0;  // Convert to millivolts
     }
     
-    // Calculate percentage
-    int percentage = ((voltage - 3.3) / (4.2 - 3.3)) * 100;
+    // Calculate percentage based on voltage range
+    float percentage = ((voltage - 3300.0) / (4200.0 - 3300.0)) * 100.0;
     
     // Constrain between 0-100
     percentage = constrain(percentage, 0, 100);
     
-    // If charging and below 100%, ensure we show some progress
-    if (charging && percentage < 100) {
-        percentage = max(percentage, 5);  // Show at least 5% when charging
-    }
-    
-    return percentage;
+    return static_cast<int>(percentage);
 }
 
 String PowerManager::getChargeStatus() {
