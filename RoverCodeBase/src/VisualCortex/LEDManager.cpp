@@ -213,7 +213,6 @@ void LEDManager::updateTimerMode() {
             leds[0] = timerColors[currentColorIndex];
             currentPosition = 0;
             isMoving = true;
-            SoundFxManager::playTimerDropSound();
         } else {
             // Clear current position
             leds[currentPosition] = backgroundColors[currentPosition];
@@ -223,10 +222,10 @@ void LEDManager::updateTimerMode() {
                 leds[currentPosition + 1] == backgroundColors[currentPosition + 1]) {
                 currentPosition++;
                 leds[currentPosition] = timerColors[currentColorIndex];
-                SoundFxManager::playTimerDropSound();
             } else {
                 // Drop has reached its final position
                 leds[currentPosition] = timerColors[currentColorIndex];
+                SoundFxManager::playTimerDropSound(timerColors[currentColorIndex]);
                 isMoving = false;
                 
                 // Check if we completed this color's cycle

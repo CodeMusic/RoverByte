@@ -68,7 +68,7 @@ public:
     static void playSideButtonSound(bool start = false);
     static void playStartupSound();
     static void playSuccessSound();
-    static void playTimerDropSound();
+    static void playTimerDropSound(CRGB color);
     
     // Jingle control
     static void startJingle();

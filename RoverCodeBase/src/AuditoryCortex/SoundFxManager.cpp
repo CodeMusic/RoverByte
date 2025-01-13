@@ -479,16 +479,26 @@ void SoundFxManager::playCardMelody(uint32_t cardId) {
     }
 }
 
-void SoundFxManager::playTimerDropSound() {
-    // Start with a higher frequency and quickly slide down
-    // for a water drop effect
-    const int startFreq = 2000;
-    const int endFreq = 500;
+void SoundFxManager::playTimerDropSound(CRGB color) {
+    // Convert color to musical note (using similar logic to ColorUtilities)
+    int baseNote;
+    if (color == CRGB::Red) baseNote = NOTE_C5;
+    else if (color == CRGB::Orange) baseNote = NOTE_D5;
+    else if (color == CRGB::Yellow) baseNote = NOTE_E5;
+    else if (color == CRGB::Green) baseNote = NOTE_F5;
+    else if (color == CRGB::Blue) baseNote = NOTE_G5;
+    else if (color == CRGB::Indigo) baseNote = NOTE_A5;
+    else if (color == CRGB::Purple) baseNote = NOTE_B5;
+    else if (color == CRGB::White) baseNote = NOTE_C6;
+    else baseNote = NOTE_C5;  // Default for black or unknown colors
+
+    // Create water drop effect starting from the base note
     const int steps = 20;
     const int duration = 5;  // Duration per step in ms
+    const int dropRange = 700;  // Frequency range of the drop effect
     
     for (int i = 0; i < steps; i++) {
-        int freq = startFreq - ((startFreq - endFreq) * i / steps);
+        int freq = baseNote - (dropRange * i / steps);
         playTone(freq, duration);
     }
 }
