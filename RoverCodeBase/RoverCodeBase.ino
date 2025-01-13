@@ -56,6 +56,10 @@ void setup() {
     PowerManager::init();
     LEDManager::init();
     RoverViewManager::init();
+    UIManager::init();
+    
+    // Initialize audio before other systems
+    SoundFxManager::init();
     
     // Initialize non-critical systems
     SDManager::init();
@@ -78,6 +82,9 @@ void loop() {
         SoundFxManager::playStartupSound();
         soundStarted = true;
     }
+    
+    // Update UI first
+    UIManager::update();
     
     if (millis() - lastDraw >= DRAW_INTERVAL) {
         RoverBehaviorManager::update();
