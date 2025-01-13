@@ -4,37 +4,37 @@
 const CRGB ColorUtilities::BASE_8_COLORS[] = {
     CRGB::Black,          // 0 = Off
     CRGB(255, 0, 0),     // 1 = Pure Red
-    CRGB(255, 100, 0),   // 2 = Orange
+    CRGB(255, 140, 0),   // 2 = Orange (increased from 100 to 140)
     CRGB::Yellow,        // 3 = Yellow
     CRGB::Green,         // 4 = Green
     CRGB::Blue,          // 5 = Blue
-    CRGB(75, 0, 180),    // 6 = Indigo
-    CRGB(220, 0, 220)    // 7 = Violet
+    CRGB(75, 0, 130),    // 6 = Indigo (adjusted to match standard indigo)
+    CRGB(148, 0, 211)    // 7 = Violet (using standard violet)
 };
 
 const CRGB ColorUtilities::MONTH_COLORS[][2] = {
     {CRGB(255, 0, 0), CRGB(255, 0, 0)},      // January
-    {CRGB(255, 0, 0), CRGB(255, 100, 0)},    // February
-    {CRGB(255, 100, 0), CRGB(255, 100, 0)},  // March
-    {CRGB(255, 100, 0), CRGB::Yellow},       // April
+    {CRGB(255, 0, 0), CRGB(255, 140, 0)},    // February (adjusted orange)
+    {CRGB(255, 140, 0), CRGB(255, 140, 0)},  // March (adjusted orange)
+    {CRGB(255, 140, 0), CRGB::Yellow},       // April (adjusted orange)
     {CRGB::Yellow, CRGB::Yellow},            // May
     {CRGB::Green, CRGB::Green},              // June
     {CRGB::Green, CRGB::Blue},               // July
     {CRGB::Blue, CRGB::Blue},                // August
-    {CRGB::Blue, CRGB(75, 0, 180)},          // September
-    {CRGB(75, 0, 180), CRGB(75, 0, 180)},    // October
-    {CRGB(75, 0, 180), CRGB(220, 0, 220)},   // November
-    {CRGB(220, 0, 220), CRGB(220, 0, 220)}   // December
+    {CRGB::Blue, CRGB(75, 0, 130)},          // September (adjusted indigo)
+    {CRGB(75, 0, 130), CRGB(75, 0, 130)},    // October (adjusted indigo)
+    {CRGB(75, 0, 130), CRGB(148, 0, 211)},   // November (adjusted violet)
+    {CRGB(148, 0, 211), CRGB(148, 0, 211)}   // December (adjusted violet)
 };
 
 const CRGB ColorUtilities::DAY_COLORS[] = {
-    CRGB::Red,                  // Sunday (1)
-    CRGB(255, 100, 0),         // Monday (2) - Distinct orange
-    CRGB::Yellow,              // Tuesday (3)
-    CRGB::Green,               // Wednesday (4)
-    CRGB::Blue,                // Thursday (5)
-    CRGB(75, 0, 130),          // Friday (6) - Indigo
-    CRGB(148, 0, 211)          // Saturday (7) - Violet
+    CRGB::Red,                  // Sunday
+    CRGB(255, 140, 0),         // Monday (adjusted orange)
+    CRGB::Yellow,              // Tuesday
+    CRGB::Green,               // Wednesday
+    CRGB::Blue,                // Thursday
+    CRGB(75, 0, 130),          // Friday (adjusted indigo)
+    CRGB(148, 0, 211)          // Saturday (adjusted violet)
 };
 
 const CRGB ColorUtilities::CHROMATIC_COLORS[][2] = {

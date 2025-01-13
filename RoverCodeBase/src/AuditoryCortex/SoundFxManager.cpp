@@ -11,53 +11,19 @@ Audio SoundFxManager::audio;
 bool SoundFxManager::isPlayingSound = false;
 const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
 
-
+// Add after the other jingle definitions
 const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
-    // Opening flourish
-    {NOTE_G4, 150, 50},   // G
-    {NOTE_B4, 150, 50},   // B
-    {NOTE_D5, 150, 50},   // D
-    {NOTE_G5, 250, 100},  // High G
-    
-    // Playful melody
-    {NOTE_E5, 200, 50},   // E
-    {NOTE_C5, 200, 50},   // C
-    {NOTE_D5, 200, 50},   // D
-    {NOTE_B4, 200, 100},  // B
-    
-    // Bridge
-    {NOTE_G4, 150, 50},   // G
-    {NOTE_A4, 150, 50},   // A
-    {NOTE_B4, 150, 50},   // B
-    {NOTE_C5, 250, 100},  // C
-    
-    // Final part
-    {NOTE_D5, 200, 50},   // D
-    {NOTE_E5, 200, 50},   // E
-    {NOTE_G5, 300, 100},  // High G
-    {NOTE_G4, 400, 0}     // End on low G
+    {NOTE_G4, 100, 30},    // G - Base note
+    {NOTE_C5, 100, 30},    // C - Up to C
+    {NOTE_E5, 100, 30},    // E - Complete the C major triad
+    {NOTE_G5, 150, 50},    // G - Octave up, held longer
+    {NOTE_E5, 100, 30},    // E - Back down
+    {NOTE_C5, 100, 30},    // C - Continue down
+    {NOTE_D5, 150, 50},    // D - Surprise note
+    {NOTE_G5, 200, 0}      // G - Final high note, held longest
 };
 
 const int SoundFxManager::JINGLE_LENGTH = sizeof(ROVERBYTE_JINGLE) / sizeof(Note);
-
-const SoundFxManager::Note SoundFxManager::STARTUP_JINGLE[] = {
-    {NOTE_G5, 50, 30},   // High G
-    {NOTE_B5, 50, 30},   // Higher B
-    {NOTE_D6, 50, 30},   // Even higher D
-    {NOTE_G6, 100, 0}    // Highest G - final note
-};
-
-const int SoundFxManager::STARTUP_JINGLE_LENGTH = sizeof(STARTUP_JINGLE) / sizeof(Note);
-
-const SoundFxManager::Note SoundFxManager::ROVER_JINGLE[] = {
-    {NOTE_G4, 100, 0},    // G
-    {NOTE_E5, 100, 0},    // E
-    {NOTE_G5, 100, 0},    // G
-    {NOTE_B5, 200, 50},   // B (held longer)
-    {NOTE_A5, 100, 0},    // A
-    {NOTE_G5, 200, 0}     // G (final note)
-};
-const int SoundFxManager::ROVER_JINGLE_LENGTH = 6;
 
 void SoundFxManager::playTone(int frequency, int duration) {
     ledcSetup(TONE_PWM_CHANNEL, frequency, 8);
@@ -78,20 +44,13 @@ void SoundFxManager::updateJingle() {
     if (!jinglePlaying) return;
     
     unsigned long currentTime = millis();
-    
-    if (lastNoteTime == 0 || 
-        (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].duration + 
-                                     ROVERBYTE_JINGLE[currentNote].delay)) {
-        
-        playTone(ROVERBYTE_JINGLE[currentNote].pitch, 
-                ROVERBYTE_JINGLE[currentNote].duration);
-        
+    if (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].delay) {
+        playTone(ROVERBYTE_JINGLE[currentNote].pitch, ROVERBYTE_JINGLE[currentNote].duration);
         lastNoteTime = currentTime;
         currentNote++;
         
         if (currentNote >= JINGLE_LENGTH) {
-            jinglePlaying = false;
-            currentNote = 0;
+            stopJingle();
         }
     }
 }
@@ -193,10 +152,10 @@ void SoundFxManager::playErrorSound(int type) {
 void SoundFxManager::playStartupSound() {
     if (!SPIFFS.exists("/initialized.txt")) {
         // Only play on first boot
-        for (int i = 0; i < STARTUP_JINGLE_LENGTH; i++) {
-            playTone(STARTUP_JINGLE[i].pitch, STARTUP_JINGLE[i].duration);
-            if (STARTUP_JINGLE[i].delay > 0) {
-                delay(STARTUP_JINGLE[i].delay);
+        for (int i = 0; i < JINGLE_LENGTH; i++) {
+            playTone(ROVERBYTE_JINGLE[i].pitch, ROVERBYTE_JINGLE[i].duration);
+            if (ROVERBYTE_JINGLE[i].delay > 0) {
+                delay(ROVERBYTE_JINGLE[i].delay);
             }
         }
         
@@ -210,10 +169,10 @@ void SoundFxManager::playStartupSound() {
 }
 
 void SoundFxManager::playJingle() {
-    for (int i = 0; i < ROVER_JINGLE_LENGTH; i++) {
-        playTone(ROVER_JINGLE[i].pitch, ROVER_JINGLE[i].duration);
-        if (ROVER_JINGLE[i].delay > 0) {
-            delay(ROVER_JINGLE[i].delay);
+    for (int i = 0; i < JINGLE_LENGTH; i++) {
+        playTone(ROVERBYTE_JINGLE[i].pitch, ROVERBYTE_JINGLE[i].duration);
+        if (ROVERBYTE_JINGLE[i].delay > 0) {
+            delay(ROVERBYTE_JINGLE[i].delay);
         }
     }
 } 
@@ -439,5 +398,11 @@ void SoundFxManager::init() {
     }
     
     playStartupSound();
+}
+
+void SoundFxManager::stopJingle() {
+    jinglePlaying = false;
+    currentNote = 0;
+    lastNoteTime = 0;
 }
 

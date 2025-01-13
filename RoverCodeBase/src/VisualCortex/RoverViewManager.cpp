@@ -305,20 +305,20 @@ void drawHumilitySymbol(int x, int y, int size) {
 }
 
 void drawBatteryCharging(int x, int y, int size) {
-    // Battery outline
-    spr.drawRect(x - size/2, y - size/4, size, size/2, TFT_WHITE);
-    spr.drawRect(x + size/2, y - size/8, size/8, size/4, TFT_WHITE);
+    // Battery outline - moved up more
+    spr.drawRect(x - size/2, (y - 12) - size/4, size, size/2, TFT_WHITE);
+    spr.drawRect(x + size/2, (y - 12) - size/8, size/8, size/4, TFT_WHITE);
     
-    // Lightning bolt
-    spr.fillTriangle(x, y - size/8, x - size/4, y, x, y, TFT_YELLOW);
-    spr.fillTriangle(x, y, x + size/4, y, x, y + size/8, TFT_YELLOW);
+    // Lightning bolt - adjusted for new position
+    spr.fillTriangle(x, (y - 12) - size/8, x - size/4, (y - 12), x, (y - 12), TFT_YELLOW);
+    spr.fillTriangle(x, (y - 12), x + size/4, (y - 12), x, (y - 12) + size/8, TFT_YELLOW);
 }
 
 void drawBattery(int x, int y, int size) {
     int batteryWidth = size;
     int sizeY = size;
     int batteryX = x;
-    int batteryY = y;
+    int batteryY = y - 12;  // Moved up by 12 pixels (was -8)
     
     spr.drawRect(batteryX, batteryY, size, sizeY, TFT_WHITE);
     spr.fillRect(batteryX + size, batteryY + 3, 2, 6, TFT_WHITE);
@@ -546,12 +546,12 @@ void RoverViewManager::drawStatusBar() {
                     drawBatteryCharging(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                    spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
+                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2);
                 } else {
                     drawBattery(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
-                    spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
+                    spr.drawString(batteryStr, statusX + 45, STATUS_BAR_Y + dateHeight/2);
                 }
                 break;
         }

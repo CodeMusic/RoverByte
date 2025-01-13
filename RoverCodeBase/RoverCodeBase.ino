@@ -174,6 +174,7 @@ void setup() {
     LEDManager::init();
     FastLED.clear(true);
     LEDManager::startLoadingAnimation();
+    SoundFxManager::startJingle();
     
     // Initialize display
     tft.begin();
@@ -349,6 +350,7 @@ void loop() {
     
     handleSideButton();
     readEncoder();
+    SoundFxManager::updateJingle();
     
     if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) {
         RoverManager::updateHoverAnimation();

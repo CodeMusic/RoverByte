@@ -37,11 +37,7 @@ private:
     
     // Jingle data
     static const Note ROVERBYTE_JINGLE[];
-    static const Note ROVER_JINGLE[];
-    static const Note STARTUP_JINGLE[];
     static const int JINGLE_LENGTH;
-    static const int ROVER_JINGLE_LENGTH;
-    static const int STARTUP_JINGLE_LENGTH;
     static int currentNote;
     static unsigned long lastNoteTime;
     static bool jinglePlaying;
@@ -112,6 +108,8 @@ public:
     static inline int getNoteMinus2(int baseNote) {
         return baseNote * 8 / 10;
     }
+
+    static void stopJingle();
 };
 
 #endif 

@@ -89,6 +89,7 @@ void WiFiManager::checkConnection() {
                 isWiFiConnected = true;
                 timeInitialized = true;
                 LEDManager::stopLoadingAnimation();
+                SoundFxManager::stopJingle();
             } else {
                 LOG_ERROR("Time sync failed");
             }
