@@ -17,23 +17,21 @@ public:
     static void init();
     static void checkConnection();
     static bool isConnected() { return isWiFiConnected; }
-    static void setCredentials(const char* primary_ssid, const char* primary_pass,
-                             const char* backup_ssid, const char* backup_pass);
     static void connectToWiFi();
-    static bool getWiFiStatus() { return isWiFiConnected; }
-    static bool getTimeInitialized();
+    static bool getTimeInitialized() { return timeInitialized; }
+    static void syncTime();
 
-    static bool timeInitialized;
-    
 private:
     static bool isRecording;
     static bool isWiFiConnected;
     static unsigned long lastWiFiAttempt;
-    static const unsigned long WIFI_RETRY_INTERVAL = 300000; // 5 minutes
-    static const char* primarySSID;
-    static const char* primaryPassword;
-    static const char* backupSSID;
-    static const char* backupPassword;
+    static bool timeInitialized;
+    static unsigned long lastTimeCheck;
+    // WiFi credentials
+    static constexpr const char* PRIMARY_SSID = "RevivalNetwork";
+    static constexpr const char* PRIMARY_PASSWORD = "xunjmq84";
+    static constexpr const char* BACKUP_SSID = "CodeMusicai";
+    static constexpr const char* BACKUP_PASSWORD = "cnatural";
 };
 
 #endif 

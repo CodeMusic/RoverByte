@@ -24,392 +24,143 @@
 #include "src/VisualCortex/LEDManager.h"
 #include "src/PsychicCortex/WiFiManager.h"
 #include "src/PrefrontalCortex/SDManager.h"
-//#include "src/PsychicCortex/NFCManager.h"
+#include "src/PsychicCortex/NFCManager.h"
+#include "src/SomatosensoryCortex/UIManager.h"
 
-TFT_eSPI tft = TFT_eSPI();
-TFT_eSprite spr = TFT_eSprite(&tft);
-
+// Core configuration
+#define SCREEN_CENTER_X 85
 #define CLOCK_PIN 45
 
+// Global objects
+TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite spr = TFT_eSprite(&tft);
 RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
 
-int value=980;
-bool muted=0;
-int deb=0;
-
-
-// Update WiFi credentials at top
-const char* primary_ssid = "RevivalNetwork ";
-const char* primary_password = "xunjmq84";
-const char* backup_ssid = "CodeMusicai";
-const char* backup_password = "cnatural";
-
-#define SCREEN_CENTER_X 85  // Confirm this matches your screen width
-
-// Add at top with other global variables
+// Global state
 bool isLowBrightness = false;
 bool showTime = false;
-
-// Add at top with other global variables
-unsigned long lastCounterUpdate = 0;
-const unsigned long COUNTER_SPEED = 1000;  // 1 second interval
-unsigned long lastAnimationStep = 0;
-const unsigned long ANIMATION_DELAY = 250;  // 250ms between animation steps
-bool isAnimating = false;
-int animationStep = 0;
-const int TOTAL_ANIMATION_STEPS = 14;  // 7 steps for turning off + 7 steps for turning on
-
 static int pos = 0;
+int value = 980;
+bool muted = 0;
+int deb = 0;
 
 
-// Add at top with other global variables
-unsigned long lastStatusUpdate = 0;
-const unsigned long STATUS_CHANGE_INTERVAL = 3000;  // Switch every 3 seconds
-bool showLevel = true;  // Toggle between level and experience
-
-
-unsigned long lastWiFiAttempt = 0;
-const unsigned long WIFI_RETRY_INTERVAL = 300000;  // Try every 5 minutes
-bool isWiFiConnected = false;
-
-// Add at top with other global variables
-XPowersPPM PPM;
-bool batteryInitialized = false;
-int batteryPercentage = 0;
-String chargeStatus = "Unknown";
-
-// Add these definitions
-#define RECORD_FILENAME "/sdcard/temp_record.wav"
-#define EXAMPLE_I2S_CH I2S_NUM_0
-#define EXAMPLE_SAMPLE_RATE 44100
-#define EXAMPLE_BIT_SAMPLE  16
-#define NUM_CHANNELS        1
-#define SAMPLE_SIZE         (EXAMPLE_BIT_SAMPLE * 1024)
-#define BYTE_RATE          (EXAMPLE_SAMPLE_RATE * (EXAMPLE_BIT_SAMPLE / 8)) * NUM_CHANNELS
-
-// Add these globals
-static int16_t i2s_readraw_buff[SAMPLE_SIZE];
-size_t bytes_read;
-bool isRecording = false;
-File recordFile;
-
-// Add these near your other global variables
-#define RECORD_BUFFER_SIZE 1024  // Smaller buffer size
-static uint8_t recording_buffer[RECORD_BUFFER_SIZE];
-
-// Add these globals near the top
-const unsigned long DOUBLE_CLICK_TIME = 500;  // Maximum time between clicks (ms)
-unsigned long lastButtonPress = 0;
-bool isInSleepMode = false;
-
-// Add these globals near the top
-bool rotaryButtonPressed = false;
-bool sideButtonPressed = false;
-
-// Add these near your other global variables
-const unsigned long IDLE_TIMEOUT = 60000;  // 60 seconds for each stage
-unsigned long lastActivityTime = 0;
-enum SleepState {
-    AWAKE,
-    DIM_DISPLAY,    // 50% brightness
-    DISPLAY_OFF,    // Screen off, LEDs on
-    DEEP_SLEEP      // Screen and LEDs off
-} currentSleepState = AWAKE;
-
-
-// Add these constants at the top with other defines
-#define TONE_PWM_CHANNEL 2  // Use a different channel than the backlight
-#define TONE_PIN BOARD_VOICE_DIN
-
-
-// Add at the top with other globals
-bool isDimmed = false;
-const int NUM_LEDS = 8;  // 8 LEDs total
-
-// Add near other global variables
-unsigned long lastExpressionChange = 0;
-unsigned long nextExpressionInterval = 60000;  // Start with 1 minute
-
-// Add this near the top with other function declarations
+// Function declarations
 void drawBatteryCharging(int x, int y, int size);
-
-
-
-// Battery initialization function
-void initializeBattery() {
-    if (!batteryInitialized) {
-        if (!PPM.begin(Wire, AXP2101_SLAVE_ADDRESS, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
-            LOG_ERROR("Failed to initialize battery management");
-            return;
-        }
-        batteryInitialized = true;
-    }
-}
 
 // Audio instance
 Audio audio;
 bool isPlayingSound = false;
 
-void handleSDCardOperation() {
-    if (!SD.begin()) {
-        LOG_ERROR("SD Card initialization failed");
-        // Visual feedback for error
-        LEDManager::setLED(0, CRGB::Red);
-        LEDManager::showLEDs();
-        RoverManager::setEarsDown();  // Reset ears
-        delay(1000);
-        return;
-    }
-}
+// Add after other global variables (around line 50)
+bool rotaryButtonPressed = false;
+bool isRecording = false;
+File recordFile;
+const char* RECORD_FILENAME = "/recording.wav";
+bool isInitialized = false;
 
 void setup() {
     Serial.begin(115200);
-    delay(100);
-    pinMode(BOARD_USER_KEY, INPUT_PULLUP);
-    // Initialize I2C first for power management
+    isInitialized = false;
+    // Initialize display first
+    tft.init();
+    tft.setRotation(0);
+    tft.writecommand(TFT_SLPOUT);
+    delay(120);  // This delay is necessary for display
+    tft.writecommand(TFT_DISPON);
+    spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
+    spr.setTextDatum(MC_DATUM);
+    
+    // Show initial loading screen
+    RoverViewManager::drawLoadingScreen("Contacting the RoverVerse...");
+    spr.pushSprite(0, 0);  // Important: Push the sprite!
+    
+    // Initialize core hardware (non-blocking)
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
     Wire.setClock(100000);
-    delay(100);
     
-    // Initialize core power management before anything else
-    PowerManager::init();
-    delay(100);
-    
-    // Initialize SPI bus and CS pins
+    // Configure SPI pins
     pinMode(TFT_CS, OUTPUT);
     pinMode(BOARD_SD_CS, OUTPUT);
     pinMode(BOARD_LORA_CS, OUTPUT);
     digitalWrite(TFT_CS, HIGH);
     digitalWrite(BOARD_SD_CS, HIGH);
     digitalWrite(BOARD_LORA_CS, HIGH);
-    delay(100);
     
-    // Initialize display with proper sequence
-    tft.init();
-    tft.setRotation(0);
-    tft.writecommand(TFT_SLPOUT); // Wake from sleep
-    delay(120); // Required delay
-    tft.writecommand(TFT_DISPON); // Display on
-    tft.fillScreen(TFT_BLACK);
-    PowerManager::setBacklight(255);
-    delay(100);
-    
-    // Initialize storage
-    if(!SPIFFS.begin(true)) {
-        LOG_ERROR("Failed to initialize SPIFFS");
-    }
-    
-    // Initialize core components
-    SDManager::init();
-    LEDManager::init();
-    FastLED.clear(true);
-    
-    // Initialize remaining components
-    //NFCManager::init();
-    RoverViewManager::init();
-    
-    // Initialize audio last
+    // Initialize managers in order
     SoundFxManager::init();
+    PowerManager::init();
+    LEDManager::init();
+    RoverViewManager::init();
+    SDManager::init();
     
-    // Start normal operation
-    LEDManager::startLoadingAnimation();
-    SoundFxManager::startJingle();
-    
-    // Initialize WiFi last
-    WiFiManager::setCredentials(primary_ssid, primary_password, backup_ssid, backup_password);
+    // Start background processes
+    NFCManager::startBackgroundInit();
     WiFiManager::init();
-    WiFiManager::connectToWiFi();
 }
-
-void syncLEDsForDay() {
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    int currentDay = timeInfo->tm_wday;
-    int currentHour = timeInfo->tm_hour % 12;
-    if (currentHour == 0) currentHour = 12;
-    
-    // Define colors for each hour
-    static const CRGB hourColors[] = {
-        CRGB::Red,           // 1
-        CRGB(255, 69, 0),    // 2 (Red/Orange)
-        CRGB::Orange,        // 3
-        CRGB(255, 165, 0),   // 4 (Orange/Yellow)
-        CRGB::Yellow,        // 5
-        CRGB::Green,         // 6
-        CRGB::Blue,          // 7
-        CRGB(75, 0, 130),    // 8 (Blue/Indigo)
-        CRGB(75, 0, 130),    // 9 (Indigo)
-        CRGB(75, 0, 130),    // 10 (Indigo/Violet)
-        CRGB(148, 0, 211),   // 11 (Violet)
-        CRGB::Purple         // 12
-    };
-
-    // Set the 0th LED to the current hour color at 70% brightness
-    LEDManager::setLED(0, hourColors[currentHour - 1]);
-    LEDManager::scaleLED(0, 178);  // 70% brightness
-    
-    // Set LEDs 1-7 based on the current day
-    for (int i = 1; i <= 7; i++) {
-        LEDManager::setLED(i, CRGB::White);
-        if (i <= currentDay) {
-            LEDManager::scaleLED(i, 128);  // 50% brightness
-        } else {
-            LEDManager::scaleLED(i, 28);   // 11% brightness
-        }
-    }
-    
-    LEDManager::showLEDs();
-}
-
-void readEncoder() {
-    encoder.tick();
-
-    // Handle rotation with debouncing
-    static unsigned long lastRotaryChange = 0;
-    const unsigned long ROTARY_DEBOUNCE = 50;
-    
-    int newPos = encoder.getPosition();
-    static int lastPos = 0;
-    
-    if (newPos != lastPos && millis() - lastRotaryChange > ROTARY_DEBOUNCE) {
-        PowerManager::updateLastActivityTime();
-        lastRotaryChange = millis();
-        
-        // Determine direction and update view
-        if (newPos > lastPos) {
-            RoverViewManager::nextView();
-            SoundFxManager::playRotaryTurnSound(true);
-        } else {
-            RoverViewManager::previousView();
-            SoundFxManager::playRotaryTurnSound(false);
-        }
-        lastPos = newPos;
-        drawSprite();
-    }
-
-    // Handle button press with debouncing
-    static bool lastButtonState = HIGH;
-    static unsigned long lastButtonChange = 0;
-    const unsigned long BUTTON_DEBOUNCE = 50;
-    
-    bool buttonState = digitalRead(ENCODER_KEY);
-    
-    if (buttonState != lastButtonState && millis() - lastButtonChange > BUTTON_DEBOUNCE) {
-        lastButtonChange = millis();
-        if (buttonState == LOW) {
-            PowerManager::updateLastActivityTime();
-            rotaryButtonPressed = true;
-            handleRotaryButton();
-        }
-        lastButtonState = buttonState;
-    }
-}
-
-void handleRotaryButton() {
-    if (rotaryButtonPressed) {
-        rotaryButtonPressed = false;
-        
-        // If we just woke from sleep, first press should show time
-        if (PowerManager::getCurrentSleepState() == PowerManager::SleepState::AWAKE && 
-            !PowerManager::getShowTime()) {
-            PowerManager::setShowTime(true);
-        } else {
-            // Normal operation - toggle between time and LED modes
-            if (!PowerManager::getShowTime()) {
-                PowerManager::setShowTime(true);
-            } else {
-                LEDManager::nextMode();
-                SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
-            }
-        }
-        drawSprite();
-        PowerManager::updateLastActivityTime();
-    }
-}
-
 
 void drawSprite() {
-    if (!WiFiManager::getTimeInitialized()) {
-        RoverViewManager::drawLoadingScreen();
-        return;
-    }
     spr.fillSprite(TFT_BLACK);
     
-    // Adjust x position for better centering
-    int x = SCREEN_CENTER_X - 50;  // Adjust based on rover width
-    RoverViewManager::drawCurrentView();
+    if (!WiFiManager::getTimeInitialized()) {
+        RoverViewManager::drawLoadingScreen("Locating temporal coordinates...");
+        spr.pushSprite(0, 0);
+        return;
+    }
     
+    if (RoverViewManager::hasActiveNotification()) {
+        RoverViewManager::drawNotification();
+        spr.pushSprite(0, 0);
+        return;
+    }
+    
+    RoverViewManager::drawCurrentView();
     spr.pushSprite(0, 0);
 }
 
-void handleSideButton() {
-    static bool lastState = HIGH;
-    static unsigned long lastDebounceTime = 0;
-    const unsigned long debounceDelay = 50;
-    //gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
-    bool currentState = digitalRead(BOARD_USER_KEY);
-    
-    if (currentState != lastState) {
-        if ((millis() - lastDebounceTime) > debounceDelay) {
-            lastDebounceTime = millis();
-            
-            if (currentState == LOW) {  // Button pressed
-                RoverManager::setEarsUp();
-               /* if (NFCManager::isCardPresent()) {
-                    SoundFxManager::playVoiceLine("card_detected");
-                } else {
-                    SoundFxManager::playVoiceLine("waiting_for_card");
-                }*/
-            } else {  // Button released
-                RoverManager::setEarsDown();
-            }
-            PowerManager::updateLastActivityTime();
-            drawSprite();
-        }
-    }
-    lastState = currentState;
-}
-
 void loop() {
-    static unsigned long lastDisplayUpdate = 0;
-    unsigned long currentMillis = millis();
-    
-    handleSideButton();
-    readEncoder();
-    SoundFxManager::updateJingle();
-    
-    if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) {
-        RoverManager::updateHoverAnimation();
+    static unsigned long lastDraw = 0;
+    const unsigned long DRAW_INTERVAL = 50;  // 20fps is enough for loading
+    static bool soundStarted = false;
+    if (!isInitialized) {
+        RoverViewManager::drawLoadingScreen("");
     }
-    
-    if (currentMillis - lastDisplayUpdate >= 50) {
-        PowerManager::checkSleepState();
-        switch (PowerManager::getCurrentSleepState()) {
-            case PowerManager::AWAKE:
-                PowerManager::setBacklight(255);
-                LEDManager::updateLEDs();
-                drawSprite();
-                break;
-                
-            case PowerManager::DIM_DISPLAY:
-                PowerManager::setBacklight(64);
-                LEDManager::updateLEDs();
-                break;
-                
-            case PowerManager::DISPLAY_OFF:
-                PowerManager::setBacklight(0);
-                LEDManager::updateLEDs();
-                break;
-                
-            case PowerManager::DEEP_SLEEP:
-                PowerManager::enterDeepSleep();
-                break;
-        }
-        lastDisplayUpdate = currentMillis;
-    }
-    
+
+    // Always handle basic updates
     WiFiManager::checkConnection();
-    //NFCManager::update();
+    LEDManager::updateLoadingAnimation();
+     // Play startup sound once
+    if (!soundStarted) {
+        SoundFxManager::playStartupSound();
+        soundStarted = true;
+    }  
+
+    if (millis() - lastDraw >= DRAW_INTERVAL) {
+
+        
+        // Always show loading until fully initialized
+        if (!WiFiManager::getTimeInitialized()) {
+            const char* loadingStatus;
+            if (!WiFiManager::isConnected()) {
+                loadingStatus = "Connecting to WiFi...";
+            } else {
+                loadingStatus = "Synchronizing time...";
+                WiFiManager::syncTime();
+            }
+            RoverViewManager::drawLoadingScreen(loadingStatus);
+            
+        } else {
+            // Only show main view after full initialization
+            if (RoverViewManager::hasActiveNotification()) {
+                RoverViewManager::drawNotification();
+            } else {
+                RoverViewManager::drawCurrentView();
+            }
+        }
+        
+        spr.pushSprite(0, 0);
+        lastDraw = millis();
+    }
 }
 
 

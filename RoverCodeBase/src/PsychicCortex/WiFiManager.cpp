@@ -6,149 +6,80 @@
 #include "../PrefrontalCortex/utilities.h"
 
 #define WIFI_RETRY_INTERVAL 60000  // 1 minute between retry attempts
+#define TIME_CHECK_INTERVAL 500    // Time sync check interval
 
 bool WiFiManager::isRecording = false;
 bool WiFiManager::isWiFiConnected = false;
 unsigned long WiFiManager::lastWiFiAttempt = 0;
-const char* WiFiManager::primarySSID = nullptr;
-const char* WiFiManager::primaryPassword = nullptr;
-const char* WiFiManager::backupSSID = nullptr;
-const char* WiFiManager::backupPassword = nullptr;
 bool WiFiManager::timeInitialized = false;
-
-
-void WiFiManager::setCredentials(const char* primary_ssid, const char* primary_pass,
-                               const char* backup_ssid, const char* backup_pass) {
-    primarySSID = primary_ssid;
-    primaryPassword = primary_pass;
-    backupSSID = backup_ssid;
-    backupPassword = backup_pass;
-}
 
 void WiFiManager::init() {
     checkConnection();
 }
 
 void WiFiManager::checkConnection() {
-    if (isRecording) return;  // Skip WiFi connection attempts while recording
+    static unsigned long lastTimeCheck = 0;
+    static int wifiAttempts = 0;
+    static bool tryingBackup = false;
+    const unsigned long CHECK_INTERVAL = 500;
     
-    if (!isWiFiConnected && 
-        (millis() - lastWiFiAttempt > WIFI_RETRY_INTERVAL)) {
-        
-        // Try primary network first
-        if (primarySSID && primaryPassword) {
-            LOG_DEBUG("Attempting to connect to primary network: %s", primarySSID);
-            WiFi.begin(primarySSID, primaryPassword);
-            
-            // Visual indicator for primary network attempt
-            LEDManager::setLED(0, CRGB::Blue);
-            LEDManager::showLEDs();
-            delay(250);
-            LEDManager::setLED(0, CRGB::Black);
-            LEDManager::showLEDs();
-            delay(250);
-            
-            // Wait for connection
-            int attempts = 0;
-            while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-                delay(500);
-                attempts++;
-            }
-        }
-        
-        // If primary failed and backup credentials exist, try backup
-        if (WiFi.status() != WL_CONNECTED && backupSSID && backupPassword) {
-            LOG_DEBUG("Primary connection failed, trying backup network: %s", backupSSID);
-            WiFi.begin(backupSSID, backupPassword);
-            
-            // Visual indicator for backup network attempt
-            LEDManager::setLED(0, CRGB::Purple);
-            LEDManager::showLEDs();
-            delay(250);
-            LEDManager::setLED(0, CRGB::Black);
-            LEDManager::showLEDs();
-            delay(250);
-        }
-        
-        if (WiFi.status() == WL_CONNECTED) {
-            LOG_PROD("WiFi connected to %s", WiFi.SSID().c_str());
-            LOG_PROD("IP address: %s", WiFi.localIP().toString().c_str());
-            
-            configTime(GMT_OFFSET_SEC, DAY_LIGHT_OFFSET_SEC, NTP_SERVER);
-            
-            int attempts = 0;
-            while (time(nullptr) < 1000000000 && attempts < 10) {
-                LEDManager::updateLoadingAnimation();
-                RoverViewManager::drawLoadingScreen();
-                delay(500);
-                attempts++;
-            }
-            
-            if (time(nullptr) > 1000000000) {
-                LOG_PROD("Time synchronized successfully");
-                isWiFiConnected = true;
-                timeInitialized = true;
-                LEDManager::stopLoadingAnimation();
-                SoundFxManager::stopJingle();
+    if (isRecording) return;
+    
+    // First handle WiFi connection
+    if (!isWiFiConnected) {
+        if (millis() - lastTimeCheck >= CHECK_INTERVAL) {
+            if (WiFi.status() != WL_CONNECTED) {
+                WiFi.disconnect();
+                if (!tryingBackup) {
+                    LOG_DEBUG("Trying primary WiFi...");
+                    WiFi.begin(PRIMARY_SSID, PRIMARY_PASSWORD);
+                } else {
+                    LOG_DEBUG("Trying backup WiFi...");
+                    WiFi.begin(BACKUP_SSID, BACKUP_PASSWORD);
+                }
+                wifiAttempts++;
+                
+                if (wifiAttempts >= 20) {  // After 20 attempts (~10 seconds)
+                    wifiAttempts = 0;  // Reset counter
+                    tryingBackup = !tryingBackup;  // Switch networks
+                }
             } else {
-                LOG_ERROR("Time sync failed");
+                isWiFiConnected = true;
+                wifiAttempts = 0;
+                LOG_PROD("WiFi connected!");
             }
-        } else {
-            LOG_DEBUG("All WiFi connections failed");
-            WiFi.disconnect();
+            lastTimeCheck = millis();
         }
-        
-        lastWiFiAttempt = millis();
+    } else if (!timeInitialized) {
+        syncTime();  // Try to sync time if WiFi is connected
+    }
+}
+
+void WiFiManager::syncTime() {
+    static unsigned long lastTimeCheck = 0;
+    static int timeAttempts = 0;
+    
+    if (!timeInitialized && millis() - lastTimeCheck >= TIME_CHECK_INTERVAL) {
+        configTime(GMT_OFFSET_SEC, DAY_LIGHT_OFFSET_SEC, NTP_SERVER);
+        if (time(nullptr) > 1000000000) {
+            timeInitialized = true;
+            LOG_PROD("Time sync complete");
+        } else {
+            timeAttempts++;
+            if (timeAttempts >= 40) {
+                timeAttempts = 0;
+            }
+        }
+        lastTimeCheck = millis();
     }
 }
 
 void WiFiManager::connectToWiFi() {
-    RoverViewManager::drawLoadingScreen();  // Show loading screen immediately
-    LEDManager::startLoadingAnimation();    // Start LED animation
-
-    if (isRecording) return;  // Skip WiFi connection attempts while recording
+    if (isRecording) return;
     
-    // Try primary network first
-    LOG_DEBUG("Attempting primary WiFi connection...");
-    WiFi.begin(primarySSID, primaryPassword);
-    
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        LEDManager::updateLoadingAnimation();
-        RoverViewManager::drawLoadingScreen();
-        delay(500);
-        attempts++;
-    }
-    
-    // If primary failed, try backup network
-    if (WiFi.status() != WL_CONNECTED) {
-        LOG_DEBUG("\nPrimary connection failed, trying backup...");
-        WiFi.disconnect();
-        delay(1000);
-        WiFi.begin(backupSSID, backupPassword);
-        
-        attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-            LEDManager::updateLoadingAnimation();
-            RoverViewManager::drawLoadingScreen();
-            delay(500);
-            attempts++;
-        }
-    }
-    
-    // Update connection status
-    isWiFiConnected = (WiFi.status() == WL_CONNECTED);
-    
-    if (isWiFiConnected) {
-        LOG_PROD("WiFi connected to %s", WiFi.SSID().c_str());
-        configTime(GMT_OFFSET_SEC, DAY_LIGHT_OFFSET_SEC, NTP_SERVER);
-        timeInitialized = true;
-    } else {
-        LOG_PROD("WiFi connection failed");
-    }
-    
+    LOG_DEBUG("Starting WiFi connection process");
+    WiFi.begin(PRIMARY_SSID, PRIMARY_PASSWORD);
     lastWiFiAttempt = millis();
-    LEDManager::stopLoadingAnimation();
 }
 
 // Generic error handler
@@ -174,8 +105,4 @@ void processAPIRequest(bool success = false) {  // Parameter with default value
     } else {
         handleError("API request failed");
     }
-}
-
-bool WiFiManager::getTimeInitialized() {
-    return timeInitialized;
 }

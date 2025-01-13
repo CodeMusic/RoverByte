@@ -1,6 +1,6 @@
 #define FASTLED_ALLOW_INTERRUPTS 0
 #define FASTLED_ESP32_SPI_BUS FSPI
-#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 4  // Adjust this value (try 4, 8, or 16)
+#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 8  // Adjust this value (try 4, 8, or 16)
 #include <FastLED.h>
 #include "LEDManager.h"
 #include <time.h>
@@ -326,5 +326,114 @@ void LEDManager::flashSuccess() {
     
     // Restore previous state
     memcpy(leds, savedState, sizeof(CRGB) * WS2812_NUM_LEDS);
+    FastLED.show();
+}
+
+void LEDManager::flashLevelUp() {
+    // First pass - clockwise light up in gold/yellow
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        leds[i] = CRGB::Gold;
+        FastLED.show();
+        delay(50);
+    }
+    
+    // Flash all bright white
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        leds[i] = CRGB::White;
+    }
+    FastLED.show();
+    delay(100);
+    
+    // Sparkle effect
+    for (int j = 0; j < 3; j++) {  // Do 3 sparkle cycles
+        for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+            if (random(2) == 0) {  // 50% chance for each LED
+                leds[i] = CRGB::Gold;
+            } else {
+                leds[i] = CRGB::White;
+            }
+        }
+        FastLED.show();
+        delay(100);
+    }
+    
+    // Fade out
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        leds[i] = CRGB::Black;
+        FastLED.show();
+        delay(30);
+    }
+}
+
+void LEDManager::displayCardPattern(uint8_t* uid, uint8_t length) {
+    // Save current LED state
+    CRGB savedLeds[WS2812_NUM_LEDS];
+    memcpy(savedLeds, leds, sizeof(CRGB) * WS2812_NUM_LEDS);
+    
+    // Display UID pattern
+    for (int i = 0; i < ((int)length < 8 ? (int)length : 8); i++) {
+        uint8_t value = uid[i];
+        CRGB color;
+        color.r = value & 0x3;  // 2 bits for red
+        color.g = (value >> 2) & 0x7;  // 3 bits for green
+        color.b = (value >> 5) & 0x7;  // 3 bits for blue
+        
+        // Scale up the colors
+        color.r = color.r * 64;  // 0-255 range
+        color.g = color.g * 32;
+        color.b = color.b * 32;
+        
+        leds[i] = color;
+    }
+    FastLED.show();
+    
+    // Restore original state after 2 seconds
+    delay(2000);
+    memcpy(leds, savedLeds, sizeof(CRGB) * WS2812_NUM_LEDS);
+    FastLED.show();
+}
+
+void LEDManager::syncLEDsForDay() {
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    int currentDay = timeInfo->tm_wday;
+    int currentHour = timeInfo->tm_hour % 12;
+    if (currentHour == 0) currentHour = 12;
+    
+    static const CRGB hourColors[] = {
+        CRGB::Red, CRGB(255, 69, 0), CRGB::Orange,
+        CRGB(255, 165, 0), CRGB::Yellow, CRGB::Green,
+        CRGB::Blue, CRGB(75, 0, 130), CRGB(75, 0, 130),
+        CRGB(75, 0, 130), CRGB(148, 0, 211), CRGB::Purple
+    };
+
+    setLED(0, hourColors[currentHour - 1]);
+    scaleLED(0, 178);  // 70% brightness
+    
+    for (int i = 1; i <= 7; i++) {
+        setLED(i, CRGB::White);
+        scaleLED(i, i <= currentDay ? 128 : 28);
+    }
+    
+    showLEDs();
+}
+
+void LEDManager::update() {
+    if (isLoading) {
+        updateLoadingAnimation();
+        return;
+    }
+
+    switch (currentMode) {
+        case Mode::FULL_MODE:
+            updateFullMode();
+            break;
+        case Mode::WEEK_MODE:
+            updateWeekMode();
+            break;
+        case Mode::TIMER_MODE:
+            updateTimerMode();
+            break;
+    }
     FastLED.show();
 } 

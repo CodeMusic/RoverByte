@@ -17,6 +17,9 @@ int RoverManager::currentMood = 0;
 int RoverManager::hoverOffset = 0;
 bool RoverManager::movingDown = true;
 unsigned long RoverManager::lastHoverUpdate = 0;
+unsigned long RoverManager::expressionStartTime = 0;
+int RoverManager::expressionDuration = 0;
+uint16_t RoverManager::starColor = TFT_WHITE;
 const char* RoverManager::moods[] = {"happy", "looking_left", "looking_right", "intense"};
 
 extern bool isLowBrightness;
@@ -104,7 +107,33 @@ void RoverManager::drawEyes(String mood, int roverX, int currentY, uint16_t left
     spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
     spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
     
-    if (mood == "looking_up") {
+    if (mood == "excited") {
+        // Left star eye
+        for (int i = -5; i <= 5; i++) {
+            spr.drawLine(roverX + (30-5)*scale, currentY + 20*scale, 
+                        roverX + (30+5)*scale, currentY + 20*scale, leftEyeColor);
+            spr.drawLine(roverX + 30*scale, currentY + (20-5)*scale, 
+                        roverX + 30*scale, currentY + (20+5)*scale, leftEyeColor);
+            // Diagonal lines for star points
+            spr.drawLine(roverX + (30-3)*scale, currentY + (20-3)*scale,
+                        roverX + (30+3)*scale, currentY + (20+3)*scale, leftEyeColor);
+            spr.drawLine(roverX + (30-3)*scale, currentY + (20+3)*scale,
+                        roverX + (30+3)*scale, currentY + (20-3)*scale, leftEyeColor);
+        }
+        
+        // Right star eye (same pattern, different position)
+        for (int i = -5; i <= 5; i++) {
+            spr.drawLine(roverX + (70-5)*scale, currentY + 20*scale, 
+                        roverX + (70+5)*scale, currentY + 20*scale, rightEyeColor);
+            spr.drawLine(roverX + 70*scale, currentY + (20-5)*scale, 
+                        roverX + 70*scale, currentY + (20+5)*scale, rightEyeColor);
+            // Diagonal lines for star points
+            spr.drawLine(roverX + (70-3)*scale, currentY + (20-3)*scale,
+                        roverX + (70+3)*scale, currentY + (20+3)*scale, rightEyeColor);
+            spr.drawLine(roverX + (70-3)*scale, currentY + (20+3)*scale,
+                        roverX + (70+3)*scale, currentY + (20-3)*scale, rightEyeColor);
+        }
+    } else if (mood == "looking_up") {
         spr.fillCircle(roverX + 30*scale, currentY + 15*scale, 5*scale, leftEyeColor);
         spr.fillCircle(roverX + 70*scale, currentY + 15*scale, 5*scale, rightEyeColor);
     } else if (mood == "looking_down") {
@@ -197,13 +226,14 @@ void RoverManager::setRandomMood() {
 }
 
 // New function to handle temporary expressions
-void RoverManager::setTemporaryExpression(Expression exp, int duration) {
-    previousExpression = currentExpression;
+void RoverManager::setTemporaryExpression(Expression exp, int duration, uint16_t color) {
     currentExpression = exp;
-    drawSprite();
-    delay(duration);
-    currentExpression = previousExpression;
-    drawSprite();
+    starColor = color;  // Store the star color
+    expressionStartTime = millis();
+    expressionDuration = duration;
+    
+    // Update display with new expression
+    drawExpression(currentExpression);
 }
 
 const char* RoverManager::expressionToMood(Expression exp) {
@@ -215,6 +245,7 @@ const char* RoverManager::expressionToMood(Expression exp) {
         case LOOKING_RIGHT: return "looking_right";
         case INTENSE: return "intense";
         case BIG_SMILE: return "big_smile";
+        case EXCITED: return "excited";
         default: return "happy";
     }
 }
@@ -229,4 +260,9 @@ void RoverManager::setEarsDown() {
     earsPerked = false;
     setTemporaryExpression(LOOKING_DOWN, 1000);  // Show looking down expression briefly
     drawRover(moods[currentMood], false);  // Redraw with ears down
+}
+
+void RoverManager::drawExpression(Expression exp) {
+    const char* mood = expressionToMood(exp);
+    drawRover(mood, earsPerked);
 }

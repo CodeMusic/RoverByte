@@ -14,7 +14,7 @@ extern TFT_eSPI tft;
 class RoverViewManager {
     
 public:
-    enum ViewType {
+    enum ViewType { 
         TODO_LIST,
         CHAKRAS,
         VIRTUES,
@@ -34,7 +34,28 @@ public:
     static void drawStatusBar();
     static void drawCurrentView();
     static ViewType getCurrentView() { return currentView; }
-    static void drawLoadingScreen();
+    static void drawLoadingScreen(const char* statusText);  
+    static void incrementExperience(uint16_t amount);
+
+    struct Notification {
+        const char* header;
+        const char* content;
+        const char* symbol;
+        unsigned long startTime;
+        int duration;
+    };
+
+    static void showNotification(const char* header, const char* content, const char* symbol, int duration = 3000);
+    static void drawNotification();
+    static void clearNotification();
+    static bool hasActiveNotification();
+
+    enum class InputType {
+        INPUT_LEFT,
+        INPUT_RIGHT
+    };
+    static void handleInput(InputType input);
+    static void drawWordWrappedText(const char* text, int x, int y, int maxWidth);
 
 private:
     static int currentFrameX;
@@ -81,6 +102,29 @@ private:
     static void drawNextMeal();
     static void drawChakras();
     static void drawVirtues();
+
+    static uint32_t experience;
+    static uint16_t experienceToNextLevel;
+    static uint8_t level;
+    static uint16_t calculateNextLevelExperience(uint8_t currentLevel);
+
+    static void drawSymbol(const char* symbol, int x, int y, int size);
+    static Notification currentNotification;
+    static bool notificationActive;
+
+    // Animation timing
+    static unsigned long lastCounterUpdate;
+    static const unsigned long COUNTER_SPEED = 1000;  // 1 second interval
+    static unsigned long lastAnimationStep;
+    static const unsigned long ANIMATION_DELAY = 250; // 250ms between steps
+    static bool isAnimating;
+    static int animationStep;
+    static const int TOTAL_ANIMATION_STEPS = 14;
+
+    // Expression timing
+    static unsigned long lastExpressionChange;
+    static unsigned long nextExpressionInterval;
+    static const unsigned long DEFAULT_EXPRESSION_INTERVAL = 60000; // 1 minute default
 };
 
 #endif 

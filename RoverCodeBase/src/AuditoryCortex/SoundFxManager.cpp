@@ -2,6 +2,9 @@
 #include "Arduino.h"
 #include <time.h>
 #include <SPIFFS.h>
+#include "../PrefrontalCortex/SDManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../VisualCortex/RoverManager.h"
 
 // Initialize static members
 int SoundFxManager::currentNote = 0;
@@ -10,6 +13,8 @@ bool SoundFxManager::jinglePlaying = false;
 Audio SoundFxManager::audio;
 bool SoundFxManager::isPlayingSound = false;
 const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
+bool SoundFxManager::isRecording = false;
+File SoundFxManager::recordFile;
 
 // Add after the other jingle definitions
 const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
@@ -41,15 +46,15 @@ void SoundFxManager::startJingle() {
 }
 
 void SoundFxManager::updateJingle() {
-    if (!jinglePlaying) return;
+    if (!jinglePlaying || currentNote >= JINGLE_LENGTH) return;
     
     unsigned long currentTime = millis();
-    if (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].delay) {
-        playTone(ROVERBYTE_JINGLE[currentNote].pitch, ROVERBYTE_JINGLE[currentNote].duration);
-        lastNoteTime = currentTime;
-        currentNote++;
-        
-        if (currentNote >= JINGLE_LENGTH) {
+    if (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].duration + ROVERBYTE_JINGLE[currentNote].delay) {
+        if (currentNote < JINGLE_LENGTH) {
+            playTone(ROVERBYTE_JINGLE[currentNote].pitch, ROVERBYTE_JINGLE[currentNote].duration);
+            lastNoteTime = currentTime;
+            currentNote++;
+        } else {
             stopJingle();
         }
     }
@@ -169,13 +174,12 @@ void SoundFxManager::playStartupSound() {
 }
 
 void SoundFxManager::playJingle() {
-    for (int i = 0; i < JINGLE_LENGTH; i++) {
-        playTone(ROVERBYTE_JINGLE[i].pitch, ROVERBYTE_JINGLE[i].duration);
-        if (ROVERBYTE_JINGLE[i].delay > 0) {
-            delay(ROVERBYTE_JINGLE[i].delay);
-        }
+    if (!jinglePlaying) {
+        jinglePlaying = true;
+        currentNote = 0;
+        lastNoteTime = millis();
     }
-} 
+}
 
 
 // Add audio callback
@@ -191,6 +195,7 @@ void SoundFxManager::audio_eof_mp3(const char *info) {
 
 
 void SoundFxManager::startRecording() {
+    if (!SDManager::isInitialized()) return;
     if (isRecording) return;
     
     Serial.println("=== Starting Recording ===");
@@ -303,7 +308,9 @@ void SoundFxManager::stopRecording() {
         return;
     }
     
+    SDManager::closeFile(recordFile);
     RoverManager::setEarsDown();  // Put ears down after successful recording/playback start
+    
 }
 
 
@@ -359,18 +366,10 @@ void SoundFxManager::generate_wav_header(char* wav_header, uint32_t wav_size, ui
     memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
 }
 
-void SoundFxManager::initializeAudio()
-{
-        // Initialize audio
-    audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
-    audio.setVolume(21); // 0...21
-    Serial.println("Audio initialized");
-}
-
 void SoundFxManager::init() {
     // Initialize audio hardware
     audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
-    audio.setVolume(21);  // Set a reasonable volume level
+    audio.setVolume(42);  // Set a reasonable volume level
     
     // Initialize SPIFFS for sound files
     if (!SPIFFS.begin(true)) {
@@ -406,40 +405,77 @@ void SoundFxManager::stopJingle() {
     lastNoteTime = 0;
 }
 
-void SoundFxManager::playVoiceLine(const char* line) {
-    if (strcmp(line, "card_detected") == 0) {
-        // Happy detection tune
-        playTone(NOTE_C5, 100);
-        delay(30);
-        playTone(NOTE_E5, 100);
-        delay(30);
-        playTone(NOTE_G5, 200);
-    }
-    else if (strcmp(line, "waiting_for_card") == 0) {
-        // Inquisitive searching tune
-        playTone(NOTE_E5, 100);
-        delay(50);
-        playTone(NOTE_G5, 100);
-        delay(50);
-        playTone(NOTE_A5, 150);
-    }
-    else if (strcmp(line, "scan_complete") == 0) {
-        // Success tune
-        playTone(NOTE_C5, 100);
-        delay(30);
-        playTone(NOTE_E5, 100);
-        delay(30);
-        playTone(NOTE_G5, 100);
-        delay(30);
-        playTone(NOTE_C6, 200);
-    }
-    else if (strcmp(line, "scan_error") == 0) {
-        // Error tune
-        playTone(NOTE_G4, 200);
-        delay(50);
-        playTone(NOTE_E4, 200);
-        delay(50);
-        playTone(NOTE_C4, 300);
+void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
+    if (strcmp(line, "card_detected") == 0 && cardId != 0) {
+            playCardMelody(cardId);
+        }
+        else if (strcmp(line, "waiting_for_card") == 0) {
+            // Inquisitive searching tune
+            playTone(NOTE_E5, 100);
+            delay(50);
+            playTone(NOTE_G5, 100);
+            delay(50);
+            playTone(NOTE_A5, 150);
+        }
+        else if (strcmp(line, "scan_complete") == 0) {
+            // Success tune
+            playTone(NOTE_C5, 100);
+            delay(30);
+            playTone(NOTE_E5, 100);
+            delay(30);
+            playTone(NOTE_G5, 100);
+            delay(30);
+            playTone(NOTE_C6, 200);
+        }
+        else if (strcmp(line, "scan_error") == 0) {
+            // Error tune
+            playTone(NOTE_G4, 200);
+            delay(50);
+            playTone(NOTE_E4, 200);
+            delay(50);
+            playTone(NOTE_C4, 300);
+        }
+        else if (strcmp(line, "level_up") == 0) {
+            // Mario-style level up fanfare
+            playTone(NOTE_G4, 100);
+            delay(50);
+            playTone(NOTE_C5, 100);
+            delay(50);
+            playTone(NOTE_E5, 100);
+            delay(50);
+            playTone(NOTE_G5, 100);
+            delay(50);
+            playTone(NOTE_C6, 150);
+            delay(100);
+            playTone(NOTE_E6, 400);
+        }
+    
+}
+
+void SoundFxManager::playCardMelody(uint32_t cardId) {
+    // Generate melody from all UID bytes
+    uint8_t notes[7];  // Support for full 7-byte UID
+    notes[0] = ((cardId >> 24) & 0xFF) % 24;  // Use modulo 24 for two octaves
+    notes[1] = ((cardId >> 16) & 0xFF) % 24;
+    notes[2] = ((cardId >> 8) & 0xFF) % 24;
+    notes[3] = (cardId & 0xFF) % 24;
+    
+    // Base note frequencies for C4 to B5 (two octaves)
+    const int baseNotes[] = {
+        NOTE_C4, NOTE_CS4, NOTE_D4, NOTE_DS4, NOTE_E4, NOTE_F4,
+        NOTE_FS4, NOTE_G4, NOTE_GS4, NOTE_A4, NOTE_AS4, NOTE_B4,
+        NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_DS5, NOTE_E5, NOTE_F5,
+        NOTE_FS5, NOTE_G5, NOTE_GS5, NOTE_A5, NOTE_AS5, NOTE_B5
+    };
+    
+    // Set excited expression before playing
+    RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000);  // Show excited face for 2 seconds
+    
+    // Play the generated melody
+    for (int i = 0; i < 4; i++) {
+        uint8_t duration = 50 + (notes[i] % 100);  // Duration between 50-150ms
+        playTone(baseNotes[notes[i]], duration);
+        delay(duration / 2);  // Dynamic gap between notes
     }
 }
 

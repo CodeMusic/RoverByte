@@ -56,7 +56,7 @@ private:
     static void init_microphone();
     static void initializeAudio();
     static void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate);
-    static void audio_eof_mp3(const char* info);
+    
 
 public:
     // Core functionality
@@ -80,7 +80,8 @@ public:
     static void playRecording();
     static bool isCurrentlyRecording() { return isRecording; }
     static bool isCurrentlyPlaying() { return isPlayingSound; }
-
+    static bool isPlaying() { return isPlayingSound; }
+    static void audio_eof_mp3(const char* info);
       
     // Note helpers
     static inline int getDayBaseNote4() {
@@ -111,7 +112,15 @@ public:
 
     static void stopJingle();
 
-    static void playVoiceLine(const char* line);
+    static void playVoiceLine(const char* line, uint32_t cardId = 0);
+    static void playCardMelody(uint32_t cardId);
+
+    static void update() {
+        if (jinglePlaying) {
+            updateJingle();
+        }
+        
+    }
 };
 
 #endif 

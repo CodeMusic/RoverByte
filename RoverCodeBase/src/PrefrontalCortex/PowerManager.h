@@ -1,6 +1,5 @@
 #ifndef POWER_MANAGER_H
 #define POWER_MANAGER_H
-#include "PowerManager.h" 
 #include "utilities.h"
 #include <Arduino.h>
 #include <XPowersLib.h>
@@ -21,34 +20,50 @@ public:
         DEEP_SLEEP      
     };
 
+    // Timeout constants
+    static const unsigned long IDLE_TIMEOUT = 60000;    // Base timeout (1 minute)
+    static const unsigned long DIM_TIMEOUT = IDLE_TIMEOUT * 2;
+    static const unsigned long SLEEP_TIMEOUT = IDLE_TIMEOUT * 3;
+    static const uint8_t DIM_BRIGHTNESS = 128;         // 50% brightness
+
+    // Add PWM constants
+    static const uint8_t PWM_CHANNEL = 0;
+    static const uint32_t PWM_FREQUENCY = 5000;
+    static const uint8_t PWM_RESOLUTION = 8;
+    static const uint8_t BACKLIGHT_PIN = 38;  // Verify this pin number
+    
+    // Core methods
     static void init();
-    static void checkSleepState();
+    static void update();
     static void wakeFromSleep();
-    static void enterDeepSleep();
+    static void enterDeepSleep();  // This is our primary sleep method
+    
+    // State getters/setters
     static SleepState getCurrentSleepState();
-    static int getBatteryPercentage();
-    static String getChargeStatus();
-    static bool isCharging();
     static void updateLastActivityTime();
-    static void setBacklight(uint8_t brightness);
-    static void setupBacklight();
     static void setShowTime(bool show);
     static bool getShowTime();
     
-private:
-    static const uint8_t BACKLIGHT_PIN = 38;
-    static const uint8_t PWM_CHANNEL = 0;
-    static const uint8_t PWM_RESOLUTION = 8;
-    static const uint32_t PWM_FREQUENCY = 5000;
+    // Display control
+    static void setBacklight(uint8_t brightness);
+    static void setupBacklight();
+    
+    // Battery management
+    static int getBatteryPercentage();
+    static String getChargeStatus();
+    static bool isCharging();
 
+    // Add missing method declarations
+    static void initializeBattery();
+    static int calculateBatteryPercentage(int voltage);
+    static void checkSleepState();
+
+private:
     static XPowersPPM PPM;
     static bool batteryInitialized;
     static unsigned long lastActivityTime;
     static SleepState currentSleepState;
-    static const unsigned long IDLE_TIMEOUT = 60000;
-    
-    static int calculateBatteryPercentage(int voltage);
-    static void initializeBattery();
     static bool showTime;
 };
+
 #endif

@@ -83,7 +83,11 @@
 
 #define SCREEN_CENTER_X 85
 
-
+// Add if not already present:
+#define SD_CS    10  // SD Card CS pin
+#define SD_MOSI  11  // SD Card MOSI pin
+#define SD_MISO  13  // SD Card MISO pin
+#define SD_SCK   12  // SD Card SCK pin
 
 // Logging levels
 enum LogLevel {

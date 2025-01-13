@@ -1,32 +1,23 @@
 #include "SDManager.h"
-
+#include "../VisualCortex/LEDManager.h"
+#include "../VisualCortex/RoverManager.h"
 bool SDManager::initialized = false;
+const char* SDManager::NFC_FOLDER = "/NFC";
+const char* SDManager::SCANNED_CARDS_FILE = "/NFC/scannedcards.inf";
 
 void SDManager::init() {
     if (!initialized) {
         // Configure SD card pins
         pinMode(SD_CS, OUTPUT);
         digitalWrite(SD_CS, HIGH);
-        delay(100);  // Give SD card time to stabilize
         
         // Initialize SPI for SD card with lower speed initially
         SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
         SPI.setFrequency(4000000);  // Start at 4MHz
         
-        unsigned long startTime = millis();
-        bool initSuccess = false;
-        
-        // Try initialization with timeout
-        while (millis() - startTime < 3000) {  // 3 second timeout
-            if (SD.begin(SD_CS)) {
-                initSuccess = true;
-                break;
-            }
-            delay(100);
-        }
-        
-        if (!initSuccess) {
-            LOG_ERROR("SD card initialization failed after timeout!");
+        if (!SD.begin(SD_CS)) {
+            LOG_ERROR("SD card initialization failed!");
+            // Continue without SD - it's not critical for core functionality
             return;
         }
         
@@ -41,15 +32,7 @@ void SDManager::init() {
         
         initialized = true;
         LOG_PROD("SD card initialized successfully");
-        LOG_PROD("Card Type: %s", 
-            cardType == CARD_MMC ? "MMC" :
-            cardType == CARD_SD ? "SDSC" :
-            cardType == CARD_SDHC ? "SDHC" : "UNKNOWN");
     }
-}
-
-bool SDManager::isInitialized() {
-    return initialized;
 }
 
 File SDManager::openFile(const char* path, const char* mode) {
@@ -90,4 +73,57 @@ size_t SDManager::writeToFile(File& file, const uint8_t* buffer, size_t size) {
 size_t SDManager::readFromFile(File& file, uint8_t* buffer, size_t size) {
     if (!file) return 0;
     return file.read(buffer, size);
+}
+
+void SDManager::ensureNFCFolderExists() {
+    if (!SD.exists(NFC_FOLDER)) {
+        SD.mkdir(NFC_FOLDER);
+    }
+}
+
+bool SDManager::hasCardBeenScanned(uint32_t cardId) {
+    if (!initialized) return false;
+    
+    File file = SD.open(SCANNED_CARDS_FILE, FILE_READ);
+    if (!file) return false;
+    
+    uint32_t storedId;
+    bool found = false;
+    
+    while (file.available() >= sizeof(uint32_t)) {
+        file.read((uint8_t*)&storedId, sizeof(uint32_t));
+        if (storedId == cardId) {
+            found = true;
+            break;
+        }
+    }
+    
+    file.close();
+    return found;
+}
+
+void SDManager::recordCardScan(uint32_t cardId) {
+    if (!initialized) return;
+    
+    ensureNFCFolderExists();
+    
+    File file = SD.open(SCANNED_CARDS_FILE, FILE_APPEND);
+    if (!file) {
+        LOG_ERROR("Failed to open scanned cards file for writing");
+        return;
+    }
+    
+    file.write((uint8_t*)&cardId, sizeof(uint32_t));
+    file.close();
 } 
+
+void SDManager::handleSDCardOperation() {
+    if (!SD.begin()) {
+        LOG_ERROR("SD Card initialization failed");
+        LEDManager::setLED(0, CRGB::Red);
+        LEDManager::showLEDs();
+        RoverManager::setEarsDown();
+        delay(1000);
+        return;
+    }
+}

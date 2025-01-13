@@ -22,15 +22,18 @@ public:
     static void nextMode();
     static void setMode(Mode newMode);
     static void setLED(int index, CRGB color);
+    static void syncLEDsForDay();
     static void showLEDs();
     static void scaleLED(int index, uint8_t scale);
     static Mode getMode() { return currentMode; }
     static void updateLoadingAnimation();
     static bool isLoadingComplete();
     static void flashSuccess();
+    static void flashLevelUp();
     static Mode previousMode;
     static Mode currentMode;
-
+    static void displayCardPattern(uint8_t* uid, uint8_t length);
+    static void update();
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];

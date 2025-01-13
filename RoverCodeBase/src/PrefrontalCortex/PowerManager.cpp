@@ -43,10 +43,15 @@ void PowerManager::init() {
 }
 
 void PowerManager::initializeBattery() {
-    LOG_DEBUG("Initializing battery management...");
-    bool result = PPM.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, BQ25896_SLAVE_ADDRESS);
-    if (result) {
-        LOG_PROD("Battery management initialized successfully");
+    if (!batteryInitialized) {
+        LOG_DEBUG("Initializing battery management...");
+        
+        if (!PPM.begin(Wire, AXP2101_SLAVE_ADDRESS, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
+            LOG_ERROR("Failed to initialize battery management");
+            return;
+        }
+        
+        // Configure battery parameters
         PPM.setSysPowerDownVoltage(3300);
         PPM.setInputCurrentLimit(3250);
         PPM.disableCurrentLimitPin();
@@ -55,17 +60,18 @@ void PowerManager::initializeBattery() {
         PPM.setChargerConstantCurr(832);
         PPM.enableADCMeasure();
         PPM.enableCharge();
+        
         batteryInitialized = true;
         
-        // Scope level logging for detailed configuration
+        // Detailed logging
         LOG_SCOPE("Battery configuration complete:");
         LOG_SCOPE("- System power down voltage: 3300mV");
         LOG_SCOPE("- Input current limit: 3250mA");
         LOG_SCOPE("- Charge target voltage: 4208mV");
         LOG_SCOPE("- Precharge current: 64mA");
         LOG_SCOPE("- Constant current: 832mA");
-    } else {
-        LOG_PROD("Failed to initialize battery management");
+        
+        LOG_PROD("Battery management initialized successfully");
     }
 }
 
@@ -176,23 +182,6 @@ void PowerManager::enterDeepSleep() {
     esp_deep_sleep_start();
 }
 
-
-void goToSleep() {
-    // Ensure all pending operations are complete
-    FastLED.clear(true);
-    tft.writecommand(TFT_DISPOFF);
-    tft.writecommand(TFT_SLPIN);
-    
-    // Wait for any buttons to be released and debounce
-    while (digitalRead(BOARD_USER_KEY) == LOW || digitalRead(ENCODER_KEY) == LOW) {
-        delay(10);
-    }
-    delay(100);  // Additional debounce delay
-    
-    // Go to deep sleep - will wake on any configured button press
-    esp_deep_sleep_start();
-}
-
 void PowerManager::setupBacklight() {
     ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
     ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
@@ -211,4 +200,50 @@ void PowerManager::setShowTime(bool show) {
 
 bool PowerManager::getShowTime() {
     return showTime;
+}
+
+void PowerManager::update() {
+    unsigned long currentTime = millis();
+    SleepState newState = currentSleepState;
+    
+    // Debug level logging for idle time
+    unsigned long idleTime = currentTime - lastActivityTime;
+    LOG_DEBUG("Idle time: %lu ms, Current state: %d", idleTime, currentSleepState);
+    
+    // State transitions
+    if (idleTime < IDLE_TIMEOUT) {
+        newState = AWAKE;
+    } else if (idleTime < DIM_TIMEOUT) {
+        newState = DIM_DISPLAY;
+    } else if (idleTime < SLEEP_TIMEOUT) {
+        newState = DISPLAY_OFF;
+    } else {
+        newState = DEEP_SLEEP;
+    }
+    
+    // Only handle state change if needed
+    if (newState != currentSleepState) {
+        LOG_PROD("Sleep state changing from %d to %d", currentSleepState, newState);
+        
+        // Handle state-specific actions
+        switch (newState) {
+            case DIM_DISPLAY:
+                setBacklight(DIM_BRIGHTNESS);
+                break;
+                
+            case DISPLAY_OFF:
+                setBacklight(0);
+                break;
+                
+            case DEEP_SLEEP:
+                enterDeepSleep();
+                break;
+                
+            case AWAKE:
+                setBacklight(255);
+                break;
+        }
+        
+        currentSleepState = newState;
+    }
 }

@@ -16,6 +16,7 @@ public:
         LOOKING_UP,      // New - not idle
         LOOKING_DOWN,    // New - not idle
         BIG_SMILE,      // New - not idle
+        EXCITED,         // New expression with star eyes
         NUM_EXPRESSIONS
     };
 
@@ -31,7 +32,7 @@ public:
         return exp <= INTENSE;  // Only first 4 are idle expressions
     }
 
-    static void setTemporaryExpression(Expression exp, int duration = 1000);
+    static void setTemporaryExpression(Expression exp, int duration = 1000, uint16_t starColor = TFT_WHITE);
     static void showThinking() { setTemporaryExpression(LOOKING_UP); }
     static void showError() { setTemporaryExpression(LOOKING_DOWN, 1000); }
     static void showSuccess() { setTemporaryExpression(BIG_SMILE, 1000); }
@@ -61,6 +62,12 @@ private:
     // Color definitions
     static const uint16_t monthColors[12][2];
     static const uint16_t color1;
+
+    // Add these new members
+    static unsigned long expressionStartTime;
+    static int expressionDuration;
+    static uint16_t starColor;
+    static void drawExpression(Expression exp);
 };
 
 // Define the static const arrays outside the class

@@ -4,6 +4,8 @@
 #include "DisplayConfig.h"
 #include "RoverManager.h"
 #include "../PsychicCortex/NFCManager.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../VisualCortex/LEDManager.h"
 
 // Add at the top with other includes
 extern bool showTime;  // Declare the external variable
@@ -14,6 +16,17 @@ unsigned long RoverViewManager::lastStatusUpdate = 0;
 int RoverViewManager::statusRotation = 0;
 int RoverViewManager::currentFrameX = 0;
 int RoverViewManager::currentFrameY = 0;
+uint32_t RoverViewManager::experience = 0;
+uint16_t RoverViewManager::experienceToNextLevel = 100;
+uint8_t RoverViewManager::level = 1;
+RoverViewManager::Notification RoverViewManager::currentNotification = {"", "", "", 0, 0};
+bool RoverViewManager::notificationActive = false;
+unsigned long RoverViewManager::lastCounterUpdate = 0;
+unsigned long RoverViewManager::lastAnimationStep = 0;
+bool RoverViewManager::isAnimating = false;
+int RoverViewManager::animationStep = 0;
+unsigned long RoverViewManager::lastExpressionChange = 0;
+unsigned long RoverViewManager::nextExpressionInterval = DEFAULT_EXPRESSION_INTERVAL;
 
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
@@ -53,6 +66,13 @@ const RoverViewManager::VirtueInfo RoverViewManager::VIRTUE_DATA[] = {
     {"Kindness cures Envy", "Admiration \nquells \njealousy", 0x180E, drawKindnessSymbol},
     {"Humility cures Pride", "Humbleness \nquells \nvanity", 0x780F, drawHumilitySymbol}
 };
+
+uint16_t getCurrentDayColor() {
+    time_t now = time(nullptr);
+    struct tm* timeInfo = localtime(&now);
+    CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+    return ColorUtilities::convertToRGB565(dayColor);
+}
 
 void RoverViewManager::init() {
     LOG_PROD("Initializing RoverViewManager");
@@ -152,40 +172,52 @@ void RoverViewManager::drawCurrentView() {
     }
 }
 
-
-// Add this new function
-void RoverViewManager::drawLoadingScreen() {
-    spr.fillSprite(TFT_BLACK);
+void RoverViewManager::drawLoadingScreen(const char* statusText) {
+    static unsigned long lastBoneRotation = 0;
+    static int rotationAngle = 0;
     
-    // Center bone vertically and horizontally
-    int boneX = tft.width() / 2;
-    int boneY = tft.height() / 2 - 20;  // Slightly above center
+    // Create temporary sprite for bone
+    TFT_eSprite boneSpr = TFT_eSprite(&tft);
+    boneSpr.createSprite(80, 80);
+    boneSpr.fillSprite(TFT_BLACK);
+    
+    // Draw bone in temporary sprite (same bone drawing code)
+    int tempX = 40;
+    int tempY = 40;
     int boneWidth = 60;
     int boneHeight = 20;
     int circleRadius = 12;
     
-    // Main bone rectangle
-    spr.fillRect(boneX - boneWidth/2, boneY - boneHeight/2, 
-                 boneWidth, boneHeight, TFT_WHITE);
+    boneSpr.fillRect(tempX - boneWidth/2, tempY - boneHeight/2, boneWidth, boneHeight, TFT_WHITE);
+    boneSpr.fillCircle(tempX - boneWidth/2, tempY - boneHeight/2, circleRadius, TFT_WHITE);
+    boneSpr.fillCircle(tempX - boneWidth/2, tempY + boneHeight/2, circleRadius, TFT_WHITE);
+    boneSpr.fillCircle(tempX + boneWidth/2, tempY - boneHeight/2, circleRadius, TFT_WHITE);
+    boneSpr.fillCircle(tempX + boneWidth/2, tempY + boneHeight/2, circleRadius, TFT_WHITE);
     
-    // Left circles
-    spr.fillCircle(boneX - boneWidth/2, boneY - boneHeight/2, 
-                   circleRadius, TFT_WHITE);
-    spr.fillCircle(boneX - boneWidth/2, boneY + boneHeight/2, 
-                   circleRadius, TFT_WHITE);
+    spr.fillSprite(TFT_BLACK);
     
-    // Right circles
-    spr.fillCircle(boneX + boneWidth/2, boneY - boneHeight/2, 
-                   circleRadius, TFT_WHITE);
-    spr.fillCircle(boneX + boneWidth/2, boneY + boneHeight/2, 
-                   circleRadius, TFT_WHITE);
+    // Adjust center positions - move bone up and left significantly more
+    int centerX = (tft.width() / 2) - 65;  // Move bone even more left
+    int centerY = tft.height() / 2 - 70;   // Move bone up significantly more
     
-    // Loading text centered below bone
-    spr.setTextFont(4);
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
-    spr.drawString("...Loading", boneX, boneY + 60);
+    boneSpr.pushRotated(&spr, rotationAngle, TFT_BLACK);
     
-    spr.pushSprite(0, 0);
+    if (millis() - lastBoneRotation > 50) {
+        rotationAngle = (rotationAngle + 45) % 360;
+        lastBoneRotation = millis();
+    }
+    
+    // Center text better by moving it right
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE);
+    spr.drawCentreString("Loading...", centerX + 55, centerY + 70, 2);
+    
+    if (statusText) {
+        spr.setTextFont(1);
+        spr.drawCentreString(statusText, centerX + 55, centerY + 95, 1);
+    }
+    
+    boneSpr.deleteSprite();
 }
 
 void RoverViewManager::drawFrame() {
@@ -262,47 +294,51 @@ void drawChastitySymbol(int x, int y, int size) {
 }
 
 void drawTemperanceSymbol(int x, int y, int size) {
-    // Balanced scales
-    spr.drawLine(x - size/2, y, x + size/2, y, 0xFDA0);
-    spr.fillCircle(x - size/3, y - size/4, size/6, 0xFDA0);
-    spr.fillCircle(x + size/3, y - size/4, size/6, 0xFDA0);
+    uint16_t symbolColor = getCurrentDayColor();
+    
+    spr.drawLine(x - size/2, y, x + size/2, y, symbolColor);
+    spr.fillTriangle(x, y, x - size/6, y + size/6, x + size/6, y + size/6, symbolColor);
+    spr.drawLine(x, y + size/6, x, y + size/2, symbolColor);
+    spr.drawLine(x - size/4, y + size/2, x + size/4, y + size/2, symbolColor);
+    spr.fillCircle(x - size/2, y, size/8, symbolColor);
+    spr.fillCircle(x + size/2, y, size/8, symbolColor);
 }
 
 void drawCharitySymbol(int x, int y, int size) {
-    // Heart with hands
-    spr.fillCircle(x - size/4, y - size/4, size/4, 0xFFE0);
-    spr.fillCircle(x + size/4, y - size/4, size/4, 0xFFE0);
-    spr.fillTriangle(x, y + size/3, x - size/2, y - size/6, x + size/2, y - size/6, 0xFFE0);
+    uint16_t symbolColor = getCurrentDayColor();
+    spr.fillCircle(x - size/4, y - size/4, size/4, symbolColor);
+    spr.fillCircle(x + size/4, y - size/4, size/4, symbolColor);
+    spr.fillTriangle(x, y + size/3, x - size/2, y - size/6, x + size/2, y - size/6, symbolColor);
 }
 
 void drawDiligenceSymbol(int x, int y, int size) {
-    // Bee or honeycomb pattern
+    uint16_t symbolColor = getCurrentDayColor();
     for(int i = 0; i < 6; i++) {
         float angle = i * PI / 3;
         int x1 = x + cos(angle) * size/2;
         int y1 = y + sin(angle) * size/2;
-        spr.drawLine(x, y, x1, y1, 0x07E0);
+        spr.drawLine(x, y, x1, y1, symbolColor);
     }
 }
 
 void drawForgivenessSymbol(int x, int y, int size) {
-    // Dove or peaceful wave
-    spr.drawCircle(x, y, size/2, 0x001F);
-    spr.drawCircle(x, y, size/3, 0x001F);
-    spr.drawLine(x - size/2, y, x + size/2, y, 0x001F);
+    uint16_t symbolColor = getCurrentDayColor();
+    spr.drawCircle(x, y, size/2, symbolColor);
+    spr.drawCircle(x, y, size/3, symbolColor);
+    spr.drawLine(x - size/2, y, x + size/2, y, symbolColor);
 }
 
 void drawKindnessSymbol(int x, int y, int size) {
-    // Open hands or gift
-    spr.drawRect(x - size/2, y - size/2, size, size, 0x180E);
-    spr.drawLine(x - size/2, y, x + size/2, y, 0x180E);
-    spr.drawLine(x, y - size/2, x, y + size/2, 0x180E);
+    uint16_t symbolColor = getCurrentDayColor();
+    spr.drawRect(x - size/2, y - size/2, size, size, symbolColor);
+    spr.drawLine(x - size/2, y, x + size/2, y, symbolColor);
+    spr.drawLine(x, y - size/2, x, y + size/2, symbolColor);
 }
 
 void drawHumilitySymbol(int x, int y, int size) {
-    // Bowed head or kneeling figure - using simpler shape since drawArc needs more parameters
-    spr.drawCircle(x, y, size/2, 0x780F);
-    spr.drawLine(x, y, x, y + size/2, 0x780F);
+    uint16_t symbolColor = getCurrentDayColor();
+    spr.drawCircle(x, y, size/2, symbolColor);
+    spr.drawLine(x, y, x, y + size/2, symbolColor);
 }
 
 void drawBatteryCharging(int x, int y, int size) {
@@ -574,3 +610,163 @@ void RoverViewManager::drawStatusBar() {
         LOG_PROD("Error in drawStatusBar: %s", e.what());
     }
 }   
+
+void RoverViewManager::incrementExperience(uint16_t amount) {
+    experience += amount;
+    if (experience >= experienceToNextLevel) {
+        level++;
+        experience -= experienceToNextLevel;
+        experienceToNextLevel = calculateNextLevelExperience(level);
+        SoundFxManager::playVoiceLine("level_up");
+        LEDManager::flashLevelUp();
+    }
+    drawSprite();
+}
+
+uint16_t RoverViewManager::calculateNextLevelExperience(uint8_t currentLevel) {
+    // Simple exponential growth formula
+    return 100 * (currentLevel + 1);
+}   
+
+void RoverViewManager::showNotification(const char* header, const char* content, const char* symbol, int duration) {
+    currentNotification = {header, content, symbol, millis(), duration};
+    notificationActive = true;
+    drawNotification();
+}
+
+void RoverViewManager::drawNotification() {
+    if (!notificationActive) return;
+    
+    // Fill entire screen with dark background
+    spr.fillSprite(TFT_BLACK);
+    
+    // Draw full-height notification box
+    int boxWidth = 160;
+    int boxHeight = SCREEN_HEIGHT - 20; // Full height minus margins
+    int boxX = 10;
+    int boxY = 10;
+    
+    spr.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 8, TFT_DARKGREY);
+    spr.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 8, TFT_WHITE);
+    
+    // Draw header
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE);
+    spr.drawCentreString(currentNotification.header, boxX + boxWidth/2, boxY + 10, 2);
+    
+    // If this is an NFC notification, try to read card data
+    if (strcmp(currentNotification.symbol, "NFC") == 0) {
+        uint32_t cardId = NFCManager::getLastCardId();
+        char idStr[32];
+        sprintf(idStr, "Card ID: %08X", cardId);
+        spr.drawCentreString(idStr, boxX + boxWidth/2, boxY + 40, 2);
+        
+        // Try to read card data
+        if (NFCManager::isCardEncrypted()) {
+            drawSymbol("PADLOCK", boxX + boxWidth/2, boxY + boxHeight/2, 40);
+            spr.drawCentreString("Encrypted Card", boxX + boxWidth/2, boxY + boxHeight - 60, 2);
+        } else {
+            // Show card data if available
+            const char* cardData = NFCManager::getCardData();
+            if (cardData) {
+                drawWordWrappedText(cardData, boxX + 10, boxY + 80, boxWidth - 20);
+            }
+        }
+    } else {
+        // Regular notification display
+        drawSymbol(currentNotification.symbol, boxX + boxWidth/2, boxY + boxHeight/2, 40);
+        drawWordWrappedText(currentNotification.content, boxX + 10, boxY + boxHeight - 60, boxWidth - 20);
+    }
+}
+
+void RoverViewManager::drawSymbol(const char* symbol, int x, int y, int size) {
+    if (strcmp(symbol, "PADLOCK") == 0) {
+        // Draw padlock body
+        spr.fillRoundRect(x - size/3, y, size*2/3, size/2, size/8, TFT_WHITE);
+        // Draw shackle
+        spr.drawRoundRect(x - size/2, y - size/3, size, size/2, size/8, TFT_WHITE);
+    } else if (strcmp(symbol, "NFC") == 0) {
+        // Draw NFC symbol
+        int radius = size / 2;
+        spr.drawCircle(x, y, radius, TFT_WHITE);
+        spr.drawCircle(x, y, radius * 0.7, TFT_WHITE);
+        spr.drawCircle(x, y, radius * 0.4, TFT_WHITE);
+        // Add diagonal line
+        spr.drawLine(x - radius, y + radius, x + radius/2, y - radius/2, TFT_WHITE);
+    }
+}
+
+void RoverViewManager::clearNotification() {
+    notificationActive = false;
+    currentNotification = {"", "", "", 0, 0};
+}
+
+bool RoverViewManager::hasActiveNotification() {
+    return notificationActive;
+}   
+
+void RoverViewManager::handleInput(InputType input) {
+    if (hasActiveNotification()) {
+        clearNotification();
+        return;
+    }
+    
+    switch (input) {
+        case InputType::INPUT_LEFT:
+            previousView();
+            break;
+            
+        case InputType::INPUT_RIGHT:
+            nextView();
+            break;
+    }
+}
+
+void RoverViewManager::drawWordWrappedText(const char* text, int x, int y, int maxWidth) {
+    if (!text) return;
+    
+    const int lineHeight = 20;  // Adjust based on your font size
+    char buffer[256];
+    int currentLine = 0;
+    int bufferIndex = 0;
+    int lastSpace = -1;
+    
+    for (int i = 0; text[i] != '\0'; i++) {
+        buffer[bufferIndex++] = text[i];
+        buffer[bufferIndex] = '\0';
+        
+        if (text[i] == ' ') {
+            lastSpace = bufferIndex - 1;
+        }
+        
+        // Check if current line is too long
+        if (spr.textWidth(buffer) > maxWidth) {
+            if (lastSpace != -1) {
+                // Break at last space
+                buffer[lastSpace] = '\0';
+                spr.drawString(buffer, x, y + (currentLine * lineHeight));
+                
+                // Start new line from word after space
+                bufferIndex = 0;
+                for (int j = lastSpace + 1; j < i; j++) {
+                    buffer[bufferIndex++] = text[j];
+                }
+                buffer[bufferIndex] = '\0';
+                lastSpace = -1;
+            } else {
+                // Force break if no space found
+                buffer[bufferIndex-1] = '\0';
+                spr.drawString(buffer, x, y + (currentLine * lineHeight));
+                bufferIndex = 0;
+                buffer[bufferIndex++] = text[i];
+                buffer[bufferIndex] = '\0';
+            }
+            currentLine++;
+        }
+    }
+    
+    // Draw remaining text
+    if (bufferIndex > 0) {
+        spr.drawString(buffer, x, y + (currentLine * lineHeight));
+    }
+}
