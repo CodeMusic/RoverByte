@@ -202,48 +202,58 @@ void LEDManager::updateTimerMode() {
     };
     static const int NUM_TIMER_COLORS = sizeof(timerColors) / sizeof(timerColors[0]);
     static CRGB backgroundColors[WS2812_NUM_LEDS] = {CRGB::Black};
+    static bool isMoving = false;
     
     unsigned long currentTime = millis();
-    if (currentTime - lastStepTime >= 125) {  // 125ms between drops
+    if (currentTime - lastStepTime >= 125) {  // 125ms between moves
         lastStepTime = currentTime;
         
-        // Find next empty position
-        bool foundNext = false;
-        for (int i = currentPosition; i < WS2812_NUM_LEDS; i++) {
-            if (leds[i] == backgroundColors[i]) {
-                currentPosition = i;
-                foundNext = true;
-                break;
-            }
-        }
-        
-        if (foundNext) {
-            // Set new color and play sound
-            leds[currentPosition] = timerColors[currentColorIndex];
-            SoundFxManager::playTimerDropSound();
-            
-            // Move to next position if not at end
-            if (currentPosition < WS2812_NUM_LEDS - 1) {
-                currentPosition++;
-            }
-        } else {
-            // Completed this color's cycle
+        if (!isMoving) {
+            // Start new drop at position 0
+            leds[0] = timerColors[currentColorIndex];
             currentPosition = 0;
+            isMoving = true;
+            SoundFxManager::playTimerDropSound();
+        } else {
+            // Clear current position
+            leds[currentPosition] = backgroundColors[currentPosition];
             
-            // Update background colors for next cycle
-            if (currentColorIndex < NUM_TIMER_COLORS - 1) {
-                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                    backgroundColors[i] = timerColors[currentColorIndex];
-                }
-                currentColorIndex++;
+            // Move to next position if possible
+            if (currentPosition < WS2812_NUM_LEDS - 1 && 
+                leds[currentPosition + 1] == backgroundColors[currentPosition + 1]) {
+                currentPosition++;
+                leds[currentPosition] = timerColors[currentColorIndex];
+                SoundFxManager::playTimerDropSound();
             } else {
-                // Reset everything for new full sequence
-                currentColorIndex = 0;
+                // Drop has reached its final position
+                leds[currentPosition] = timerColors[currentColorIndex];
+                isMoving = false;
+                
+                // Check if we completed this color's cycle
+                bool allFilled = true;
                 for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                    backgroundColors[i] = CRGB::Black;
+                    if (leds[i] == backgroundColors[i]) {
+                        allFilled = false;
+                        break;
+                    }
+                }
+                
+                if (allFilled) {
+                    // Update background for next color
+                    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                        backgroundColors[i] = timerColors[currentColorIndex];
+                    }
+                    currentColorIndex = (currentColorIndex + 1) % NUM_TIMER_COLORS;
+                    if (currentColorIndex == 0) {
+                        // Reset background when starting over
+                        for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                            backgroundColors[i] = CRGB::Black;
+                        }
+                    }
                 }
             }
         }
+        FastLED.show();
     }
 }
 
