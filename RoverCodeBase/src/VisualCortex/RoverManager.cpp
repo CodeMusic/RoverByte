@@ -42,7 +42,7 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
     uint16_t rightEyeColor = monthColors[timeInfo->tm_mon][1];
     
     // Small rover always shows time, large rover never shows time
-    if (!large) {
+    if (!large && showTime) {
         // Convert to 12-hour format
         int hours = timeInfo->tm_hour % 12;
         if (hours == 0) hours = 12;

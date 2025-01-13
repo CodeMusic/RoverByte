@@ -220,24 +220,33 @@ void LEDManager::updateTimerMode() {
         lastStepTime = currentTime;
         
         CRGB currentColor = getRainbowColor(currentColorIndex);
-        CRGB nextColor = getRainbowColor((currentColorIndex + 1) % NUM_RAINBOW_COLORS);
         
-        // Fill background with current color
+        // If starting a new color cycle
         if (currentPosition == 0) {
-            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                leds[i] = currentColor;
-            }
+            filledPositions = 0;
         }
         
-        // Overlay next color one LED at a time
+        // Fill from right to left
         if (currentPosition < WS2812_NUM_LEDS) {
-            leds[currentPosition] = nextColor;
+            leds[WS2812_NUM_LEDS - 1 - currentPosition] = currentColor;
             currentPosition++;
             FastLED.show();
-        } else {
-            // When all LEDs are filled with next color
-            currentPosition = 0;
-            currentColorIndex = (currentColorIndex + 1) % NUM_RAINBOW_COLORS;
+            
+            // When we've filled 8 positions with this color
+            if (currentPosition >= WS2812_NUM_LEDS) {
+                filledPositions++;
+                currentPosition = 0;
+                
+                // After 8 cycles of the same color, move to next color
+                if (filledPositions >= 8) {
+                    // The current color becomes the background
+                    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                        leds[i] = currentColor;
+                    }
+                    currentColorIndex = (currentColorIndex + 1) % NUM_RAINBOW_COLORS;
+                    filledPositions = 0;
+                }
+            }
         }
     }
 }

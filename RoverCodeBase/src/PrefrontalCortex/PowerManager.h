@@ -32,6 +32,8 @@ public:
     static void updateLastActivityTime();
     static void setBacklight(uint8_t brightness);
     static void setupBacklight();
+    static void setShowTime(bool show);
+    static bool getShowTime();
     
 private:
     static const uint8_t BACKLIGHT_PIN = 38;
@@ -47,5 +49,6 @@ private:
     
     static int calculateBatteryPercentage(int voltage);
     static void initializeBattery();
+    static bool showTime;
 };
 #endif

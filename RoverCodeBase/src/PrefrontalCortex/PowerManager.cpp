@@ -7,6 +7,7 @@ XPowersPPM PowerManager::PPM;
 bool PowerManager::batteryInitialized = false;
 unsigned long PowerManager::lastActivityTime = 0;
 PowerManager::SleepState PowerManager::currentSleepState = PowerManager::AWAKE;
+bool PowerManager::showTime = false;
 
 void PowerManager::init() {
     // Initialize LEDC for backlight first
@@ -104,6 +105,7 @@ void PowerManager::wakeFromSleep() {
     LOG_PROD("Waking from sleep mode");
     lastActivityTime = millis();
     currentSleepState = AWAKE;
+    setShowTime(false);
     
     // Initialize display first
     tft.init();
@@ -130,17 +132,32 @@ PowerManager::SleepState PowerManager::getCurrentSleepState() {
 
 int PowerManager::getBatteryPercentage() {
     if (!batteryInitialized) return 0;
+    
+    // Get both voltage and charging status
     float voltage = PPM.getBattVoltage();
+    bool charging = PPM.isCharging();
     
-    // Define the minimum and maximum voltage for your battery
-    const float MIN_VOLTAGE = 3.3;  // Voltage at 0%
-    const float MAX_VOLTAGE = 4.2;  // Voltage at 100%
+    // Define voltage ranges
+    const float MIN_VOLTAGE = 3300;  // 3.3V
+    const float MAX_VOLTAGE = 4200;  // 4.2V
     
-    if (voltage <= MIN_VOLTAGE) return 0;
-    if (voltage >= MAX_VOLTAGE) return 100;
+    // Convert mV to V if needed
+    if (voltage > 100) {  // If voltage is in mV
+        voltage = voltage / 1000.0;
+    }
     
-    // Calculate the percentage based on the voltage range
-    return (int)((voltage - MIN_VOLTAGE) / (MAX_VOLTAGE - MIN_VOLTAGE) * 100.0);
+    // Calculate percentage
+    int percentage = ((voltage - 3.3) / (4.2 - 3.3)) * 100;
+    
+    // Constrain between 0-100
+    percentage = constrain(percentage, 0, 100);
+    
+    // If charging and below 100%, ensure we show some progress
+    if (charging && percentage < 100) {
+        percentage = max(percentage, 5);  // Show at least 5% when charging
+    }
+    
+    return percentage;
 }
 
 String PowerManager::getChargeStatus() {
@@ -150,7 +167,7 @@ String PowerManager::getChargeStatus() {
 
 bool PowerManager::isCharging() {
     if (!batteryInitialized) return false;
-    return PPM.isVbusIn();
+    return PPM.isCharging();
 }
 
 void PowerManager::updateLastActivityTime() {
@@ -207,4 +224,12 @@ void PowerManager::setupBacklight() {
 void PowerManager::setBacklight(uint8_t brightness) {
     ledcWrite(PWM_CHANNEL, brightness);
     drawSprite();
+}
+
+void PowerManager::setShowTime(bool show) {
+    showTime = show;
+}
+
+bool PowerManager::getShowTime() {
+    return showTime;
 }

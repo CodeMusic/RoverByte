@@ -288,15 +288,14 @@ void handleRotaryButton() {
         rotaryButtonPressed = false;
         
         // Toggle between showing time and LED modes
-        if (!showTime) {
-            showTime = true;
+        if (!PowerManager::getShowTime()) {
+            PowerManager::setShowTime(true);
         } else {
             LEDManager::nextMode();
             SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
         }
         drawSprite();
         
-        // Reset sleep timer on button press
         PowerManager::updateLastActivityTime();
     }
 }
