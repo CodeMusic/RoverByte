@@ -27,6 +27,7 @@ public:
     static Mode getMode() { return currentMode; }
     static void updateLoadingAnimation();
     static bool isLoadingComplete();
+    static void flashSuccess();
     static Mode previousMode;
     static Mode currentMode;
 

@@ -312,4 +312,19 @@ void LEDManager::scaleLED(int index, uint8_t scale) {
     if (index >= 0 && index < WS2812_NUM_LEDS) {
         leds[index].nscale8(scale);
     }
+}
+
+void LEDManager::flashSuccess() {
+    // Save current LED state
+    CRGB savedState[WS2812_NUM_LEDS];
+    memcpy(savedState, leds, sizeof(CRGB) * WS2812_NUM_LEDS);
+    
+    // Flash green
+    fill_solid(leds, WS2812_NUM_LEDS, CRGB::Green);
+    FastLED.show();
+    delay(100);
+    
+    // Restore previous state
+    memcpy(leds, savedState, sizeof(CRGB) * WS2812_NUM_LEDS);
+    FastLED.show();
 } 

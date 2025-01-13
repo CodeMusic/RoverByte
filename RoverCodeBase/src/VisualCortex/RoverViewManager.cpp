@@ -3,6 +3,7 @@
 #include "../PrefrontalCortex/PowerManager.h"
 #include "DisplayConfig.h"
 #include "RoverManager.h"
+#include "../PsychicCortex/NFCManager.h"
 
 // Add at the top with other includes
 extern bool showTime;  // Declare the external variable
@@ -505,7 +506,7 @@ void RoverViewManager::drawStatusBar() {
         // Status bar positioning
         int dateWidth = 40;
         int dateHeight = 30;
-        int dateX = 2;
+        int dateX = 0;  // Changed from 2 to 0
         
         // Get month colors
         CRGB monthColor1, monthColor2;
@@ -516,7 +517,7 @@ void RoverViewManager::drawStatusBar() {
         if (monthColor1.r == monthColor2.r && 
             monthColor1.g == monthColor2.g && 
             monthColor1.b == monthColor2.b) {
-            spr.fillRect(dateX, STATUS_BAR_Y, dateWidth, dateHeight, monthTftColor);
+            spr.fillRect(dateX, STATUS_BAR_Y - 2, dateWidth, dateHeight, monthTftColor);  // Added -2 to Y
         } else {
             for (int i = 0; i < dateWidth; i++) {
                 float ratio = (float)i / dateWidth;
@@ -524,7 +525,7 @@ void RoverViewManager::drawStatusBar() {
                 uint8_t g = monthColor1.g + (monthColor2.g - monthColor1.g) * ratio;
                 uint8_t b = monthColor1.b + (monthColor2.b - monthColor1.b) * ratio;
                 uint32_t tftColor = spr.color565(r, g, b);
-                spr.drawFastVLine(dateX + i, STATUS_BAR_Y, dateHeight, tftColor);
+                spr.drawFastVLine(dateX + i, STATUS_BAR_Y - 2, dateHeight, tftColor);  // Added -2 to Y
             }
         }
         
@@ -548,8 +549,11 @@ void RoverViewManager::drawStatusBar() {
         
         switch (statusRotation) {
             case 0:
-                spr.drawString("Lvl:11 Exp:1,537", 
-                              statusX + 35, STATUS_BAR_Y + dateHeight/2);
+                char statsStr[20];
+                sprintf(statsStr, "Lvl:%d Exp:%d", 
+                        (NFCManager::getTotalScans() / 10) + 1,  // Level increases every 10 scans
+                        NFCManager::getTotalScans() * 7);
+                spr.drawString(statsStr, statusX + 35, STATUS_BAR_Y + dateHeight/2);
                 break;
             case 1:
                 if (PowerManager::isCharging()) {

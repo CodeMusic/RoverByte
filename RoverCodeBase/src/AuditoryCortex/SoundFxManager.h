@@ -110,6 +110,8 @@ public:
     }
 
     static void stopJingle();
+
+    static void playVoiceLine(const char* line);
 };
 
 #endif 

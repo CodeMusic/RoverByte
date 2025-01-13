@@ -406,3 +406,40 @@ void SoundFxManager::stopJingle() {
     lastNoteTime = 0;
 }
 
+void SoundFxManager::playVoiceLine(const char* line) {
+    if (strcmp(line, "card_detected") == 0) {
+        // Happy detection tune
+        playTone(NOTE_C5, 100);
+        delay(30);
+        playTone(NOTE_E5, 100);
+        delay(30);
+        playTone(NOTE_G5, 200);
+    }
+    else if (strcmp(line, "waiting_for_card") == 0) {
+        // Inquisitive searching tune
+        playTone(NOTE_E5, 100);
+        delay(50);
+        playTone(NOTE_G5, 100);
+        delay(50);
+        playTone(NOTE_A5, 150);
+    }
+    else if (strcmp(line, "scan_complete") == 0) {
+        // Success tune
+        playTone(NOTE_C5, 100);
+        delay(30);
+        playTone(NOTE_E5, 100);
+        delay(30);
+        playTone(NOTE_G5, 100);
+        delay(30);
+        playTone(NOTE_C6, 200);
+    }
+    else if (strcmp(line, "scan_error") == 0) {
+        // Error tune
+        playTone(NOTE_G4, 200);
+        delay(50);
+        playTone(NOTE_E4, 200);
+        delay(50);
+        playTone(NOTE_C4, 300);
+    }
+}
+

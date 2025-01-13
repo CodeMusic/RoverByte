@@ -15,25 +15,27 @@ void PowerManager::init() {
     
     // Initialize I2C for battery management
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
-    Wire.setClock(100000);  // Set I2C clock to 100kHz
+    Wire.setClock(100000);
     
     delay(100);  // Give I2C time to stabilize
     
-    // Try to initialize battery with retries
-    for (int attempts = 0; attempts < 3; attempts++) {
-        if (PPM.begin(Wire, AXP2101_SLAVE_ADDRESS, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
-            batteryInitialized = true;
-            LOG_PROD("Battery management initialized successfully");
-            
-            // Configure battery parameters
-            PPM.setSysPowerDownVoltage(3300);
-            PPM.setInputCurrentLimit(3250);
-            PPM.setChargeTargetVoltage(4208);
-            PPM.enableADCMeasure();
-            PPM.enableCharge();
-            break;
-        }
-        delay(100);
+    // Initialize battery directly
+    bool result = PPM.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, BQ25896_SLAVE_ADDRESS);
+    if (result) {
+        batteryInitialized = true;
+        LOG_PROD("Battery management initialized successfully");
+        
+        // Configure battery parameters
+        PPM.setSysPowerDownVoltage(3300);
+        PPM.setInputCurrentLimit(3250);
+        PPM.disableCurrentLimitPin();
+        PPM.setChargeTargetVoltage(4208);
+        PPM.setPrechargeCurr(64);
+        PPM.setChargerConstantCurr(832);
+        PPM.enableADCMeasure();
+        PPM.enableCharge();
+    } else {
+        LOG_ERROR("Failed to initialize battery management");
     }
     
     lastActivityTime = millis();
@@ -133,21 +135,8 @@ PowerManager::SleepState PowerManager::getCurrentSleepState() {
 int PowerManager::getBatteryPercentage() {
     if (!batteryInitialized) return 0;
     
-    float voltage = PPM.getBattVoltage();
-    bool charging = PPM.isCharging();
-    
-    // Convert to millivolts if needed
-    if (voltage < 100.0) {  // If voltage is in volts
-        voltage *= 1000.0;  // Convert to millivolts
-    }
-    
-    // Calculate percentage based on voltage range
-    float percentage = ((voltage - 3300.0) / (4200.0 - 3300.0)) * 100.0;
-    
-    // Constrain between 0-100
-    percentage = constrain(percentage, 0, 100);
-    
-    return static_cast<int>(percentage);
+    int voltage = PPM.getBattVoltage();
+    return calculateBatteryPercentage(voltage);
 }
 
 String PowerManager::getChargeStatus() {
@@ -157,7 +146,7 @@ String PowerManager::getChargeStatus() {
 
 bool PowerManager::isCharging() {
     if (!batteryInitialized) return false;
-    return PPM.isCharging();
+    return PPM.isVbusIn();
 }
 
 void PowerManager::updateLastActivityTime() {

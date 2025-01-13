@@ -1,9 +1,9 @@
 #include "WiFiManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/LEDManager.h"
-#include "PowerManager.h"
+#include "../PrefrontalCortex/PowerManager.h"
 #include <FastLED.h>
-#include "utilities.h"
+#include "../PrefrontalCortex/utilities.h"
 
 #define WIFI_RETRY_INTERVAL 60000  // 1 minute between retry attempts
 

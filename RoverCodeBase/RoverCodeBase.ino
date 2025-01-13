@@ -22,8 +22,9 @@
 #include "src/VisualCortex/DisplayConfig.h"
 #include "src/AuditoryCortex/SoundFxManager.h"
 #include "src/VisualCortex/LEDManager.h"
-#include "src/PrefrontalCortex/WiFiManager.h"
+#include "src/PsychicCortex/WiFiManager.h"
 #include "src/PrefrontalCortex/SDManager.h"
+//#include "src/PsychicCortex/NFCManager.h"
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
@@ -79,7 +80,7 @@ String chargeStatus = "Unknown";
 
 // Add these definitions
 #define RECORD_FILENAME "/sdcard/temp_record.wav"
-#define EXAMPLE_I2S_CH      0
+#define EXAMPLE_I2S_CH I2S_NUM_0
 #define EXAMPLE_SAMPLE_RATE 44100
 #define EXAMPLE_BIT_SAMPLE  16
 #define NUM_CHANNELS        1
@@ -163,42 +164,61 @@ void handleSDCardOperation() {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
-    
-    LOG_PROD("Rover starting up...");
-    
-    // Initialize core components first
+    delay(100);
+    pinMode(BOARD_USER_KEY, INPUT_PULLUP);
+    // Initialize I2C first for power management
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
+    Wire.setClock(100000);
+    delay(100);
+    
+    // Initialize core power management before anything else
     PowerManager::init();
+    delay(100);
     
-    // Initialize LED system first
-    LEDManager::init();
-    FastLED.clear(true);
-    LEDManager::startLoadingAnimation();
-    SoundFxManager::startJingle();
+    // Initialize SPI bus and CS pins
+    pinMode(TFT_CS, OUTPUT);
+    pinMode(BOARD_SD_CS, OUTPUT);
+    pinMode(BOARD_LORA_CS, OUTPUT);
+    digitalWrite(TFT_CS, HIGH);
+    digitalWrite(BOARD_SD_CS, HIGH);
+    digitalWrite(BOARD_LORA_CS, HIGH);
+    delay(100);
     
-    // Initialize display
-    tft.begin();
+    // Initialize display with proper sequence
+    tft.init();
     tft.setRotation(0);
+    tft.writecommand(TFT_SLPOUT); // Wake from sleep
+    delay(120); // Required delay
+    tft.writecommand(TFT_DISPON); // Display on
     tft.fillScreen(TFT_BLACK);
     PowerManager::setBacklight(255);
+    delay(100);
+    
+    // Initialize storage
+    if(!SPIFFS.begin(true)) {
+        LOG_ERROR("Failed to initialize SPIFFS");
+    }
+    
+    // Initialize core components
+    SDManager::init();
+    LEDManager::init();
+    FastLED.clear(true);
     
     // Initialize remaining components
+    //NFCManager::init();
     RoverViewManager::init();
-    RoverManager::setEarsDown();  // Ensure ears start down
+    
+    // Initialize audio last
     SoundFxManager::init();
+    
+    // Start normal operation
+    LEDManager::startLoadingAnimation();
+    SoundFxManager::startJingle();
     
     // Initialize WiFi last
     WiFiManager::setCredentials(primary_ssid, primary_password, backup_ssid, backup_password);
     WiFiManager::init();
     WiFiManager::connectToWiFi();
-    
-    // Configure GPIO for side button
-    pinMode(BOARD_USER_KEY, INPUT_PULLUP);
-    gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
-    
-    drawSprite();
-    SDManager::init();
 }
 
 void syncLEDsForDay() {
@@ -326,11 +346,8 @@ void handleSideButton() {
     static bool lastState = HIGH;
     static unsigned long lastDebounceTime = 0;
     const unsigned long debounceDelay = 50;
-    
+    //gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
     bool currentState = digitalRead(BOARD_USER_KEY);
-    
-    // Add pull-up resistor
-    gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
     
     if (currentState != lastState) {
         if ((millis() - lastDebounceTime) > debounceDelay) {
@@ -338,16 +355,19 @@ void handleSideButton() {
             
             if (currentState == LOW) {  // Button pressed
                 RoverManager::setEarsUp();
-                SoundFxManager::playSideButtonSound(true);
+               /* if (NFCManager::isCardPresent()) {
+                    SoundFxManager::playVoiceLine("card_detected");
+                } else {
+                    SoundFxManager::playVoiceLine("waiting_for_card");
+                }*/
             } else {  // Button released
                 RoverManager::setEarsDown();
-                SoundFxManager::playSideButtonSound(false);
             }
             PowerManager::updateLastActivityTime();
             drawSprite();
         }
-        lastState = currentState;
     }
+    lastState = currentState;
 }
 
 void loop() {
@@ -389,6 +409,7 @@ void loop() {
     }
     
     WiFiManager::checkConnection();
+    //NFCManager::update();
 }
 
 

@@ -18,7 +18,10 @@ public:
     
 private:
     static bool initialized;
-    static const int SD_CS_PIN = 4;  // Adjust based on your hardware
+    static const int SD_SCK = BOARD_SD_SCK;   // Pin 11
+    static const int SD_MISO = BOARD_SD_MISO; // Pin 10
+    static const int SD_MOSI = BOARD_SD_MOSI; // Pin 9
+    static const int SD_CS = BOARD_SD_CS;     // Pin 13
 };
 
 #endif 

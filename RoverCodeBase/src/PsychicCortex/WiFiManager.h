@@ -3,7 +3,7 @@
 
 #include <WiFi.h>
 #include "../VisualCortex/RoverManager.h"
-#include "utilities.h"
+#include "../PrefrontalCortex/utilities.h"
 
 // Forward declaration
 class RoverViewManager;

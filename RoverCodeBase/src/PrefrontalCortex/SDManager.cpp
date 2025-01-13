@@ -4,12 +4,47 @@ bool SDManager::initialized = false;
 
 void SDManager::init() {
     if (!initialized) {
-        if (!SD.begin(SD_CS_PIN)) {
-            LOG_ERROR("SD card initialization failed!");
+        // Configure SD card pins
+        pinMode(SD_CS, OUTPUT);
+        digitalWrite(SD_CS, HIGH);
+        delay(100);  // Give SD card time to stabilize
+        
+        // Initialize SPI for SD card with lower speed initially
+        SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
+        SPI.setFrequency(4000000);  // Start at 4MHz
+        
+        unsigned long startTime = millis();
+        bool initSuccess = false;
+        
+        // Try initialization with timeout
+        while (millis() - startTime < 3000) {  // 3 second timeout
+            if (SD.begin(SD_CS)) {
+                initSuccess = true;
+                break;
+            }
+            delay(100);
+        }
+        
+        if (!initSuccess) {
+            LOG_ERROR("SD card initialization failed after timeout!");
             return;
         }
+        
+        uint8_t cardType = SD.cardType();
+        if (cardType == CARD_NONE) {
+            LOG_ERROR("No SD card detected!");
+            return;
+        }
+        
+        // Increase SPI speed after successful init
+        SPI.setFrequency(20000000);  // Increase to 20MHz
+        
         initialized = true;
         LOG_PROD("SD card initialized successfully");
+        LOG_PROD("Card Type: %s", 
+            cardType == CARD_MMC ? "MMC" :
+            cardType == CARD_SD ? "SDSC" :
+            cardType == CARD_SDHC ? "SDHC" : "UNKNOWN");
     }
 }
 
