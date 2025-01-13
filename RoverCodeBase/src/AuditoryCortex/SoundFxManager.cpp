@@ -479,3 +479,17 @@ void SoundFxManager::playCardMelody(uint32_t cardId) {
     }
 }
 
+void SoundFxManager::playTimerDropSound() {
+    // Start with a higher frequency and quickly slide down
+    // for a water drop effect
+    const int startFreq = 2000;
+    const int endFreq = 500;
+    const int steps = 20;
+    const int duration = 5;  // Duration per step in ms
+    
+    for (int i = 0; i < steps; i++) {
+        int freq = startFreq - ((startFreq - endFreq) * i / steps);
+        playTone(freq, duration);
+    }
+}
+

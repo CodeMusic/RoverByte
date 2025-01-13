@@ -86,6 +86,10 @@ void loop() {
     // Update UI first
     UIManager::update();
     
+    // Update LED animations
+    LEDManager::updateLEDs();
+    
+    // Other updates
     if (millis() - lastDraw >= DRAW_INTERVAL) {
         RoverBehaviorManager::update();
         lastDraw = millis();

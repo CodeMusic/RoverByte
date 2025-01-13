@@ -6,6 +6,7 @@
 #include <time.h>
 #include "ColorUtilities.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "../AuditoryCortex/SoundFxManager.h"
 
 // Static member initialization
 CRGB LEDManager::leds[WS2812_NUM_LEDS];
@@ -51,36 +52,29 @@ void LEDManager::stopLoadingAnimation() {
 }
 
 void LEDManager::updateLEDs() {
-    if (isLoading) {
-        LOG_DEBUG("Still in loading state");
-        updateLoadingAnimation();
-    } else {
-        LOG_DEBUG("Current mode: %d", static_cast<int>(currentMode));
-        FastLED.clear();  // Clear previous state
-        switch (currentMode) {
-            case Mode::FULL_MODE:
-                if (currentMode != previousMode) {
-                    LOG_DEBUG("Updating FULL_MODE");
-                }
-                updateFullMode();
-                previousMode = currentMode;
-                break;
-            case Mode::WEEK_MODE:
-                if (currentMode != previousMode) {
-                    LOG_DEBUG("Updating WEEK_MODE");
-                }
-                updateWeekMode();
-                previousMode = currentMode;
-                break;
-            case Mode::TIMER_MODE:
-                if (currentMode != previousMode) {
-                    LOG_DEBUG("Updating TIMER_MODE");
-                }
-                updateTimerMode();
-                previousMode = currentMode;
-                break;
+    static unsigned long lastUpdate = 0;
+    const unsigned long UPDATE_INTERVAL = 125;  // 125ms update interval
+    
+    unsigned long currentTime = millis();
+    if (currentTime - lastUpdate >= UPDATE_INTERVAL) {
+        lastUpdate = currentTime;
+        
+        if (isLoading) {
+            updateLoadingAnimation();
+        } else {
+            switch (currentMode) {
+                case Mode::FULL_MODE:
+                    updateFullMode();
+                    break;
+                case Mode::WEEK_MODE:
+                    updateWeekMode();
+                    break;
+                case Mode::TIMER_MODE:
+                    updateTimerMode();
+                    break;
+            }
+            FastLED.show();
         }
-        FastLED.show();
     }
 }
 
@@ -164,33 +158,19 @@ void LEDManager::updateWeekMode() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     
+    // Create a common blink state for both LEDs
+    bool shouldBlink = (timeInfo->tm_sec % 2 == 0);
+    
     // LED 0: Month color with alternating pattern
     CRGB monthColor1, monthColor2;
     ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
     
-    int blinkState = (timeInfo->tm_sec % 3);
-    
-    if (monthColor1 == monthColor2) {
-        if (timeInfo->tm_sec % 2 == 0) {
-            monthColor1.nscale8(MONTH_DIM);
-            leds[0] = monthColor1;
-        } else {
-            leds[0] = CRGB::Black;
-        }
+    // Month LED should always blink
+    if (shouldBlink) {
+        monthColor1.nscale8(MONTH_DIM);
+        leds[0] = monthColor1;
     } else {
-        switch(blinkState) {
-            case 0:
-                monthColor1.nscale8(MONTH_DIM);
-                leds[0] = monthColor1;
-                break;
-            case 1:
-                monthColor2.nscale8(MONTH_DIM);
-                leds[0] = monthColor2;
-                break;
-            case 2:
-                leds[0] = CRGB::Black;
-                break;
-        }
+        leds[0] = CRGB::Black;
     }
     
     // Days of week
@@ -198,57 +178,71 @@ void LEDManager::updateWeekMode() {
         CRGB dayColor = ColorUtilities::getDayColor(i);
         
         if (i - 1 < timeInfo->tm_wday) {
-            leds[i] = CRGB::Black;
+            leds[i] = CRGB::Black;  // Past days are off
         } else if (i - 1 == timeInfo->tm_wday) {
-            if (timeInfo->tm_sec % 2 == 0) {
-                dayColor.nscale8(184);
+            // Current day should always blink
+            if (shouldBlink) {
+                dayColor.nscale8(184);  // Bright when on
                 leds[i] = dayColor;
             } else {
-                leds[i] = CRGB::Black;
+                leds[i] = CRGB::Black;  // Off during blink
             }
         } else {
-            dayColor.nscale8(77);
+            dayColor.nscale8(77);  // Future days are dimmed
             leds[i] = dayColor;
         }
     }
 }
 
 void LEDManager::updateTimerMode() {
-    unsigned long currentTime = millis();
+    static const CRGB timerColors[] = {
+        CRGB::Red, CRGB::Orange, CRGB::Yellow, 
+        CRGB::Green, CRGB::Blue, CRGB::Indigo, 
+        CRGB::Purple, CRGB::White, CRGB::Black
+    };
+    static const int NUM_TIMER_COLORS = sizeof(timerColors) / sizeof(timerColors[0]);
+    static CRGB backgroundColors[WS2812_NUM_LEDS] = {CRGB::Black};
     
-    if (currentTime - lastStepTime >= STEP_DELAY) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastStepTime >= 125) {  // 125ms between drops
         lastStepTime = currentTime;
         
-        CRGB currentColor = getRainbowColor(currentColorIndex);
-        
-        // Move current color down one position
-        if (currentPosition < WS2812_NUM_LEDS) {
-            // Clear previous position if not at bottom
-            if (currentPosition > 0) {
-                leds[currentPosition - 1] = CRGB::Black;
+        // Find next empty position
+        bool foundNext = false;
+        for (int i = currentPosition; i < WS2812_NUM_LEDS; i++) {
+            if (leds[i] == backgroundColors[i]) {
+                currentPosition = i;
+                foundNext = true;
+                break;
             }
+        }
+        
+        if (foundNext) {
+            // Set new color and play sound
+            leds[currentPosition] = timerColors[currentColorIndex];
+            SoundFxManager::playTimerDropSound();
             
-            // Set new position
-            leds[currentPosition] = currentColor;
-            currentPosition++;
+            // Move to next position if not at end
+            if (currentPosition < WS2812_NUM_LEDS - 1) {
+                currentPosition++;
+            }
+        } else {
+            // Completed this color's cycle
+            currentPosition = 0;
             
-            // When reaching bottom
-            if (currentPosition >= WS2812_NUM_LEDS) {
-                // Keep the color at the bottom
-                leds[WS2812_NUM_LEDS - 1] = currentColor;
-                
-                // Start next drop
-                currentPosition = 0;
-                filledPositions++;
-                
-                // After 8 drops of same color
-                if (filledPositions >= WS2812_NUM_LEDS) {
-                    // Move to next color
-                    currentColorIndex = (currentColorIndex + 1) % NUM_RAINBOW_COLORS;
-                    filledPositions = 0;
+            // Update background colors for next cycle
+            if (currentColorIndex < NUM_TIMER_COLORS - 1) {
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    backgroundColors[i] = timerColors[currentColorIndex];
+                }
+                currentColorIndex++;
+            } else {
+                // Reset everything for new full sequence
+                currentColorIndex = 0;
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    backgroundColors[i] = CRGB::Black;
                 }
             }
-            FastLED.show();
         }
     }
 }
