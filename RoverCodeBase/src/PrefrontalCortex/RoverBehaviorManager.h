@@ -16,6 +16,7 @@ public:
     static BehaviorState getCurrentState() { return currentState; }
     static void setState(BehaviorState state);
     static const char* getStatusMessage() { return currentStatusMessage; }
+    static void handleSideButton();
 
 private:
     static BehaviorState currentState;

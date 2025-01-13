@@ -4,6 +4,7 @@
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverManager.h"
 #include "../PrefrontalCortex/SDManager.h"
+#include "../PsychicCortex/NFCManager.h"
 #include <SPIFFS.h>
 
 RoverBehaviorManager::BehaviorState RoverBehaviorManager::currentState = RoverBehaviorManager::BOOTING;
@@ -193,5 +194,33 @@ void RoverBehaviorManager::setState(BehaviorState state) {
             break;
         default:
             break;
+    }
+}
+
+void RoverBehaviorManager::handleSideButton() {
+    static bool earsUp = false;
+    static unsigned long scanStartTime = 0;
+    const unsigned long SCAN_TIMEOUT = 5000; // 5 second timeout
+    
+    if (!earsUp) {
+        // Start NFC scan and raise ears
+        RoverManager::setEarsUp();
+        earsUp = true;
+        scanStartTime = millis();
+        NFCManager::handleSideButtonPress();  // This starts the NFC flow
+    } else {
+        // Only check timeout, not card presence yet
+        if (millis() - scanStartTime >= SCAN_TIMEOUT) {
+            RoverManager::setEarsDown();
+            earsUp = false;
+            if (NFCManager::isCardPresent()) {
+                // Card was found during scan
+                RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000);
+            } else {
+                // No card found after timeout
+                RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
+                RoverViewManager::showNotification("No Card", "Please try again", "NFC", 2000);
+            }
+        }
     }
 } 

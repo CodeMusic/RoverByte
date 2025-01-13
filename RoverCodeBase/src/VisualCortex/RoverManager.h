@@ -47,6 +47,7 @@ public:
     static void setRandomMood();
     static void setEarsDown();
     static void setEarsUp();
+    static void setEarsState(bool up);
 
 private:
     static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale);

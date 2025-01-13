@@ -266,3 +266,9 @@ void RoverManager::drawExpression(Expression exp) {
     const char* mood = expressionToMood(exp);
     drawRover(mood, earsPerked);
 }
+
+void RoverManager::setEarsState(bool up) {
+    earsPerked = up;
+    setTemporaryExpression(HAPPY);
+    drawRover(moods[currentMood], up);
+}

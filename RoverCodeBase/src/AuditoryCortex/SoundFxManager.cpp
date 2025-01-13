@@ -31,9 +31,16 @@ const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
 const int SoundFxManager::JINGLE_LENGTH = sizeof(ROVERBYTE_JINGLE) / sizeof(Note);
 
 void SoundFxManager::playTone(int frequency, int duration) {
-    ledcSetup(TONE_PWM_CHANNEL, frequency, 8);
+    // ESP32 LEDC limitations: freq_hz * duty_resolution < 80MHz
+    // Using 8-bit resolution, so max frequency should be around 312.5KHz
+    
+    // Clamp frequency to safe range
+    if (frequency < 100) frequency = 100;  // Minimum frequency
+    if (frequency > 10000) frequency = 10000;  // Maximum frequency
+    
+    ledcSetup(TONE_PWM_CHANNEL, frequency, 8);  // 8-bit resolution
     ledcAttachPin(BOARD_VOICE_DIN, TONE_PWM_CHANNEL);
-    ledcWrite(TONE_PWM_CHANNEL, 127);
+    ledcWrite(TONE_PWM_CHANNEL, 127);  // 50% duty cycle
     delay(duration);
     ledcWrite(TONE_PWM_CHANNEL, 0);
     ledcDetachPin(BOARD_VOICE_DIN);
@@ -480,23 +487,28 @@ void SoundFxManager::playCardMelody(uint32_t cardId) {
 }
 
 void SoundFxManager::playTimerDropSound(CRGB color) {
-    // Convert color to musical note (using similar logic to ColorUtilities)
+    // Convert color to musical note (using similar logic to baseNotes array from lines 464-469)
     int baseNote;
-    if (color == CRGB::Red) baseNote = NOTE_C5;
-    else if (color == CRGB::Orange) baseNote = NOTE_D5;
-    else if (color == CRGB::Yellow) baseNote = NOTE_E5;
-    else if (color == CRGB::Green) baseNote = NOTE_F5;
-    else if (color == CRGB::Blue) baseNote = NOTE_G5;
-    else if (color == CRGB::Indigo) baseNote = NOTE_A5;
-    else if (color == CRGB::Purple) baseNote = NOTE_B5;
-    else if (color == CRGB::White) baseNote = NOTE_C6;
-    else baseNote = NOTE_C5;  // Default for black or unknown colors
+    if (color == CRGB::Red) baseNote = NOTE_C4;
+    else if (color == CRGB::Orange) baseNote = NOTE_D4;
+    else if (color == CRGB::Yellow) baseNote = NOTE_E4;
+    else if (color == CRGB::Green) baseNote = NOTE_F4;
+    else if (color == CRGB::Blue) baseNote = NOTE_G4;
+    else if (color == CRGB::Indigo) baseNote = NOTE_A4;
+    else if (color == CRGB::Purple) baseNote = NOTE_B4;
+    else if (color == CRGB::White) baseNote = NOTE_C5;
+    else baseNote = NOTE_C4;  // Default for black or unknown colors
 
-    // Create water drop effect starting from the base note
-    const int steps = 20;
-    const int duration = 5;  // Duration per step in ms
-    const int dropRange = 700;  // Frequency range of the drop effect
+    // Create water drop effect that maintains musical quality
+    const int steps = 8;  // Fewer steps for clearer notes
+    const int duration = 15;  // Longer duration per note
+    const int dropRange = 200;  // Smaller range to keep notes musical
     
+    // Play initial clear note
+    playTone(baseNote, 50);
+    delay(10);
+    
+    // Then do the drop effect
     for (int i = 0; i < steps; i++) {
         int freq = baseNote - (dropRange * i / steps);
         playTone(freq, duration);
