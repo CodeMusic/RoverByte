@@ -23,7 +23,7 @@ void LEDManager::init() {
     pinMode(BOARD_PWR_EN, OUTPUT);
     digitalWrite(BOARD_PWR_EN, HIGH);  // Power on LEDs
 
-    FastLED.addLeds<WS2813, WS2812_DATA_PIN, GBR>(leds, WS2812_NUM_LEDS);
+    FastLED.addLeds<WS2813, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
     FastLED.setBrightness(50);
     FastLED.clear(true);
     FastLED.show();
