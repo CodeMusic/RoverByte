@@ -315,7 +315,6 @@ void drawBatteryCharging(int x, int y, int size) {
 }
 
 void drawBattery(int x, int y, int size) {
-
     int batteryWidth = size;
     int sizeY = size;
     int batteryX = x;
@@ -326,7 +325,6 @@ void drawBattery(int x, int y, int size) {
     
     int fillWidth = (size - 4) * PowerManager::getBatteryPercentage() / 100;
     spr.fillRect(batteryX + 2, batteryY + 2, fillWidth, sizeY - 4, TFT_WHITE);
-
 }
 
 void RoverViewManager::drawChakras() {
@@ -538,29 +536,24 @@ void RoverViewManager::drawStatusBar() {
         spr.setTextFont(2);
         spr.setTextColor(TFT_WHITE, TFT_BLACK);
         
-        switch (statusRotation) 
-        {
+        switch (statusRotation) {
             case 0:
                 spr.drawString("Lvl:11 Exp:1,537", 
                               statusX + 35, STATUS_BAR_Y + dateHeight/2);
                 break;
-                   
             case 1:
-                if (PowerManager::isCharging()) 
-                {
+                if (PowerManager::isCharging()) {
                     drawBatteryCharging(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
                     spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
-                } 
-                else 
-                {
+                } else {
                     drawBattery(statusX, STATUS_BAR_Y + dateHeight/2, 19);
                     char batteryStr[5];
                     sprintf(batteryStr, "%d%%", PowerManager::getBatteryPercentage());
                     spr.drawString(batteryStr, statusX + 27, STATUS_BAR_Y + dateHeight/2);
                 }
-                break;  
+                break;
         }
         
     } catch (const std::exception& e) {

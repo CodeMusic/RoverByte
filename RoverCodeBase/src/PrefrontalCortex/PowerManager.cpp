@@ -9,15 +9,32 @@ unsigned long PowerManager::lastActivityTime = 0;
 PowerManager::SleepState PowerManager::currentSleepState = PowerManager::AWAKE;
 
 void PowerManager::init() {
-    initializeBattery();
-    // Initialize LEDC for backlight control
-    ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
-    ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
+    // Initialize LEDC for backlight first
+    setupBacklight();
     
-    // Set initial brightness
-    ledcWrite(PWM_CHANNEL, 255);
+    // Initialize I2C for battery management
+    Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
+    Wire.setClock(100000);  // Set I2C clock to 100kHz
     
-    // Initialize sleep-related variables
+    delay(100);  // Give I2C time to stabilize
+    
+    // Try to initialize battery with retries
+    for (int attempts = 0; attempts < 3; attempts++) {
+        if (PPM.begin(Wire, AXP2101_SLAVE_ADDRESS, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
+            batteryInitialized = true;
+            LOG_PROD("Battery management initialized successfully");
+            
+            // Configure battery parameters
+            PPM.setSysPowerDownVoltage(3300);
+            PPM.setInputCurrentLimit(3250);
+            PPM.setChargeTargetVoltage(4208);
+            PPM.enableADCMeasure();
+            PPM.enableCharge();
+            break;
+        }
+        delay(100);
+    }
+    
     lastActivityTime = millis();
     currentSleepState = AWAKE;
 }
@@ -84,28 +101,27 @@ void PowerManager::checkSleepState() {
 }
 
 void PowerManager::wakeFromSleep() {
-    if (currentSleepState == AWAKE) {
-        return;
-    }
-    
     LOG_PROD("Waking from sleep mode");
     lastActivityTime = millis();
     currentSleepState = AWAKE;
     
-    // Restore display
+    // Initialize display first
+    tft.init();
     tft.writecommand(TFT_SLPOUT);
     delay(120);
     tft.writecommand(TFT_DISPON);
     
-    // Restore backlight and LEDs
-    setBacklight(255);
+    // Initialize LED system
     LEDManager::init();
     
-    // Force display update
-    drawSprite();
+    // Restore backlight
+    setBacklight(255);
     
     // Re-initialize critical components
     RoverViewManager::init();
+    
+    // Force display update
+    drawSprite();
 }
 
 PowerManager::SleepState PowerManager::getCurrentSleepState() {
@@ -114,7 +130,17 @@ PowerManager::SleepState PowerManager::getCurrentSleepState() {
 
 int PowerManager::getBatteryPercentage() {
     if (!batteryInitialized) return 0;
-    return calculateBatteryPercentage(PPM.getBattVoltage());
+    float voltage = PPM.getBattVoltage();
+    
+    // Define the minimum and maximum voltage for your battery
+    const float MIN_VOLTAGE = 3.3;  // Voltage at 0%
+    const float MAX_VOLTAGE = 4.2;  // Voltage at 100%
+    
+    if (voltage <= MIN_VOLTAGE) return 0;
+    if (voltage >= MAX_VOLTAGE) return 100;
+    
+    // Calculate the percentage based on the voltage range
+    return (int)((voltage - MIN_VOLTAGE) / (MAX_VOLTAGE - MIN_VOLTAGE) * 100.0);
 }
 
 String PowerManager::getChargeStatus() {

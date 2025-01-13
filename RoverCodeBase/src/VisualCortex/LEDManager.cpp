@@ -19,44 +19,50 @@ unsigned long LEDManager::lastStepTime = 0;
 bool LEDManager::isLoading = false;
 
 void LEDManager::init() {
+    pinMode(BOARD_PWR_EN, OUTPUT);
+    digitalWrite(BOARD_PWR_EN, HIGH);  // Power on LEDs
+
+    FastLED.addLeds<WS2813, WS2812_DATA_PIN, GBR>(leds, WS2812_NUM_LEDS);
+    FastLED.setBrightness(50);
     FastLED.clear(true);
     FastLED.show();
     delay(50);
-    
-    // Initialize with all LEDs off
-    for(int i = 0; i < WS2812_NUM_LEDS; i++) {
-        leds[i] = CRGB::Black;
-    }
-    FastLED.show();
-    
-    // Basic configuration without extra parameters
-    FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
-    FastLED.setBrightness(50);
-    
-    // Test each color individually
+
+    // Test each color individually to ensure correct color order
     LOG_DEBUG("Testing Red");
-    leds[0] = CRGB(255, 0, 0);  // Pure red
+    leds[7] = CRGB::Red;
     FastLED.show();
     delay(500);
-    
+
     LOG_DEBUG("Testing Green");
-    leds[0] = CRGB(0, 255, 0);  // Pure green
+    leds[1] = CRGB::Green;
     FastLED.show();
     delay(500);
-    
+
     LOG_DEBUG("Testing Blue");
-    leds[0] = CRGB(0, 0, 255);  // Pure blue
+    leds[4] = CRGB::Blue;
     FastLED.show();
     delay(500);
-    
+
     FastLED.clear(true);
     FastLED.show();
+}
+
+void LEDManager::stopLoadingAnimation() {
+    isLoading = false;
+    FastLED.clear();
+    FastLED.show();
+    
+    // Initialize the current mode properly
+    currentMode = Mode::FULL_MODE;
+    updateLEDs();  // This will trigger the appropriate mode update
 }
 
 void LEDManager::updateLEDs() {
     if (isLoading) {
         updateLoadingAnimation();
     } else {
+        FastLED.clear();  // Clear previous state
         switch (currentMode) {
             case Mode::FULL_MODE:
                 updateFullMode();
@@ -68,8 +74,8 @@ void LEDManager::updateLEDs() {
                 updateTimerMode();
                 break;
         }
+        FastLED.show();
     }
-    FastLED.show();
 }
 
 void LEDManager::setMode(Mode newMode) {
@@ -258,7 +264,6 @@ void LEDManager::updateLoadingAnimation() {
     if (!isLoading) return;
     
     FastLED.clear();
-    
     // Set Canadian flag pattern
     leds[0] = CRGB::Red;
     leds[4] = CRGB::Red;
@@ -267,17 +272,12 @@ void LEDManager::updateLoadingAnimation() {
     leds[3] = CRGB::White;
     leds[5] = CRGB::White;
     leds[6] = CRGB::White;
-    leds[7] = CRGB::White;    
+    leds[7] = CRGB::White;
     FastLED.show();
 }
 
 bool LEDManager::isLoadingComplete() {
     return completedCycles >= WS2812_NUM_LEDS;
-}
-
-void LEDManager::stopLoadingAnimation() {
-    isLoading = false;
-    setMode(Mode::FULL_MODE);
 }
 
 void LEDManager::setLED(int index, CRGB color) {

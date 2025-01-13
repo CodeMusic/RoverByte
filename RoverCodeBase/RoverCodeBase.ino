@@ -162,55 +162,39 @@ void handleSDCardOperation() {
 
 void setup() {
     Serial.begin(115200);
-    
-    #ifdef DEBUG_MODE
-        CURRENT_LOG_LEVEL = LOG_DEBUG;
-    #endif
+    delay(1000);
     
     LOG_PROD("Rover starting up...");
     
-    // Initialize all components
-    LEDManager::init();
-    RoverManager::setEarsDown();  // Ensure ears start in down position
-    
-    // Draw loading screen and start LED animation
-    RoverViewManager::drawLoadingScreen();
-    LEDManager::startLoadingAnimation();
-    
-    // Initialize I2C and other components
+    // Initialize core components first
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
-    initializeBattery();
+    PowerManager::init();
+    
+    // Initialize LED system first
+    LEDManager::init();
+    FastLED.clear(true);
+    LEDManager::startLoadingAnimation();
     
     // Initialize display
     tft.begin();
     tft.setRotation(0);
     tft.fillScreen(TFT_BLACK);
-    
-    // Initialize sprite
-    spr.createSprite(tft.width(), tft.height());
-    spr.setTextDatum(4);
-    spr.setSwapBytes(true);
-    spr.setFreeFont(&Orbitron_Light_24);
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    PowerManager::setBacklight(255);
     
     // Initialize remaining components
+    RoverViewManager::init();
+    RoverManager::setEarsDown();  // Ensure ears start down
+    SoundFxManager::init();
+    
+    // Initialize WiFi last
     WiFiManager::setCredentials(primary_ssid, primary_password, backup_ssid, backup_password);
     WiFiManager::init();
     WiFiManager::connectToWiFi();
     
-    PowerManager::init();
-    RoverViewManager::init();
-    SoundFxManager::init();
+    // Configure GPIO for side button
+    pinMode(BOARD_USER_KEY, INPUT_PULLUP);
+    gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
     
-    // Check wakeup reason
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0 || wakeup_reason == ESP_SLEEP_WAKEUP_EXT1) {
-        PowerManager::wakeFromSleep();
-    }
-    
-    // Clear loading screen
-    LEDManager::stopLoadingAnimation();
-    delay(25);
     drawSprite();
 }
 
@@ -257,14 +241,18 @@ void syncLEDsForDay() {
 void readEncoder() {
     encoder.tick();
 
-    // Handle rotation
+    // Handle rotation with debouncing
+    static unsigned long lastRotaryChange = 0;
+    const unsigned long ROTARY_DEBOUNCE = 50;
+    
     int newPos = encoder.getPosition();
     static int lastPos = 0;
     
-    if (newPos != lastPos) {
-        PowerManager::wakeFromSleep();  // Wake on any rotation
+    if (newPos != lastPos && millis() - lastRotaryChange > ROTARY_DEBOUNCE) {
         PowerManager::updateLastActivityTime();
+        lastRotaryChange = millis();
         
+        // Determine direction and update view
         if (newPos > lastPos) {
             RoverViewManager::nextView();
             SoundFxManager::playRotaryTurnSound(true);
@@ -273,32 +261,25 @@ void readEncoder() {
             SoundFxManager::playRotaryTurnSound(false);
         }
         lastPos = newPos;
+        drawSprite();
     }
 
-    // Handle button press
+    // Handle button press with debouncing
     static bool lastButtonState = HIGH;
+    static unsigned long lastButtonChange = 0;
+    const unsigned long BUTTON_DEBOUNCE = 50;
+    
     bool buttonState = digitalRead(ENCODER_KEY);
     
-    if (buttonState != lastButtonState) {
-        if (buttonState == LOW) {  // Button pressed
-
-            if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) { 
-                if (showTime) {  // If currently showing small rover with time
-                    LEDManager::nextMode();  // Start LED mode cycling
-                    SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
-                } else {  // If in LED mode
-                    showTime = true;
-                }
-            } else {            
-                PowerManager::wakeFromSleep();  // Wake on button press
-            }
-           PowerManager::updateLastActivityTime();
-            drawSprite();
+    if (buttonState != lastButtonState && millis() - lastButtonChange > BUTTON_DEBOUNCE) {
+        lastButtonChange = millis();
+        if (buttonState == LOW) {
+            PowerManager::updateLastActivityTime();
+            rotaryButtonPressed = true;
+            handleRotaryButton();
         }
         lastButtonState = buttonState;
     }
-
-    handleRotaryButton();
 }
 
 void handleRotaryButton() {
@@ -337,47 +318,49 @@ void drawSprite() {
 void handleSideButton() {
     static bool lastState = HIGH;
     static unsigned long lastDebounceTime = 0;
-    unsigned long debounceDelay = 50;
+    const unsigned long debounceDelay = 50;
     
     bool currentState = digitalRead(BOARD_USER_KEY);
     
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-        if (currentState != lastState) {
-            PowerManager::updateLastActivityTime();
+    // Add pull-up resistor
+    gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
+    
+    if (currentState != lastState) {
+        if ((millis() - lastDebounceTime) > debounceDelay) {
             lastDebounceTime = millis();
-            lastState = currentState;
             
             if (currentState == LOW) {  // Button pressed
                 RoverManager::setEarsUp();
                 SoundFxManager::playSideButtonSound(true);
-                drawSprite();
             } else {  // Button released
                 RoverManager::setEarsDown();
                 SoundFxManager::playSideButtonSound(false);
-                drawSprite();
             }
+            PowerManager::updateLastActivityTime();
+            drawSprite();
         }
+        lastState = currentState;
     }
 }
 
 void loop() {
-    handleSideButton();
-    readEncoder();
-
     static unsigned long lastDisplayUpdate = 0;
     unsigned long currentMillis = millis();
-
+    
+    handleSideButton();
+    readEncoder();
+    
     if (PowerManager::getCurrentSleepState() == PowerManager::AWAKE) {
         RoverManager::updateHoverAnimation();
     }
     
     if (currentMillis - lastDisplayUpdate >= 50) {
         PowerManager::checkSleepState();
-        
         switch (PowerManager::getCurrentSleepState()) {
             case PowerManager::AWAKE:
                 PowerManager::setBacklight(255);
                 LEDManager::updateLEDs();
+                drawSprite();
                 break;
                 
             case PowerManager::DIM_DISPLAY:
@@ -386,7 +369,6 @@ void loop() {
                 break;
                 
             case PowerManager::DISPLAY_OFF:
-                tft.writecommand(TFT_DISPOFF);
                 PowerManager::setBacklight(0);
                 LEDManager::updateLEDs();
                 break;
@@ -395,45 +377,14 @@ void loop() {
                 PowerManager::enterDeepSleep();
                 break;
         }
-        
         lastDisplayUpdate = currentMillis;
     }
     
-    if (isPlayingSound) {
-        audio.loop();
-        if (!audio.isRunning()) {
-            LOG_ERROR("Audio playback failed");
-            RoverManager::earsPerked = false;
-            LEDManager::setLED(0, CRGB::Red);
-            LEDManager::showLEDs();
-        }
-    }
-    
     WiFiManager::checkConnection();
-
-    if (currentMillis - lastExpressionChange >= nextExpressionInterval) {
-        RoverManager::setRandomMood();  // Assuming this exists, if not we'll need to create it
-        lastExpressionChange = currentMillis;
-        // Set next interval between 1-10 minutes (60000-600000 ms)
-        nextExpressionInterval = random(60000, 600000);
-    }
-
-    drawSprite();
-    readEncoder();  // At end of loop too
-
-    // Add periodic ear position check
-    static unsigned long lastEarCheck = 0;
-    if (currentMillis - lastEarCheck >= 5000) {  // Check every 5 seconds
-        if (RoverManager::earsPerked && !digitalRead(BOARD_USER_KEY)) {
-            // If ears are up but button isn't pressed, force them down
-            RoverManager::setEarsDown();
-            LOG_DEBUG("Forced ear reset - detected inconsistent state");
-        }
-        lastEarCheck = currentMillis;
-    }
 }
 
 
 // Just declare the function (near other function declarations)
 void drawBatteryCharging(int x, int y, int size);
+
 
