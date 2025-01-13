@@ -5,6 +5,7 @@
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "RoverManager.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "DisplayConfig.h"
 
 // Forward declarations
 extern TFT_eSprite spr;
@@ -50,15 +51,18 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
         sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
         spr.setTextFont(7);
         
-        // Position time above rover, aligned with rover's position
+        // Center time and rover using TFT_WIDTH
         int16_t timeWidth = spr.textWidth(timeStr);
-        spr.fillRect(x - 5, 25, timeWidth + 10, 40, TFT_BLACK);
+        int centerX = TFT_WIDTH / 2;  // Screen center
+        x = centerX - (100 * scale) / 2;  // Center rover (100 is rover width)
+        
+        spr.fillRect(centerX - (timeWidth/2) - 5, 25, timeWidth + 10, 40, TFT_BLACK);
         
         // Get day color for time display
         CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
         uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
         spr.setTextColor(timeColor, TFT_BLACK);
-        spr.drawString(timeStr, x + (timeWidth/2), 30);
+        spr.drawString(timeStr, centerX, 30);
         y = 80;
     } else {
         y = 40;
@@ -213,4 +217,16 @@ const char* RoverManager::expressionToMood(Expression exp) {
         case BIG_SMILE: return "big_smile";
         default: return "happy";
     }
+}
+
+void RoverManager::setEarsUp() {
+    earsPerked = true;
+    setTemporaryExpression(HAPPY);  // Show happy expression when ears go up
+    drawRover(moods[currentMood], true);  // Redraw with ears up
+}
+
+void RoverManager::setEarsDown() {
+    earsPerked = false;
+    setTemporaryExpression(LOOKING_DOWN, 1000);  // Show looking down expression briefly
+    drawRover(moods[currentMood], false);  // Redraw with ears down
 }

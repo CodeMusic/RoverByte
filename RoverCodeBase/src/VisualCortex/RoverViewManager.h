@@ -12,6 +12,7 @@ extern TFT_eSprite spr;
 extern TFT_eSPI tft;
 
 class RoverViewManager {
+    
 public:
     enum ViewType {
         TODO_LIST,
@@ -36,6 +37,9 @@ public:
     static void drawLoadingScreen();
 
 private:
+    static int currentFrameX;
+    static int currentFrameY;
+    
     struct ChakraInfo {
         const char* name;
         const char* attributes;

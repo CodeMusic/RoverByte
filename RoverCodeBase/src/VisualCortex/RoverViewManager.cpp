@@ -11,6 +11,8 @@ extern bool showTime;  // Declare the external variable
 RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
 unsigned long RoverViewManager::lastStatusUpdate = 0;
 int RoverViewManager::statusRotation = 0;
+int RoverViewManager::currentFrameX = 0;
+int RoverViewManager::currentFrameY = 0;
 
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
@@ -186,16 +188,16 @@ void RoverViewManager::drawLoadingScreen() {
 }
 
 void RoverViewManager::drawFrame() {
-    LOG_SCOPE("Drawing view frame");
+    int frameX = (TFT_WIDTH - FRAME_WIDTH) / 2;
+    int frameY = FRAME_Y;
     
-    try {
-        // Center the frame on screen
-        int frameX = (SCREEN_WIDTH - FRAME_WIDTH) / 2;
-        spr.fillRect(frameX, FRAME_Y + 5, FRAME_WIDTH, FRAME_HEIGHT - 5, FRAME_COLOR);
-        spr.drawRect(frameX + 2, FRAME_Y + 3, FRAME_WIDTH + 4, FRAME_HEIGHT - 1, FRAME_BORDER_COLOR);
-    } catch (const std::exception& e) {
-        LOG_PROD("Error in drawFrame: %s", e.what());
-    }
+    // Draw the frame
+    spr.fillRect(frameX, frameY, FRAME_WIDTH, FRAME_HEIGHT, FRAME_COLOR);
+    spr.drawRect(frameX - 1, frameY - 1, FRAME_WIDTH + 2, FRAME_HEIGHT + 2, FRAME_BORDER_COLOR);
+    
+    // Store frame position for content alignment
+    currentFrameX = frameX;
+    currentFrameY = frameY;
 }
 
 void RoverViewManager::drawTodoList() {

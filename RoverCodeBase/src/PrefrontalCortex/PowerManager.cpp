@@ -10,6 +10,14 @@ PowerManager::SleepState PowerManager::currentSleepState = PowerManager::AWAKE;
 
 void PowerManager::init() {
     initializeBattery();
+    // Initialize LEDC for backlight control
+    ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
+    ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
+    
+    // Set initial brightness
+    ledcWrite(PWM_CHANNEL, 255);
+    
+    // Initialize sleep-related variables
     lastActivityTime = millis();
     currentSleepState = AWAKE;
 }
@@ -76,18 +84,22 @@ void PowerManager::checkSleepState() {
 }
 
 void PowerManager::wakeFromSleep() {
+    if (currentSleepState == AWAKE) {
+        return;
+    }
+    
     LOG_PROD("Waking from sleep mode");
     lastActivityTime = millis();
     currentSleepState = AWAKE;
     
     // Restore display
-    tft.writecommand(TFT_SLPOUT);  // Exit sleep
-    delay(120);  // Required delay
-    tft.writecommand(TFT_DISPON);  // Turn on display
+    tft.writecommand(TFT_SLPOUT);
+    delay(120);
+    tft.writecommand(TFT_DISPON);
     
     // Restore backlight and LEDs
     setBacklight(255);
-    LEDManager::init();  // This will handle LED initialization
+    LEDManager::init();
     
     // Force display update
     drawSprite();
@@ -120,21 +132,25 @@ void PowerManager::updateLastActivityTime() {
 }
 
 void PowerManager::enterDeepSleep() {
-    // Use stopLoadingAnimation which includes FastLED.clear()
     LEDManager::stopLoadingAnimation();
     
-    // Ensure all pending operations are complete
     FastLED.show();
     tft.writecommand(TFT_DISPOFF);
     tft.writecommand(TFT_SLPIN);
     
-    // Wait for any buttons to be released and debounce
+    // Configure wake-up sources with correct GPIO pins
+    gpio_pullup_en(GPIO_NUM_0);    // Enable pull-up on BOARD_USER_KEY
+    gpio_pullup_en(GPIO_NUM_21);   // Enable pull-up on ENCODER_KEY
+    
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);    // Wake on BOARD_USER_KEY falling edge
+    esp_sleep_enable_ext1_wakeup(1ULL << GPIO_NUM_21, ESP_EXT1_WAKEUP_ANY_HIGH);  // Wake on ENCODER_KEY
+    
+    // Wait for buttons to be released
     while (digitalRead(BOARD_USER_KEY) == LOW || digitalRead(ENCODER_KEY) == LOW) {
         delay(10);
     }
-    delay(100);  // Additional debounce delay
+    delay(100);
     
-    // Go to deep sleep - will wake on any configured button press
     esp_deep_sleep_start();
 }
 

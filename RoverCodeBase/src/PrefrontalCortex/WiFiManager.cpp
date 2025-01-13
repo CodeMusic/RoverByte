@@ -1,4 +1,5 @@
 #include "WiFiManager.h"
+#include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "PowerManager.h"
 #include <FastLED.h>
@@ -77,6 +78,8 @@ void WiFiManager::checkConnection() {
             
             int attempts = 0;
             while (time(nullptr) < 1000000000 && attempts < 10) {
+                LEDManager::updateLoadingAnimation();
+                RoverViewManager::drawLoadingScreen();
                 delay(500);
                 attempts++;
             }
@@ -86,6 +89,8 @@ void WiFiManager::checkConnection() {
                 isWiFiConnected = true;
                 timeInitialized = true;
                 LEDManager::stopLoadingAnimation();
+            } else {
+                LOG_ERROR("Time sync failed");
             }
         } else {
             LOG_DEBUG("All WiFi connections failed");
@@ -97,19 +102,21 @@ void WiFiManager::checkConnection() {
 }
 
 void WiFiManager::connectToWiFi() {
+    RoverViewManager::drawLoadingScreen();  // Show loading screen immediately
+    LEDManager::startLoadingAnimation();    // Start LED animation
+
     if (isRecording) return;  // Skip WiFi connection attempts while recording
     
     // Try primary network first
     LOG_DEBUG("Attempting primary WiFi connection...");
     WiFi.begin(primarySSID, primaryPassword);
     
-    // Wait for primary WiFi with short timeout
-    unsigned long startAttemptTime = millis();
-    while (WiFi.status() != WL_CONNECTED && 
-           millis() - startAttemptTime < 10000) {  // 10 second timeout
-        delay(500);
-        LOG_DEBUG(".");
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         LEDManager::updateLoadingAnimation();
+        RoverViewManager::drawLoadingScreen();
+        delay(500);
+        attempts++;
     }
     
     // If primary failed, try backup network
@@ -119,12 +126,12 @@ void WiFiManager::connectToWiFi() {
         delay(1000);
         WiFi.begin(backupSSID, backupPassword);
         
-        startAttemptTime = millis();
-        while (WiFi.status() != WL_CONNECTED && 
-               millis() - startAttemptTime < 20000) {  // 20 second timeout
-            delay(500);
-            LOG_DEBUG(".");
+        attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
             LEDManager::updateLoadingAnimation();
+            RoverViewManager::drawLoadingScreen();
+            delay(500);
+            attempts++;
         }
     }
     

@@ -5,6 +5,9 @@
 #include "../VisualCortex/RoverManager.h"
 #include "utilities.h"
 
+// Forward declaration
+class RoverViewManager;
+
 #define GMT_OFFSET_SEC (-7 * 3600)  // PST
 #define DAY_LIGHT_OFFSET_SEC 3600   // 1 hour of daylight saving
 #define NTP_SERVER "pool.ntp.org"

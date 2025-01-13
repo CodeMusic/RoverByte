@@ -42,7 +42,7 @@ const char* primary_password = "xunjmq84";
 const char* backup_ssid = "CodeMusicai";
 const char* backup_password = "cnatural";
 
-#define SCREEN_CENTER_X 85  // Back to original value
+#define SCREEN_CENTER_X 85  // Confirm this matches your screen width
 
 // Add at top with other global variables
 bool isLowBrightness = false;
@@ -151,13 +151,13 @@ bool isPlayingSound = false;
 void handleSDCardOperation() {
     if (!SD.begin()) {
         LOG_ERROR("SD Card initialization failed");
-        // Visual feedback
+        // Visual feedback for error
         LEDManager::setLED(0, CRGB::Red);
         LEDManager::showLEDs();
+        RoverManager::setEarsDown();  // Reset ears
         delay(1000);
         return;
     }
-    // ... rest of SD card code ...
 }
 
 void setup() {
@@ -169,7 +169,9 @@ void setup() {
     
     LOG_PROD("Rover starting up...");
     
-    LEDManager::init(); 
+    // Initialize all components
+    LEDManager::init();
+    RoverManager::setEarsDown();  // Ensure ears start in down position
     
     // Draw loading screen and start LED animation
     RoverViewManager::drawLoadingScreen();
@@ -325,9 +327,9 @@ void drawSprite() {
     }
     spr.fillSprite(TFT_BLACK);
     
-    // Set x position to start from left with small margin
-    int x = 30;  // This gives enough space for rover width (100px) plus margin
-    RoverViewManager::drawCurrentView();  // No parameter needed
+    // Adjust x position for better centering
+    int x = SCREEN_CENTER_X - 50;  // Adjust based on rover width
+    RoverViewManager::drawCurrentView();
     
     spr.pushSprite(0, 0);
 }
@@ -346,13 +348,11 @@ void handleSideButton() {
             lastState = currentState;
             
             if (currentState == LOW) {  // Button pressed
-                RoverManager::earsPerked = true;
-                RoverManager::setTemporaryExpression(RoverManager::HAPPY);
+                RoverManager::setEarsUp();
                 SoundFxManager::playSideButtonSound(true);
                 drawSprite();
             } else {  // Button released
-                RoverManager::earsPerked = false;
-                RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP, 1000);
+                RoverManager::setEarsDown();
                 SoundFxManager::playSideButtonSound(false);
                 drawSprite();
             }
@@ -401,6 +401,12 @@ void loop() {
     
     if (isPlayingSound) {
         audio.loop();
+        if (!audio.isRunning()) {
+            LOG_ERROR("Audio playback failed");
+            RoverManager::earsPerked = false;
+            LEDManager::setLED(0, CRGB::Red);
+            LEDManager::showLEDs();
+        }
     }
     
     WiFiManager::checkConnection();
@@ -414,21 +420,19 @@ void loop() {
 
     drawSprite();
     readEncoder();  // At end of loop too
+
+    // Add periodic ear position check
+    static unsigned long lastEarCheck = 0;
+    if (currentMillis - lastEarCheck >= 5000) {  // Check every 5 seconds
+        if (RoverManager::earsPerked && !digitalRead(BOARD_USER_KEY)) {
+            // If ears are up but button isn't pressed, force them down
+            RoverManager::setEarsDown();
+            LOG_DEBUG("Forced ear reset - detected inconsistent state");
+        }
+        lastEarCheck = currentMillis;
+    }
 }
 
-
-// Make sure setEarsUp and setEarsDown are defined only once
-void setEarsUp() {
-    RoverManager::earsPerked = true;
-    drawSprite();
-    FastLED.show();
-}
-
-void setEarsDown() {
-    RoverManager::earsPerked = false;
-    drawSprite();
-    FastLED.show();
-}
 
 // Just declare the function (near other function declarations)
 void drawBatteryCharging(int x, int y, int size);

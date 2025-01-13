@@ -44,6 +44,7 @@ public:
     static void drawRover(const char* mood, bool earsPerked = false, bool large = false, int x = 85, int y = 120);
     static void setRandomMood();
     static void setEarsDown();
+    static void setEarsUp();
 
 private:
     static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale);
