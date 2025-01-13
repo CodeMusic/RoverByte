@@ -10,6 +10,7 @@
 // Static member initialization
 CRGB LEDManager::leds[WS2812_NUM_LEDS];
 Mode LEDManager::currentMode = Mode::FULL_MODE;
+Mode LEDManager::previousMode = Mode::FULL_MODE;
 uint8_t LEDManager::currentPosition = 0;
 uint8_t LEDManager::currentColorIndex = 0;
 uint8_t LEDManager::completedCycles = 0;
@@ -28,50 +29,55 @@ void LEDManager::init() {
     FastLED.show();
     delay(50);
 
-    // Test each color individually to ensure correct color order
-    LOG_DEBUG("Testing Red");
-    leds[7] = CRGB::Red;
-    FastLED.show();
-    delay(500);
-
-    LOG_DEBUG("Testing Green");
-    leds[1] = CRGB::Green;
-    FastLED.show();
-    delay(500);
-
-    LOG_DEBUG("Testing Blue");
-    leds[4] = CRGB::Blue;
-    FastLED.show();
-    delay(500);
-
-    FastLED.clear(true);
-    FastLED.show();
+    startLoadingAnimation();  // Start in loading state
 }
 
 void LEDManager::stopLoadingAnimation() {
+    if (!isLoading) return;  // Guard against multiple calls
+    
     isLoading = false;
     FastLED.clear();
     FastLED.show();
     
-    // Initialize the current mode properly
-    currentMode = Mode::FULL_MODE;
-    updateLEDs();  // This will trigger the appropriate mode update
+    // Only set mode and start updates if time is synchronized
+    if (time(nullptr) > 1000000000) {
+        currentMode = Mode::FULL_MODE;
+        updateLEDs();
+    } else {
+        // If time isn't synced, keep LEDs off
+        FastLED.clear();
+        FastLED.show();
+    }
 }
 
 void LEDManager::updateLEDs() {
     if (isLoading) {
+        LOG_DEBUG("Still in loading state");
         updateLoadingAnimation();
     } else {
+        LOG_DEBUG("Current mode: %d", static_cast<int>(currentMode));
         FastLED.clear();  // Clear previous state
         switch (currentMode) {
             case Mode::FULL_MODE:
+                if (currentMode != previousMode) {
+                    LOG_DEBUG("Updating FULL_MODE");
+                }
                 updateFullMode();
+                previousMode = currentMode;
                 break;
             case Mode::WEEK_MODE:
+                if (currentMode != previousMode) {
+                    LOG_DEBUG("Updating WEEK_MODE");
+                }
                 updateWeekMode();
+                previousMode = currentMode;
                 break;
             case Mode::TIMER_MODE:
+                if (currentMode != previousMode) {
+                    LOG_DEBUG("Updating TIMER_MODE");
+                }
                 updateTimerMode();
+                previousMode = currentMode;
                 break;
         }
         FastLED.show();

@@ -27,8 +27,9 @@ public:
     static Mode getMode() { return currentMode; }
     static void updateLoadingAnimation();
     static bool isLoadingComplete();
-    
+    static Mode previousMode;
     static Mode currentMode;
+
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];

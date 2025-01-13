@@ -147,6 +147,7 @@ void WiFiManager::connectToWiFi() {
     }
     
     lastWiFiAttempt = millis();
+    LEDManager::stopLoadingAnimation();
 }
 
 // Generic error handler
