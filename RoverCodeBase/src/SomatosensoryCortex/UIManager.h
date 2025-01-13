@@ -9,9 +9,9 @@ public:
     static void update();
     
     // Input states
-    static bool isRotaryPressed();
-    static bool isSideButtonPressed();
-    static int getEncoderPosition();
+    static bool isRotaryPressed() { return rotaryPressed; }
+    static bool isSideButtonPressed() { return sideButtonPressed; }
+    static int getEncoderPosition() { return lastEncoderPosition; }
     
 private:
     static RotaryEncoder* encoder;
@@ -23,7 +23,6 @@ private:
     
     static void handleRotaryTurn(int direction);
     static void handleRotaryPress();
-    static void handleSideButton(bool pressed);
     static void updateEncoder();
     static void updateSideButton();
 };

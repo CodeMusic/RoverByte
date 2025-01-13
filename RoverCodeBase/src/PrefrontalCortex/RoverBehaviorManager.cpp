@@ -147,7 +147,10 @@ void RoverBehaviorManager::handleTimeSync() {
         WiFiManager::syncTime();
     } else {
         setState(READY);
-        currentStatusMessage = "Ready! *tail wag*";  // Single dog pun for success
+        currentStatusMessage = "Ready! *tail wag*";
+        LEDManager::setMode(Mode::FULL_MODE);
+        LEDManager::stopLoadingAnimation();
+        SoundFxManager::playStartupSound();
     }
 }
 

@@ -16,7 +16,9 @@ unsigned long UIManager::lastDebounceTime = 0;
 void UIManager::init() {
     encoder = new RotaryEncoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
     pinMode(BOARD_USER_KEY, INPUT_PULLUP);
+    pinMode(ENCODER_KEY, INPUT_PULLUP);
     lastEncoderPosition = encoder->getPosition();
+    Serial.println("UIManager initialized");
 }
 
 void UIManager::update() {
@@ -25,31 +27,54 @@ void UIManager::update() {
 }
 
 void UIManager::handleRotaryPress() {
-    // If we just woke from sleep, first press should show time
-    if (PowerManager::getCurrentSleepState() == PowerManager::SleepState::AWAKE && 
-        !PowerManager::getShowTime()) {
-        PowerManager::setShowTime(true);
-    } else {
-        // Normal operation - toggle between time and LED modes
-        if (!PowerManager::getShowTime()) {
-            PowerManager::setShowTime(true);
-        } else {
-            LEDManager::nextMode();
-            SoundFxManager::playRotaryPressSound(static_cast<int>(LEDManager::getMode()));
-        }
+    if (RoverViewManager::hasActiveNotification()) {
+        RoverViewManager::clearNotification();
+        return;
     }
+
+    // Play button press sound
+    SoundFxManager::playRotaryPressSound(0);
+    
+    // Toggle between time and LED modes
+    if (!RoverManager::showTime) {
+        RoverManager::showTime = true;
+        LEDManager::setMode(Mode::WEEK_MODE);
+    } else {
+        LEDManager::nextMode();
+    }
+    
     PowerManager::updateLastActivityTime();
+    RoverViewManager::drawCurrentView();
 }
 
 void UIManager::updateEncoder() {
     encoder->tick();
     int newPos = encoder->getPosition();
     
+    // Check for button press
+    static bool lastButtonState = HIGH;
+    bool currentButtonState = digitalRead(ENCODER_KEY);
+    
+    if (currentButtonState != lastButtonState) {
+        Serial.println("Button state changed");
+        if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
+            lastDebounceTime = millis();
+            if (currentButtonState == LOW) {  // Button pressed
+                Serial.println("Button pressed");
+                handleRotaryPress();
+            }
+        }
+        lastButtonState = currentButtonState;
+    }
+    
+    // Handle rotation
     if (newPos != lastEncoderPosition) {
+        Serial.println("Encoder position changed");
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
         } else {
             handleRotaryTurn(newPos > lastEncoderPosition ? 1 : -1);
+            SoundFxManager::playRotaryTurnSound(newPos > lastEncoderPosition);
         }
         lastEncoderPosition = newPos;
         PowerManager::updateLastActivityTime();
@@ -77,14 +102,13 @@ void UIManager::updateSideButton() {
                 if (RoverViewManager::hasActiveNotification()) {
                     RoverViewManager::clearNotification();
                 } else {
-                    RoverManager::setEarsUp();
-                    NFCManager::handleSideButtonPress();
+                    RoverManager::earsPerked = !RoverManager::earsPerked;
+                    SoundFxManager::playSideButtonSound(RoverManager::earsPerked);
+                    RoverViewManager::drawCurrentView();
                 }
-            } else {
-                RoverManager::setEarsDown();
             }
             PowerManager::updateLastActivityTime();
         }
+        lastState = currentState;
     }
-    lastState = currentState;
 }

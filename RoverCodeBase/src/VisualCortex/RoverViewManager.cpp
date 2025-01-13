@@ -186,6 +186,7 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
     int boneHeight = 15;
     int circleRadius = 8;
     
+    // Draw bone components
     boneSpr.fillRect(tempX - boneWidth/2, tempY - boneHeight/2, boneWidth, boneHeight, TFT_WHITE);
     boneSpr.fillCircle(tempX - boneWidth/2, tempY - boneHeight/2, circleRadius, TFT_WHITE);
     boneSpr.fillCircle(tempX - boneWidth/2, tempY + boneHeight/2, circleRadius, TFT_WHITE);
@@ -194,29 +195,28 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
     
     spr.fillSprite(TFT_BLACK);
     
-    // Use SCREEN_CENTER_X for proper centering
-    int centerX = SCREEN_CENTER_X - boneWidth;
-    int topMargin = 25;
+    // Keep text centered
+    spr.setTextFont(2);
+    spr.setTextColor(TFT_WHITE);
+    spr.drawCentreString("Loading...", SCREEN_CENTER_X, 75, 2);
     
-    // Push rotated bone to main sprite - only use required parameters
-    boneSpr.pushRotated(&spr, rotationAngle, TFT_BLACK);
+    if (statusText) {
+        spr.setTextFont(1);
+        spr.drawCentreString(statusText, SCREEN_CENTER_X, 100, 1);
+    }
+    
+    // Push rotated bone sprite to main sprite
+    boneSpr.pushRotated(&spr, rotationAngle);
     
     if (millis() - lastBoneRotation > 50) {
         rotationAngle = (rotationAngle + 45) % 360;
         lastBoneRotation = millis();
     }
     
-    // Center text using drawCentreString
-    spr.setTextFont(2);
-    spr.setTextColor(TFT_WHITE);
-    spr.drawCentreString("Loading...", centerX, topMargin + 50, 2);
-    
-    if (statusText) {
-        spr.setTextFont(1);
-        spr.drawCentreString(statusText, centerX, topMargin + 75, 1);
-    }
-    
     boneSpr.deleteSprite();
+    
+    // Push main sprite to display
+    spr.pushSprite(0, 0);
 }
 
 void RoverViewManager::drawFrame() {
