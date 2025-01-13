@@ -198,26 +198,20 @@ void RoverBehaviorManager::setState(BehaviorState state) {
 }
 
 void RoverBehaviorManager::handleSideButton() {
-    static bool earsUp = false;
+    static bool isScanning = false;
     static unsigned long scanStartTime = 0;
     const unsigned long SCAN_TIMEOUT = 5000; // 5 second timeout
-    
-    if (!earsUp) {
-        // Start NFC scan and raise ears
-        RoverManager::setEarsUp();
-        earsUp = true;
+
+    if (!isScanning) {
+        // Start new scan
+        isScanning = true;
         scanStartTime = millis();
-        NFCManager::handleSideButtonPress();  // This starts the NFC flow
+        NFCManager::handleSideButtonPress();
     } else {
-        // Only check timeout, not card presence yet
+        // Check for timeout
         if (millis() - scanStartTime >= SCAN_TIMEOUT) {
-            RoverManager::setEarsDown();
-            earsUp = false;
-            if (NFCManager::isCardPresent()) {
-                // Card was found during scan
-                RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000);
-            } else {
-                // No card found after timeout
+            isScanning = false;
+            if (!NFCManager::isCardPresent()) {
                 RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
                 RoverViewManager::showNotification("No Card", "Please try again", "NFC", 2000);
             }

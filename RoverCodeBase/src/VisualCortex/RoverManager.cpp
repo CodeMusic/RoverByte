@@ -38,20 +38,24 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
     
     // Get current time and colors
     time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
+    struct tm timeInfo;
+    // Convert to local timezone (EST = -4 hours = -14400 seconds)
+    const int TIMEZONE_OFFSET = -14400;  // EST timezone
+    now += TIMEZONE_OFFSET;
+    localtime_r(&now, &timeInfo);
     
     // Get eye colors from current month
-    uint16_t leftEyeColor = monthColors[timeInfo->tm_mon][0];
-    uint16_t rightEyeColor = monthColors[timeInfo->tm_mon][1];
+    uint16_t leftEyeColor = monthColors[timeInfo.tm_mon][0];
+    uint16_t rightEyeColor = monthColors[timeInfo.tm_mon][1];
     
     // Small rover always shows time, large rover never shows time
     if (!large && showTime) {
         // Convert to 12-hour format
-        int hours = timeInfo->tm_hour % 12;
+        int hours = timeInfo.tm_hour % 12;
         if (hours == 0) hours = 12;
         
         char timeStr[6];
-        sprintf(timeStr, "%2d:%02d", hours, timeInfo->tm_min);
+        sprintf(timeStr, "%2d:%02d", hours, timeInfo.tm_min);
         spr.setTextFont(7);
         
         // Center time and rover using TFT_WIDTH
@@ -62,7 +66,7 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
         spr.fillRect(centerX - (timeWidth/2) - 5, 25, timeWidth + 10, 40, TFT_BLACK);
         
         // Get day color for time display
-        CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+        CRGB dayColor = ColorUtilities::getDayColor(timeInfo.tm_wday + 1);
         uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
         spr.setTextColor(timeColor, TFT_BLACK);
         spr.drawString(timeStr, centerX, 30);

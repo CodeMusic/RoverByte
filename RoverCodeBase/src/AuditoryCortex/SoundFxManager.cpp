@@ -487,7 +487,7 @@ void SoundFxManager::playCardMelody(uint32_t cardId) {
 }
 
 void SoundFxManager::playTimerDropSound(CRGB color) {
-    // Convert color to musical note (using similar logic to baseNotes array from lines 464-469)
+    // Convert color to musical note (using same base notes)
     int baseNote;
     if (color == CRGB::Red) baseNote = NOTE_C4;
     else if (color == CRGB::Orange) baseNote = NOTE_D4;
@@ -497,21 +497,21 @@ void SoundFxManager::playTimerDropSound(CRGB color) {
     else if (color == CRGB::Indigo) baseNote = NOTE_A4;
     else if (color == CRGB::Purple) baseNote = NOTE_B4;
     else if (color == CRGB::White) baseNote = NOTE_C5;
-    else baseNote = NOTE_C4;  // Default for black or unknown colors
+    else baseNote = NOTE_C4;
 
-    // Create water drop effect that maintains musical quality
-    const int steps = 8;  // Fewer steps for clearer notes
-    const int duration = 15;  // Longer duration per note
-    const int dropRange = 200;  // Smaller range to keep notes musical
-    
     // Play initial clear note
     playTone(baseNote, 50);
     delay(10);
+
+    // Create gentler water drop effect
+    const int steps = 4;  // Fewer steps
+    const int duration = 20;  // Slightly longer duration
+    const int dropRange = 100;  // Smaller frequency drop range
     
-    // Then do the drop effect
     for (int i = 0; i < steps; i++) {
         int freq = baseNote - (dropRange * i / steps);
         playTone(freq, duration);
+        delay(5);  // Small delay between drops
     }
 }
 

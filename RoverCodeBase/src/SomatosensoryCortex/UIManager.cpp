@@ -5,6 +5,7 @@
 #include "../PrefrontalCortex/PowerManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
 
 // Static member initialization
 RotaryEncoder* UIManager::encoder = nullptr;
@@ -102,13 +103,23 @@ void UIManager::updateSideButton() {
                 if (RoverViewManager::hasActiveNotification()) {
                     RoverViewManager::clearNotification();
                 } else {
-                    RoverManager::earsPerked = !RoverManager::earsPerked;
-                    SoundFxManager::playSideButtonSound(RoverManager::earsPerked);
-                    RoverViewManager::drawCurrentView();
+                    RoverBehaviorManager::handleSideButton();
                 }
             }
             PowerManager::updateLastActivityTime();
         }
         lastState = currentState;
+    }
+    
+    // Update ears based on button state
+    bool shouldBeUp = (currentState == LOW);
+    if (shouldBeUp != RoverManager::earsPerked) {
+        RoverManager::earsPerked = shouldBeUp;
+        if (shouldBeUp) {
+            RoverManager::setEarsUp();
+        } else {
+            RoverManager::setEarsDown();
+        }
+        RoverViewManager::drawCurrentView();
     }
 }
