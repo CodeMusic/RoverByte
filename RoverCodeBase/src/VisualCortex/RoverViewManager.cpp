@@ -685,13 +685,21 @@ void RoverViewManager::drawSymbol(const char* symbol, int x, int y, int size) {
         // Draw shackle
         spr.drawRoundRect(x - size/2, y - size/3, size, size/2, size/8, TFT_WHITE);
     } else if (strcmp(symbol, "NFC") == 0) {
-        // Draw NFC symbol
-        int radius = size / 2;
-        spr.drawCircle(x, y, radius, TFT_WHITE);
-        spr.drawCircle(x, y, radius * 0.7, TFT_WHITE);
-        spr.drawCircle(x, y, radius * 0.4, TFT_WHITE);
-        // Add diagonal line
-        spr.drawLine(x - radius, y + radius, x + radius/2, y - radius/2, TFT_WHITE);
+        // Draw magnifying glass
+        int glassSize = size * 0.8;
+        // Draw circle
+        spr.drawCircle(x, y, glassSize/2, TFT_WHITE);
+        // Draw handle
+        spr.drawLine(x + (glassSize/2 * 0.7), y + (glassSize/2 * 0.7), 
+                    x + glassSize, y + glassSize, TFT_WHITE);
+        // Fill circle with thinner border
+        spr.fillCircle(x, y, (glassSize/2) - 2, TFT_BLACK);
+        spr.drawCircle(x, y, (glassSize/2) - 2, TFT_WHITE);
+        // Make handle thicker
+        spr.drawLine(x + (glassSize/2 * 0.7) - 1, y + (glassSize/2 * 0.7), 
+                    x + glassSize - 1, y + glassSize, TFT_WHITE);
+        spr.drawLine(x + (glassSize/2 * 0.7) + 1, y + (glassSize/2 * 0.7), 
+                    x + glassSize + 1, y + glassSize, TFT_WHITE);
     }
 }
 

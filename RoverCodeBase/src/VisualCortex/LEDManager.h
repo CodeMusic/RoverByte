@@ -2,7 +2,7 @@
 #include <FastLED.h>
 #include "../PrefrontalCortex/utilities.h"
 
-static const int LED_NUM_MODES = 3;
+static const int LED_NUM_MODES = 5;
 static const int NUM_RAINBOW_COLORS = 7;
 static const int STEP_DELAY = 100;
 static const int MONTH_DIM = 128;
@@ -10,7 +10,16 @@ static const int MONTH_DIM = 128;
 enum class Mode {
     FULL_MODE,
     WEEK_MODE,
-    TIMER_MODE
+    TIMER_MODE,
+    OFF_MODE,
+    FESTIVE_MODE
+};
+
+enum class FestiveTheme {
+    CHRISTMAS,
+    HALLOWEEN,
+    VALENTINES,
+    EASTER
 };
 
 class LEDManager {
@@ -21,6 +30,7 @@ public:
     static void stopLoadingAnimation();
     static void nextMode();
     static void setMode(Mode newMode);
+    static void setFestiveTheme(FestiveTheme theme);
     static void setLED(int index, CRGB color);
     static void syncLEDsForDay();
     static void showLEDs();
@@ -32,6 +42,7 @@ public:
     static void flashLevelUp();
     static Mode previousMode;
     static Mode currentMode;
+    static FestiveTheme currentTheme;
     static void displayCardPattern(uint8_t* uid, uint8_t length);
     static void update();
 
@@ -48,5 +59,6 @@ private:
     static void updateFullMode();
     static void updateWeekMode();
     static void updateTimerMode();
+    static void updateFestiveMode();
     static CRGB getRainbowColor(uint8_t index);
 }; 

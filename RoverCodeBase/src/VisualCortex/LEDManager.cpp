@@ -19,6 +19,7 @@ uint8_t LEDManager::filledPositions = 0;
 uint8_t LEDManager::activeTrails = 0;
 unsigned long LEDManager::lastStepTime = 0;
 bool LEDManager::isLoading = false;
+FestiveTheme LEDManager::currentTheme = FestiveTheme::CHRISTMAS;
 
 void LEDManager::init() {
     pinMode(BOARD_PWR_EN, OUTPUT);
@@ -437,6 +438,53 @@ void LEDManager::update() {
         case Mode::TIMER_MODE:
             updateTimerMode();
             break;
+        case Mode::OFF_MODE:
+            FastLED.clear();
+            FastLED.show();
+            break;
+        case Mode::FESTIVE_MODE:
+            updateFestiveMode();
+            break;
+    }
+}
+
+void LEDManager::updateFestiveMode() {
+    switch (currentTheme) {
+        case FestiveTheme::CHRISTMAS:
+            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::Green;
+            }
+            break;
+            
+        case FestiveTheme::HALLOWEEN:
+            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                leds[i] = (i % 2 == 0) ? CRGB::Orange : CRGB::Purple;
+            }
+            break;
+            
+        case FestiveTheme::VALENTINES:
+            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::Pink;
+            }
+            break;
+            
+        case FestiveTheme::EASTER:
+            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                switch (i % 4) {
+                    case 0: leds[i] = CRGB::Pink; break;
+                    case 1: leds[i] = CRGB::Yellow; break;
+                    case 2: leds[i] = CRGB::Cyan; break;
+                    case 3: leds[i] = CRGB::Purple; break;
+                }
+            }
+            break;
     }
     FastLED.show();
+}
+
+void LEDManager::setFestiveTheme(FestiveTheme theme) {
+    currentTheme = theme;
+    currentMode = Mode::FESTIVE_MODE;
+    FastLED.clear();
+    updateLEDs();
 } 

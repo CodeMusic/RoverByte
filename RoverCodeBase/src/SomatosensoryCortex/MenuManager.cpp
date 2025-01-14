@@ -14,8 +14,22 @@ void MenuManager::init() {
         MenuItem("BACK", []() { MenuManager::goBack(); }),
         MenuItem("Full Mode", []() { LEDManager::setMode(Mode::FULL_MODE); }),
         MenuItem("Week Mode", []() { LEDManager::setMode(Mode::WEEK_MODE); }),
-        MenuItem("Timer Mode", []() { LEDManager::setMode(Mode::TIMER_MODE); })
+        MenuItem("Timer Mode", []() { LEDManager::setMode(Mode::TIMER_MODE); }),
+        MenuItem("Off", []() { LEDManager::setMode(Mode::OFF_MODE); }),
+        MenuItem("Festive", []() { LEDManager::setMode(Mode::FESTIVE_MODE); })
     };
+    
+    // Define Festive submenu
+    std::vector<MenuItem> festiveSubmenu = {
+        MenuItem("BACK", []() { MenuManager::goBack(); }),
+        MenuItem("Christmas", []() { LEDManager::setFestiveTheme(FestiveTheme::CHRISTMAS); }),
+        MenuItem("Halloween", []() { LEDManager::setFestiveTheme(FestiveTheme::HALLOWEEN); }),
+        MenuItem("Valentine's", []() { LEDManager::setFestiveTheme(FestiveTheme::VALENTINES); }),
+        MenuItem("Easter", []() { LEDManager::setFestiveTheme(FestiveTheme::EASTER); })
+    };
+    
+    // Add festive submenu to LED submenu
+    ledSubmenu[5] = MenuItem("Festive", festiveSubmenu);
     
     // Define Feed submenu
     std::vector<MenuItem> feedSubmenu = {
@@ -54,11 +68,17 @@ void MenuManager::init() {
 }
 
 void MenuManager::show() {
-    isMenuVisible = true;
+    isMenuVisible = true;  // Set this first
     selectedIndex = 0;
     currentMenu = mainMenu;
     menuStack.clear();
-    drawMenu();
+    
+    // Safety check
+    if (!currentMenu.empty()) {
+        drawMenu();
+    } else {
+        isMenuVisible = false;  // Only revert if menu is empty
+    }
 }
 
 void MenuManager::hide() {
@@ -86,18 +106,23 @@ void MenuManager::handleRotaryTurn(int direction) {
 }
 
 void MenuManager::handleRotaryPress() {
-    if (!isMenuVisible || selectedIndex >= currentMenu.size()) return;
+    if (!isMenuVisible || currentMenu.empty()) return;
+    
+    if (selectedIndex >= currentMenu.size()) {
+        selectedIndex = 0;
+        return;
+    }
     
     MenuItem& selected = currentMenu[selectedIndex];
     
     if (!selected.subItems.empty()) {
-        // Enter submenu without dynamic allocation
         menuStack.push_back(&currentMenu);
         currentMenu = selected.subItems;
         selectedIndex = 0;
         drawMenu();
-    } else if (selected.action) {
-        // Execute action and redraw
+    }
+    
+    if (selected.action) {
         selected.action();
         drawMenu();
     }

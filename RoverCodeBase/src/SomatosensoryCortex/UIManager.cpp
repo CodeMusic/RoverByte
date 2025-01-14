@@ -32,11 +32,13 @@ void UIManager::handleRotaryPress() {
     static bool lastButtonState = HIGH;
     bool currentButtonState = digitalRead(ENCODER_KEY);
     
-    // Only trigger on button press (HIGH to LOW transition)
     if (currentButtonState == LOW && lastButtonState == HIGH) {
+        Serial.println("Rotary button pressed");
+        
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
         } else if (!MenuManager::isVisible()) {
+            Serial.println("Opening menu");
             MenuManager::show();
         } else {
             MenuManager::handleRotaryPress();
@@ -51,12 +53,8 @@ void UIManager::updateEncoder() {
     encoder->tick();
     int newPos = encoder->getPosition();
     
-    // Handle button press
-    handleRotaryPress();
-    
     // Handle rotation
     if (newPos != lastEncoderPosition) {
-        Serial.println("Encoder position changed");
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
         } else {
@@ -66,6 +64,9 @@ void UIManager::updateEncoder() {
         lastEncoderPosition = newPos;
         PowerManager::updateLastActivityTime();
     }
+    
+    // Handle button press
+    handleRotaryPress();
 }
 
 void UIManager::handleRotaryTurn(int direction) {

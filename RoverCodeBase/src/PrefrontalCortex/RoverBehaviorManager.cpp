@@ -37,12 +37,12 @@ void RoverBehaviorManager::update() {
     // Then handle drawing based on state
     if (currentState != READY) {
         RoverViewManager::drawLoadingScreen(currentStatusMessage);
+    } else if (MenuManager::isVisible()) {  // Check menu first
+        MenuManager::drawMenu();
+    } else if (RoverViewManager::hasActiveNotification()) {
+        RoverViewManager::drawNotification();
     } else {
-        if (RoverViewManager::hasActiveNotification()) {
-            RoverViewManager::drawNotification();
-        } else {
-            RoverViewManager::drawCurrentView();
-        }
+        RoverViewManager::drawCurrentView();
     }
     spr.pushSprite(0, 0);
 }
@@ -200,29 +200,25 @@ void RoverBehaviorManager::setState(BehaviorState state) {
 void RoverBehaviorManager::handleSideButton() {
     static bool isScanning = false;
     static unsigned long scanStartTime = 0;
-    const unsigned long SCAN_TIMEOUT = 5000; // 5 second timeout
+    const unsigned long SCAN_TIMEOUT = 5000;
     
     if (!isScanning) {
-        // Start new scan
         isScanning = true;
         scanStartTime = millis();
-        RoverViewManager::showNotification("NFC", "Hold card near Rover's nose", "SCAN", 2000);
+        RoverViewManager::showNotification("Scanning", "Hold card near nose", "NFC", 2000);
         NFCManager::handleSideButtonPress();
     } else {
-        // Check for timeout
         if (millis() - scanStartTime >= SCAN_TIMEOUT) {
             isScanning = false;
             if (!NFCManager::isCardPresent()) {
                 RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
-                RoverViewManager::showNotification("No Card", "Please try again", "NFC", 2000);
+                RoverViewManager::showNotification("No Card", "Try again", "NFC", 2000);
             }
-        }
-        // Only show encrypted message if card is present and encrypted
-        else if (NFCManager::isCardPresent()) {
+        } else if (NFCManager::isCardPresent()) {
             if (NFCManager::isCardEncrypted()) {
-                RoverViewManager::showNotification("Encrypted Card", "Cannot read data", "LOCK", 2000);
+                RoverViewManager::showNotification("Encrypted", "Cannot read data", "NFC", 2000);
             } else {
-                RoverViewManager::showNotification("Reading Card", "Please hold still...", "NFC", 1000);
+                RoverViewManager::showNotification("Reading", "Hold still...", "NFC", 1000);
             }
         }
     }

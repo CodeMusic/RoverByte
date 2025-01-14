@@ -25,6 +25,7 @@ public:
     static bool isVisible() { return isMenuVisible; }
     static void handleRotaryTurn(int direction);
     static void handleRotaryPress();
+    static void drawMenu();
     
 private:
     static bool isMenuVisible;
@@ -33,7 +34,6 @@ private:
     static std::vector<std::vector<MenuItem>*> menuStack;
     static int selectedIndex;
     
-    static void drawMenu();
     static void goBack();
     static void enterSubmenu(const std::vector<MenuItem>& submenu);
 }; 

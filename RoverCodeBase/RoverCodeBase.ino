@@ -27,6 +27,7 @@
 #include "src/PsychicCortex/NFCManager.h"
 #include "src/SomatosensoryCortex/UIManager.h"
 #include "src/PrefrontalCortex/RoverBehaviorManager.h"
+#include "src/SomatosensoryCortex/MenuManager.h"
 
 // Core configuration
 #define SCREEN_CENTER_X 85
@@ -57,6 +58,7 @@ void setup() {
     LEDManager::init();
     RoverViewManager::init();
     UIManager::init();
+    MenuManager::init();
     
     // Initialize audio before other systems
     SoundFxManager::init();
