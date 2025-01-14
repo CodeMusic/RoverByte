@@ -198,11 +198,11 @@ void RoverViewManager::drawLoadingScreen(const char* statusText) {
     // Keep text centered
     spr.setTextFont(2);
     spr.setTextColor(TFT_WHITE);
-    spr.drawCentreString("Loading...", SCREEN_CENTER_X, 75, 2);
+    spr.drawCentreString("Loading...", SCREEN_CENTER_X - 25, 75, 2);
     
     if (statusText) {
         spr.setTextFont(1);
-        spr.drawCentreString(statusText, SCREEN_CENTER_X, 100, 1);
+        spr.drawCentreString(statusText, SCREEN_CENTER_X - 25, 100, 1);
     }
     
     // Push rotated bone sprite to main sprite
@@ -768,4 +768,29 @@ void RoverViewManager::drawWordWrappedText(const char* text, int x, int y, int m
     if (bufferIndex > 0) {
         spr.drawString(buffer, x, y + (currentLine * lineHeight));
     }
+}
+
+void RoverViewManager::drawFullScreenMenu(const char* title, const std::vector<MenuItem>& items, int selectedIndex) {
+    spr.fillSprite(TFT_BLACK);
+    
+    // Draw title
+    spr.setTextFont(4);
+    spr.setTextColor(TFT_WHITE);
+    spr.drawString(title, SCREEN_CENTER_X, 30);
+    
+    // Draw menu items
+    spr.setTextFont(2);
+    int y = 70;
+    for (size_t i = 0; i < items.size(); i++) {
+        if (i == selectedIndex) {
+            spr.setTextColor(TFT_BLACK, TFT_WHITE);
+            spr.fillRect(20, y - 10, SCREEN_WIDTH - 40, 20, TFT_WHITE);
+        } else {
+            spr.setTextColor(TFT_WHITE, TFT_BLACK);
+        }
+        spr.drawString(items[i].name.c_str(), SCREEN_CENTER_X, y);
+        y += 25;
+    }
+    
+    spr.pushSprite(0, 0);
 }

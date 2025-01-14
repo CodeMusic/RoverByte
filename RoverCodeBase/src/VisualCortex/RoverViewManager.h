@@ -6,8 +6,11 @@
 #include "ColorUtilities.h"
 #include "../PrefrontalCortex/PowerManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
+#include <vector>
+#include "../SomatosensoryCortex/MenuManager.h"
 
 // Forward declarations
+struct MenuItem;
 extern TFT_eSprite spr;
 extern TFT_eSPI tft;
 
@@ -56,6 +59,8 @@ public:
     };
     static void handleInput(InputType input);
     static void drawWordWrappedText(const char* text, int x, int y, int maxWidth);
+
+    static void drawFullScreenMenu(const char* title, const std::vector<MenuItem>& items, int selectedIndex);
 
 private:
     static int currentFrameX;

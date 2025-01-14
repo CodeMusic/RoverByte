@@ -41,8 +41,8 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
     struct tm timeInfo;
     // Convert to local timezone (EST = -4 hours = -14400 seconds)
     const int TIMEZONE_OFFSET = -14400;  // EST timezone
-    now += TIMEZONE_OFFSET;
     localtime_r(&now, &timeInfo);
+    timeInfo.tm_hour = (timeInfo.tm_hour + (TIMEZONE_OFFSET/3600) + 24) % 24;  // Add timezone offset after localtime
     
     // Get eye colors from current month
     uint16_t leftEyeColor = monthColors[timeInfo.tm_mon][0];

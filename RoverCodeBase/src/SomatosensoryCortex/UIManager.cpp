@@ -6,6 +6,7 @@
 #include "../VisualCortex/LEDManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include "../SomatosensoryCortex/MenuManager.h"
 
 // Static member initialization
 RotaryEncoder* UIManager::encoder = nullptr;
@@ -28,45 +29,30 @@ void UIManager::update() {
 }
 
 void UIManager::handleRotaryPress() {
-    if (RoverViewManager::hasActiveNotification()) {
-        RoverViewManager::clearNotification();
-        return;
-    }
-
-    // Play button press sound
-    SoundFxManager::playRotaryPressSound(0);
+    static bool lastButtonState = HIGH;
+    bool currentButtonState = digitalRead(ENCODER_KEY);
     
-    // Toggle between time and LED modes
-    if (!RoverManager::showTime) {
-        RoverManager::showTime = true;
-        LEDManager::setMode(Mode::WEEK_MODE);
-    } else {
-        LEDManager::nextMode();
+    // Only trigger on button press (HIGH to LOW transition)
+    if (currentButtonState == LOW && lastButtonState == HIGH) {
+        if (RoverViewManager::hasActiveNotification()) {
+            RoverViewManager::clearNotification();
+        } else if (!MenuManager::isVisible()) {
+            MenuManager::show();
+        } else {
+            MenuManager::handleRotaryPress();
+        }
+        PowerManager::updateLastActivityTime();
     }
     
-    PowerManager::updateLastActivityTime();
-    RoverViewManager::drawCurrentView();
+    lastButtonState = currentButtonState;
 }
 
 void UIManager::updateEncoder() {
     encoder->tick();
     int newPos = encoder->getPosition();
     
-    // Check for button press
-    static bool lastButtonState = HIGH;
-    bool currentButtonState = digitalRead(ENCODER_KEY);
-    
-    if (currentButtonState != lastButtonState) {
-        Serial.println("Button state changed");
-        if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-            lastDebounceTime = millis();
-            if (currentButtonState == LOW) {  // Button pressed
-                Serial.println("Button pressed");
-                handleRotaryPress();
-            }
-        }
-        lastButtonState = currentButtonState;
-    }
+    // Handle button press
+    handleRotaryPress();
     
     // Handle rotation
     if (newPos != lastEncoderPosition) {
@@ -83,10 +69,15 @@ void UIManager::updateEncoder() {
 }
 
 void UIManager::handleRotaryTurn(int direction) {
-    if (direction > 0) {
-        RoverViewManager::handleInput(RoverViewManager::InputType::INPUT_RIGHT);
+    if (MenuManager::isVisible()) {
+        MenuManager::handleRotaryTurn(direction);
     } else {
-        RoverViewManager::handleInput(RoverViewManager::InputType::INPUT_LEFT);
+        // Control views instead of moods
+        if (direction > 0) {
+            RoverViewManager::nextView();
+        } else {
+            RoverViewManager::previousView();
+        }
     }
 }
 

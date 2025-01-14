@@ -201,11 +201,12 @@ void RoverBehaviorManager::handleSideButton() {
     static bool isScanning = false;
     static unsigned long scanStartTime = 0;
     const unsigned long SCAN_TIMEOUT = 5000; // 5 second timeout
-
+    
     if (!isScanning) {
         // Start new scan
         isScanning = true;
         scanStartTime = millis();
+        RoverViewManager::showNotification("NFC", "Hold card near Rover's nose", "SCAN", 2000);
         NFCManager::handleSideButtonPress();
     } else {
         // Check for timeout
@@ -214,6 +215,14 @@ void RoverBehaviorManager::handleSideButton() {
             if (!NFCManager::isCardPresent()) {
                 RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
                 RoverViewManager::showNotification("No Card", "Please try again", "NFC", 2000);
+            }
+        }
+        // Only show encrypted message if card is present and encrypted
+        else if (NFCManager::isCardPresent()) {
+            if (NFCManager::isCardEncrypted()) {
+                RoverViewManager::showNotification("Encrypted Card", "Cannot read data", "LOCK", 2000);
+            } else {
+                RoverViewManager::showNotification("Reading Card", "Please hold still...", "NFC", 1000);
             }
         }
     }
