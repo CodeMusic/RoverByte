@@ -1,5 +1,3 @@
-Here’s a revised and cleaned-up version of your Markdown file for GitHub, ensuring proper formatting and alignment for readability and functionality:
-
 # RoverByte  
 ### Your Best Friend in Robotics and AI Integration  
 
