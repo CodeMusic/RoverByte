@@ -9,6 +9,7 @@ public:
     static void update();
     static void handleButtonPress();
     static void reset();
+    static void startGame();
     static bool isGameActive() { return gameActive; }
 
 private:

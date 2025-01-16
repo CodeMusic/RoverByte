@@ -2,6 +2,8 @@
 #include <FastLED.h>
 #include "../PrefrontalCortex/utilities.h"
 #include "../MotorCortex/PinDefinitions.h"
+#include "../GameCortex/SlotsManager.h"
+#include "../PsychicCortex/IRManager.h"
 
 static const int LED_NUM_MODES = 5;
 static const int NUM_RAINBOW_COLORS = 7;

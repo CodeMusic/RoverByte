@@ -71,7 +71,10 @@ void MenuManager::init() {
     std::vector<MenuItem> gamesSubmenu = {
         MenuItem("BACK", []() { MenuManager::goBack(); }),
         MenuItem("Slots", []() { 
-            SlotsManager::init();
+            LEDManager::setMode(Mode::OFF_MODE);
+            FastLED.clear();
+            FastLED.show();
+            SlotsManager::startGame();
             MenuManager::hide();
         })
     };
@@ -99,10 +102,16 @@ void MenuManager::init() {
     std::vector<MenuItem> mischiefSubmenu = {
         MenuItem("BACK", []() { MenuManager::goBack(); }),
         MenuItem("NFC Scan", []() { 
+            LEDManager::setMode(Mode::OFF_MODE);
+            FastLED.clear();
+            FastLED.show();
             NFCManager::handleNFCScan();
             MenuManager::hide();
         }),
         MenuItem("IR Blast", []() { 
+            LEDManager::setMode(Mode::OFF_MODE);
+            FastLED.clear();
+            FastLED.show();
             IRManager::startBlast();
             MenuManager::hide();
         }),

@@ -16,11 +16,18 @@ void SlotsManager::init() {
     gameActive = true;
     showingResult = false;
     activeSlotPair = 0;
+    
+    // Initialize slots
     for(int i = 0; i < 4; i++) {
         slotLocked[i] = false;
         slotColors[i] = getRainbowColor(random(7));
+        LEDManager::setLED(i*2, slotColors[i]);
+        LEDManager::setLED(i*2+1, slotColors[i]);
     }
+    LEDManager::showLEDs();
+    
     animationTimer = millis();
+    MenuManager::hide(); // Hide menu after initialization
 }
 
 void SlotsManager::update() {
@@ -28,8 +35,10 @@ void SlotsManager::update() {
     
     if (showingResult) {
         // Flash winning slots
-        if (millis() - animationTimer > 250) { // Faster animation
+        if (millis() - animationTimer > 250) {
             static bool flashState = false;
+            FastLED.clear();
+            
             for(int i = 0; i < 4; i++) {
                 if (slotLocked[i]) {
                     CRGB color = flashState ? slotColors[i] : CRGB::Black;
@@ -42,14 +51,16 @@ void SlotsManager::update() {
             animationTimer = millis();
         }
         
+        // End game after showing result
         if (millis() - animationTimer > 3000) {
             gameActive = false;
             MenuManager::show();
-            return;
         }
     } else {
         // Regular slot spinning animation
-        if (millis() - animationTimer > 50) { // Faster spinning
+        if (millis() - animationTimer > 50) {
+            FastLED.clear();
+            
             for(int i = 0; i < 4; i++) {
                 if (!slotLocked[i]) {
                     slotColors[i] = getRainbowColor(random(7));
@@ -66,36 +77,29 @@ void SlotsManager::update() {
 void SlotsManager::handleButtonPress() {
     if (!gameActive || showingResult) return;
     
+    // Lock current slot pair
     slotLocked[activeSlotPair] = true;
+    SoundFxManager::playTone(1000 + (activeSlotPair * 200), 100);
+    
+    // Move to next slot pair
     activeSlotPair++;
     
+    // Check if all slots are locked
     if (activeSlotPair >= 4) {
         checkResult();
     }
 }
 
 void SlotsManager::checkResult() {
-    // Check for matches (3 or more same colors)
-    int colorCounts[7] = {0}; // Count of each color
-    for(int i = 0; i < 4; i++) {
-        for(int j = 0; j < 7; j++) {
-            if(slotColors[i] == getRainbowColor(j)) {
-                colorCounts[j]++;
-                break;
-            }
-        }
-    }
-    
-    // Check if any color appears 3 or more times
-    bool won = false;
-    for(int i = 0; i < 7; i++) {
-        if(colorCounts[i] >= 3) {
-            won = true;
+    // Check if any adjacent pairs match
+    bool hasMatch = false;
+    for(int i = 0; i < 3; i++) {
+        if (slotColors[i] == slotColors[i+1]) {
+            hasMatch = true;
             break;
         }
     }
-    
-    showResult(won);
+    showResult(hasMatch);
 }
 
 void SlotsManager::showResult(bool won) {
@@ -128,4 +132,23 @@ void SlotsManager::reset() {
     showingResult = false;
     FastLED.clear();
     FastLED.show();
+}
+
+void SlotsManager::startGame() {
+    gameActive = true;
+    showingResult = false;
+    activeSlotPair = 0;
+    
+    // Initialize slots
+    for(int i = 0; i < 4; i++) {
+        slotLocked[i] = false;
+        slotColors[i] = getRainbowColor(random(7));
+        LEDManager::setLED(i*2, slotColors[i]);
+        LEDManager::setLED(i*2+1, slotColors[i]);
+    }
+    LEDManager::showLEDs();
+    
+    animationTimer = millis();
+    MenuManager::hide();
+    RoverViewManager::showNotification("SLOTS", "Press to lock reels!", "GAME", 2000);
 } 

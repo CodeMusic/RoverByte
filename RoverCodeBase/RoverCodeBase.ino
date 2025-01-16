@@ -28,6 +28,9 @@
 #include "src/PrefrontalCortex/RoverBehaviorManager.h"
 #include "src/SomatosensoryCortex/MenuManager.h"
 #include "src/MotorCortex/PinDefinitions.h"
+#include "src/GameCortex/SlotsManager.h"
+#include "src/PsychicCortex/IRManager.h"
+#include "src/PsychicCortex/NFCManager.h"
 
 // Core configuration
 #define CLOCK_PIN 45
@@ -109,10 +112,13 @@ void loop() {
     
     // Add try-catch block around UI updates
     try {
-        UIManager::update();  // Remove direction parameter since it's not accepted
+        UIManager::update();
         LEDManager::updateLEDs();
+        SlotsManager::update();
+        IRManager::update();
+        NFCManager::update();
     } catch (const std::exception& e) {
-        Serial.println("ERROR in UI/LED update: " + String(e.what()));
+        Serial.println("ERROR in update: " + String(e.what()));
     }
     
     // Add error checking for behavior updates

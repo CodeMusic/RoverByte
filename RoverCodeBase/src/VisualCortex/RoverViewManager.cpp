@@ -620,7 +620,6 @@ void RoverViewManager::incrementExperience(uint16_t amount) {
         SoundFxManager::playVoiceLine("level_up");
         LEDManager::flashLevelUp();
     }
-    drawSprite();
 }
 
 uint16_t RoverViewManager::calculateNextLevelExperience(uint8_t currentLevel) {
@@ -675,7 +674,7 @@ void RoverViewManager::drawNotification() {
     } else {
         // Regular notification display
         drawSymbol(currentNotification.symbol, boxX + boxWidth/2, boxY + boxHeight/2, 40);
-        drawWordWrappedText(currentNotification.content, boxX + 10, boxY + boxHeight - 60, boxWidth - 20);
+        drawWordWrappedText(currentNotification.content, boxX + 100, boxY + boxHeight - 60, boxWidth - 20);
     }
 }
 

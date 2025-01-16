@@ -57,8 +57,12 @@ void LEDManager::stopLoadingAnimation() {
 }
 
 void LEDManager::updateLEDs() {
+    if (SlotsManager::isGameActive() || IRManager::isBlasting()) {
+        return; // Don't override game LEDs
+    }
+    
     static unsigned long lastUpdate = 0;
-    const unsigned long UPDATE_INTERVAL = 125;  // 125ms update interval
+    const unsigned long UPDATE_INTERVAL = 125;
     
     unsigned long currentTime = millis();
     if (currentTime - lastUpdate >= UPDATE_INTERVAL) {

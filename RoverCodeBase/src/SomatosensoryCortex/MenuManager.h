@@ -33,6 +33,7 @@ public:
     static void handleRotaryPress();
     static void drawMenu();
     static void enterSubmenu(const std::vector<MenuItem>& submenu);
+    static void handleIRBlastMenu();
     
 private:
     static bool isMenuVisible;

@@ -20,19 +20,21 @@ void IRManager::init() {
 
 void IRManager::startBlast() {
     blasting = true;
+    digitalWrite(BOARD_IR_EN, HIGH);
     lastSendTime = millis();
-    currentLEDPosition = 0;
+    lastLEDUpdate = millis();
+    currentLEDPosition = 4;  // Start at center
     currentCode = 0;
     currentRegion = 0;
     animationDirection = true;
     
-    // Clear all LEDs and set center to red
+    LEDManager::setMode(Mode::OFF_MODE);  // Prevent LED pattern interference
     FastLED.clear();
-    LEDManager::setLED(0, CRGB::Red);
+    LEDManager::setLED(4, CRGB::Red);  // Center LED
     LEDManager::showLEDs();
     
-    SoundFxManager::playTone(2000, 100);
-    RoverViewManager::showNotification("IR Blast", "Starting...", "IR", 1000);
+    MenuManager::hide();
+    RoverViewManager::showNotification("IR", "Starting blast...", "BLAST", 1000);
 }
 
 void IRManager::stopBlast() {
@@ -56,13 +58,23 @@ void IRManager::update() {
         sendCode(currentCode++);
         lastSendTime = millis();
         
+        if (currentCode >= 100) {
+            currentCode = 0;
+            currentRegion++;
+            if (currentRegion >= 4) {
+                stopBlast();
+                MenuManager::show();
+                return;
+            }
+        }
+        
         // Calculate and show progress
         int totalCodes = 100 * 4;
         int currentTotal = (currentRegion * 100) + currentCode;
         int progressPercent = (currentTotal * 100) / totalCodes;
         
         char progressStr[32];
-        snprintf(progressStr, sizeof(progressStr), "    %d%% [%d:%d]", 
+        snprintf(progressStr, sizeof(progressStr), "                %d%% [%d:%d]", 
                 progressPercent, currentRegion, currentCode);
         
         RoverViewManager::showNotification("IR", progressStr, "BLAST", 500);
@@ -76,10 +88,10 @@ void IRManager::updateLEDAnimation() {
     
     if (animationDirection) {
         // Moving outward from center
-        //LEDManager::setLED(0, CRGB::Red);
-        if (currentLEDPosition > 0) {
-            LEDManager::setLED(currentLEDPosition, CRGB::Red);
-            LEDManager::setLED(8 - currentLEDPosition, CRGB::Red);
+        LEDManager::setLED(4, CRGB::Red);  // Always show center
+        if (currentLEDPosition < 4) {
+            LEDManager::setLED(4 - currentLEDPosition, CRGB::Red);
+            LEDManager::setLED(4 + currentLEDPosition, CRGB::Red);
         }
         
         currentLEDPosition++;
@@ -90,10 +102,10 @@ void IRManager::updateLEDAnimation() {
         }
     } else {
         // Moving inward to center
-        LEDManager::setLED(4, CRGB::Red);
-        if (currentLEDPosition < 4) {
-            LEDManager::setLED(currentLEDPosition, CRGB::Red);
-            LEDManager::setLED(8 - currentLEDPosition, CRGB::Red);
+        LEDManager::setLED(4, CRGB::Red);  // Always show center
+        if (currentLEDPosition > 0) {
+            LEDManager::setLED(4 - currentLEDPosition, CRGB::Red);
+            LEDManager::setLED(4 + currentLEDPosition, CRGB::Red);
         }
         
         currentLEDPosition--;
