@@ -1,6 +1,7 @@
 #pragma once
 #include <FastLED.h>
 #include "../PrefrontalCortex/utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 static const int LED_NUM_MODES = 5;
 static const int NUM_RAINBOW_COLORS = 7;
@@ -16,10 +17,13 @@ enum class Mode {
 };
 
 enum class FestiveTheme {
-    CHRISTMAS,
-    HALLOWEEN,
-    VALENTINES,
-    EASTER
+    NEW_YEAR,        // January 1
+    VALENTINES,      // February 14
+    ST_PATRICK,      // March 17
+    EASTER,          // March/April (variable)
+    CANADA_DAY,      // July 1
+    HALLOWEEN,       // October 31
+    CHRISTMAS        // December 25
 };
 
 class LEDManager {
@@ -40,7 +44,6 @@ public:
     static bool isLoadingComplete();
     static void flashSuccess();
     static void flashLevelUp();
-    static Mode previousMode;
     static Mode currentMode;
     static FestiveTheme currentTheme;
     static void displayCardPattern(uint8_t* uid, uint8_t length);
@@ -48,6 +51,7 @@ public:
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];
+    static Mode previousMode;
     static uint8_t currentPosition;
     static uint8_t currentColorIndex;
     static uint8_t completedCycles;
@@ -55,6 +59,12 @@ private:
     static uint8_t activeTrails;
     static unsigned long lastStepTime;
     static bool isLoading;
+    
+    // New animation variables
+    static uint8_t animationStep;
+    static uint8_t fadeValue;
+    static bool fadeDirection;
+    static CRGB previousColors[WS2812_NUM_LEDS];
     
     static void updateFullMode();
     static void updateWeekMode();

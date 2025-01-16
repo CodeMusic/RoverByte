@@ -205,9 +205,10 @@ void RoverBehaviorManager::handleSideButton() {
     if (!isScanning) {
         isScanning = true;
         scanStartTime = millis();
-        RoverViewManager::showNotification("Scanning", "Hold card near nose", "NFC", 2000);
-        NFCManager::handleSideButtonPress();
+        RoverViewManager::showNotification("NFC", "Hold card near nose", "SCAN", 5000);
+        NFCManager::handleNFCScan();
     } else {
+        // Only reset if timeout reached
         if (millis() - scanStartTime >= SCAN_TIMEOUT) {
             isScanning = false;
             if (!NFCManager::isCardPresent()) {

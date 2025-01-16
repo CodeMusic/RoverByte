@@ -20,6 +20,10 @@ uint8_t LEDManager::activeTrails = 0;
 unsigned long LEDManager::lastStepTime = 0;
 bool LEDManager::isLoading = false;
 FestiveTheme LEDManager::currentTheme = FestiveTheme::CHRISTMAS;
+uint8_t LEDManager::animationStep = 0;
+uint8_t LEDManager::fadeValue = 128;
+bool LEDManager::fadeDirection = true;
+CRGB LEDManager::previousColors[WS2812_NUM_LEDS];
 
 void LEDManager::init() {
     pinMode(BOARD_PWR_EN, OUTPUT);
@@ -72,6 +76,13 @@ void LEDManager::updateLEDs() {
                     break;
                 case Mode::TIMER_MODE:
                     updateTimerMode();
+                    break;
+                case Mode::OFF_MODE:
+                    FastLED.clear();
+                    FastLED.show();
+                    break;
+                case Mode::FESTIVE_MODE:
+                    updateFestiveMode();
                     break;
             }
             FastLED.show();
@@ -449,37 +460,112 @@ void LEDManager::update() {
 }
 
 void LEDManager::updateFestiveMode() {
-    switch (currentTheme) {
-        case FestiveTheme::CHRISTMAS:
-            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::Green;
-            }
-            break;
-            
-        case FestiveTheme::HALLOWEEN:
-            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                leds[i] = (i % 2 == 0) ? CRGB::Orange : CRGB::Purple;
-            }
-            break;
-            
-        case FestiveTheme::VALENTINES:
-            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::Pink;
-            }
-            break;
-            
-        case FestiveTheme::EASTER:
-            for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-                switch (i % 4) {
-                    case 0: leds[i] = CRGB::Pink; break;
-                    case 1: leds[i] = CRGB::Yellow; break;
-                    case 2: leds[i] = CRGB::Cyan; break;
-                    case 3: leds[i] = CRGB::Purple; break;
+    unsigned long currentTime = millis();
+    if (currentTime - lastStepTime >= 50) {  // 50ms animation interval
+        lastStepTime = currentTime;
+        
+        switch (currentTheme) {
+            case FestiveTheme::NEW_YEAR:
+                // Sparkle effect with gold and white
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    if (random8() < 50) { // 20% chance to change each LED
+                        leds[i] = random8() > 127 ? CRGB::Gold : CRGB::White;
+                    }
                 }
-            }
-            break;
+                break;
+                
+            case FestiveTheme::VALENTINES:
+                // Pulsing hearts effect
+                fadeValue = fadeValue + (fadeDirection ? 5 : -5);
+                if (fadeValue >= 250) fadeDirection = false;
+                if (fadeValue <= 50) fadeDirection = true;
+                
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    CRGB color = (i % 2 == 0) ? CRGB::Red : CRGB::Pink;
+                    color.nscale8(fadeValue);
+                    leds[i] = color;
+                }
+                break;
+                
+            case FestiveTheme::ST_PATRICK:
+                // Rotating shamrock effect
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    int adjustedPos = (i + animationStep) % WS2812_NUM_LEDS;
+                    switch (adjustedPos % 3) {
+                        case 0: leds[i] = CRGB::Green; break;
+                        case 1: leds[i] = CRGB(0, 180, 0); break;
+                        case 2: leds[i] = CRGB(0, 100, 0); break;
+                    }
+                }
+                animationStep = (animationStep + 1) % WS2812_NUM_LEDS;
+                break;
+                
+            case FestiveTheme::EASTER:
+                // Soft pastel fade between colors
+                if (++animationStep >= 255) {
+                    animationStep = 0;
+                    currentColorIndex = (currentColorIndex + 1) % 4;
+                }
+                
+                CRGB targetColor;
+                switch (currentColorIndex) {
+                    case 0: targetColor = CRGB::Pink; break;
+                    case 1: targetColor = CRGB(255, 255, 150); break;
+                    case 2: targetColor = CRGB(150, 255, 255); break;
+                    case 3: targetColor = CRGB(200, 255, 200); break;
+                }
+                
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    leds[i] = blend(previousColors[i], targetColor, animationStep);
+                    previousColors[i] = leds[i];
+                }
+                break;
+                
+            case FestiveTheme::CANADA_DAY:
+                // Waving flag effect
+                animationStep = (animationStep + 1) % 255;
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    int wave = sin8(animationStep + (i * 32));
+                    if (i == 0 || i == 4) {
+                        CRGB red = CRGB::Red;
+                        red.nscale8(wave);
+                        leds[i] = red;
+                    } else {
+                        CRGB white = CRGB::White;
+                        white.nscale8(wave);
+                        leds[i] = white;
+                    }
+                }
+                break;
+                
+            case FestiveTheme::HALLOWEEN:
+                // Spooky fade between orange and purple
+                fadeValue = fadeValue + (fadeDirection ? 5 : -5);
+                if (fadeValue >= 250) fadeDirection = false;
+                if (fadeValue <= 50) fadeDirection = true;
+                
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    CRGB color = (i % 2 == 0) ? CRGB::Orange : CRGB::Purple;
+                    color.nscale8(fadeValue);
+                    leds[i] = color;
+                }
+                break;
+                
+            case FestiveTheme::CHRISTMAS:
+                // Twinkling lights effect
+                for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+                    CRGB color = (i % 2 == 0) ? CRGB::Red : CRGB::Green;
+                    if (random8() < 20) { // 8% chance to twinkle
+                        color.nscale8(random8(128, 255));
+                    } else {
+                        color.nscale8(128);
+                    }
+                    leds[i] = color;
+                }
+                break;
+        }
+        FastLED.show();
     }
-    FastLED.show();
 }
 
 void LEDManager::setFestiveTheme(FestiveTheme theme) {

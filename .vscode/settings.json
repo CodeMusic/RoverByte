@@ -1,6 +1,29 @@
 {
     "files.associations": {
         ".fantomasignore": "ignore",
-        "vector": "cpp"
+        "vector": "cpp",
+        "__bit_reference": "cpp",
+        "__config": "cpp",
+        "__split_buffer": "cpp",
+        "__verbose_abort": "cpp",
+        "cmath": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "cwchar": "cpp",
+        "initializer_list": "cpp",
+        "iosfwd": "cpp",
+        "limits": "cpp",
+        "locale": "cpp",
+        "new": "cpp",
+        "stdexcept": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "tuple": "cpp",
+        "typeinfo": "cpp",
+        "memory": "cpp",
+        "algorithm": "cpp"
     }
 }

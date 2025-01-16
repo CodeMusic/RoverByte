@@ -12,12 +12,13 @@ public:
     static bool isCardPresent() { return cardPresent; }
     static uint32_t getTotalScans() { return totalScans; }
     static uint32_t getLastCardId() { return lastCardId; }
-    static void handleSideButtonPress();
+    static void handleNFCScan();
     static bool isCardEncrypted();
     static const char* getCardData() { return cardData; }
     static void readCardData();
     static void startBackgroundInit();
     static bool isInitializing() { return initInProgress; }
+    static void handleSideButtonPress() { handleNFCScan(); }
     
 private:
     static Adafruit_PN532 nfc;

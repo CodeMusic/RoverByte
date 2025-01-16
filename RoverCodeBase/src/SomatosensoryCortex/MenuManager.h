@@ -15,6 +15,12 @@ struct MenuItem {
     // Constructor for action items
     MenuItem(const std::string& n, std::function<void()> act) 
         : name(n), action(act) {}
+
+    // Modified equality operator that doesn't compare actions
+    bool operator==(const MenuItem& other) const {
+        return (name == other.name && 
+                subItems == other.subItems);
+    }
 };
 
 class MenuManager {
@@ -26,6 +32,7 @@ public:
     static void handleRotaryTurn(int direction);
     static void handleRotaryPress();
     static void drawMenu();
+    static void enterSubmenu(const std::vector<MenuItem>& submenu);
     
 private:
     static bool isMenuVisible;
@@ -35,5 +42,4 @@ private:
     static int selectedIndex;
     
     static void goBack();
-    static void enterSubmenu(const std::vector<MenuItem>& submenu);
 }; 

@@ -4,11 +4,12 @@
 #include <WiFi.h>
 #include "../VisualCortex/RoverManager.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 // Forward declaration
 class RoverViewManager;
 
-#define GMT_OFFSET_SEC (-7 * 3600)  // PST
+#define GMT_OFFSET_SEC (-5 * 3600)  // EST (DST)
 #define DAY_LIGHT_OFFSET_SEC 3600   // 1 hour of daylight saving
 #define NTP_SERVER "pool.ntp.org"
 

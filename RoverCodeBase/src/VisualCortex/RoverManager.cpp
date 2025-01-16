@@ -6,6 +6,7 @@
 #include "RoverManager.h"
 #include "../PrefrontalCortex/utilities.h"
 #include "DisplayConfig.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 // Forward declarations
 extern TFT_eSprite spr;
@@ -39,10 +40,7 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
     // Get current time and colors
     time_t now = time(nullptr);
     struct tm timeInfo;
-    // Convert to local timezone (EST = -4 hours = -14400 seconds)
-    const int TIMEZONE_OFFSET = -14400;  // EST timezone
-    localtime_r(&now, &timeInfo);
-    timeInfo.tm_hour = (timeInfo.tm_hour + (TIMEZONE_OFFSET/3600) + 24) % 24;  // Add timezone offset after localtime
+    localtime_r(&now, &timeInfo);  // Remove timezone adjustment since it's handled by configTime
     
     // Get eye colors from current month
     uint16_t leftEyeColor = monthColors[timeInfo.tm_mon][0];

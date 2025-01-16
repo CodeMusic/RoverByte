@@ -4,6 +4,7 @@
 #include "../PrefrontalCortex/PowerManager.h"
 #include <FastLED.h>
 #include "../PrefrontalCortex/utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 #define WIFI_RETRY_INTERVAL 60000  // 1 minute between retry attempts
 #define TIME_CHECK_INTERVAL 500    // Time sync check interval

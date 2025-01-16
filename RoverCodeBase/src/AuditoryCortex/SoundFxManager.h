@@ -52,7 +52,7 @@ private:
     static unsigned long jingleStartTime;
     static int currentJingleNote;
     
-    static void playTone(int frequency, int duration);
+
     static void init_microphone();
     static void initializeAudio();
     static void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate);
@@ -69,6 +69,7 @@ public:
     static void playStartupSound();
     static void playSuccessSound();
     static void playTimerDropSound(CRGB color);
+    static void playTone(int frequency, int duration);
     
     // Jingle control
     static void startJingle();

@@ -6,7 +6,7 @@
 #include "../PsychicCortex/NFCManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "../VisualCortex/LEDManager.h"
-
+#include "../MotorCortex/PinDefinitions.h"
 
 // Initialize static members
 RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
@@ -25,6 +25,7 @@ bool RoverViewManager::isAnimating = false;
 int RoverViewManager::animationStep = 0;
 unsigned long RoverViewManager::lastExpressionChange = 0;
 unsigned long RoverViewManager::nextExpressionInterval = DEFAULT_EXPRESSION_INTERVAL;
+bool RoverViewManager::showTime = false;
 
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
@@ -781,22 +782,24 @@ void RoverViewManager::drawWordWrappedText(const char* text, int x, int y, int m
 void RoverViewManager::drawFullScreenMenu(const char* title, const std::vector<MenuItem>& items, int selectedIndex) {
     spr.fillSprite(TFT_BLACK);
     
-    // Draw title
+    // Draw title - adjust position to be more centered
     spr.setTextFont(4);
     spr.setTextColor(TFT_WHITE);
-    spr.drawString(title, SCREEN_CENTER_X, 30);
+    spr.drawString(title, SCREEN_CENTER_X - 30, 30);  // Changed from -65 to -30
     
     // Draw menu items
     spr.setTextFont(2);
     int y = 70;
+    int menuX = SCREEN_CENTER_X - 30;  // Align with title
+    
     for (size_t i = 0; i < items.size(); i++) {
         if (i == selectedIndex) {
             spr.setTextColor(TFT_BLACK, TFT_WHITE);
-            spr.fillRect(20, y - 10, SCREEN_WIDTH - 40, 20, TFT_WHITE);
+            spr.fillRect(15, y - 10, SCREEN_WIDTH - 30, 20, TFT_WHITE);
         } else {
             spr.setTextColor(TFT_WHITE, TFT_BLACK);
         }
-        spr.drawString(items[i].name.c_str(), SCREEN_CENTER_X, y);
+        spr.drawString(items[i].name.c_str(), menuX, y);
         y += 25;
     }
     

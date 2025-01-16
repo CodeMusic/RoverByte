@@ -8,7 +8,7 @@
 #include "../AuditoryCortex/SoundFxManager.h"
 #include <vector>
 #include "../SomatosensoryCortex/MenuManager.h"
-
+#include "../MotorCortex/PinDefinitions.h"
 // Forward declarations
 struct MenuItem;
 extern TFT_eSprite spr;
@@ -52,6 +52,8 @@ public:
     static void drawNotification();
     static void clearNotification();
     static bool hasActiveNotification();
+
+    static bool showTime;
 
     enum class InputType {
         INPUT_LEFT,

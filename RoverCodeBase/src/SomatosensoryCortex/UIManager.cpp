@@ -1,7 +1,6 @@
 #include "UIManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/RoverManager.h"
-#include "../PsychicCortex/NFCManager.h"
 #include "../PrefrontalCortex/PowerManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
@@ -30,6 +29,7 @@ void UIManager::update() {
 
 void UIManager::handleRotaryPress() {
     static bool lastButtonState = HIGH;
+    static bool timeShown = false;
     bool currentButtonState = digitalRead(ENCODER_KEY);
     
     if (currentButtonState == LOW && lastButtonState == HIGH) {
@@ -37,6 +37,9 @@ void UIManager::handleRotaryPress() {
         
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
+        } else if (!timeShown) {
+            timeShown = true;
+            RoverViewManager::showTime;
         } else if (!MenuManager::isVisible()) {
             Serial.println("Opening menu");
             MenuManager::show();
@@ -58,7 +61,7 @@ void UIManager::updateEncoder() {
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
         } else {
-            handleRotaryTurn(newPos > lastEncoderPosition ? 1 : -1);
+            handleRotaryTurn(newPos > lastEncoderPosition ? -1 : 1);
             SoundFxManager::playRotaryTurnSound(newPos > lastEncoderPosition);
         }
         lastEncoderPosition = newPos;

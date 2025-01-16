@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <Arduino.h>
+#include "../MotorCortex/PinDefinitions.h"
 
 // Initialize the logging level
 LogLevel CURRENT_LOG_LEVEL = LOG_PRODUCTION;

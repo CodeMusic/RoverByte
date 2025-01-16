@@ -13,7 +13,7 @@
 #include "Audio.h"
 #include <XPowersLib.h>
 #include "driver/i2s.h"
-
+#include "src/VisualCortex/DisplayConfig.h"
 #include "src/PrefrontalCortex/utilities.h"
 #include "src/PrefrontalCortex/PowerManager.h"
 #include "src/VisualCortex/RoverViewManager.h"
@@ -24,13 +24,12 @@
 #include "src/VisualCortex/LEDManager.h"
 #include "src/PsychicCortex/WiFiManager.h"
 #include "src/PrefrontalCortex/SDManager.h"
-#include "src/PsychicCortex/NFCManager.h"
 #include "src/SomatosensoryCortex/UIManager.h"
 #include "src/PrefrontalCortex/RoverBehaviorManager.h"
 #include "src/SomatosensoryCortex/MenuManager.h"
+#include "src/MotorCortex/PinDefinitions.h"
 
 // Core configuration
-#define SCREEN_CENTER_X 85
 #define CLOCK_PIN 45
 
 // Global objects
@@ -52,13 +51,33 @@ void setup() {
     spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
     spr.setTextDatum(MC_DATUM);
     
-    // Initialize core managers first
-    RoverBehaviorManager::init();
-    PowerManager::init();
-    LEDManager::init();
+    // Initialize core managers with try-catch blocks
+    try {
+        RoverBehaviorManager::init();
+    } catch (const std::exception& e) {
+        Serial.println("ERROR: Failed to initialize RoverBehaviorManager");
+    }
+    
+    try {
+        PowerManager::init();
+    } catch (const std::exception& e) {
+        Serial.println("ERROR: Failed to initialize PowerManager");
+    }
+    
+    try {
+        LEDManager::init();
+    } catch (const std::exception& e) {
+        Serial.println("ERROR: Failed to initialize LEDManager");
+    }
+    
     RoverViewManager::init();
     UIManager::init();
-    MenuManager::init();
+    
+    try {
+        MenuManager::init();
+    } catch (const std::exception& e) {
+        Serial.println("ERROR: Failed to initialize MenuManager");
+    }
     
     // Initialize audio before other systems
     SoundFxManager::init();
@@ -70,7 +89,6 @@ void setup() {
     }
     
     // Start background processes last
-    NFCManager::startBackgroundInit();
     WiFiManager::init();
 }
 
@@ -79,21 +97,31 @@ void loop() {
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;
     
+    // Handle encoder direction
+    encoder.tick();
+    // Swap pins in encoder initialization instead of trying to negate the direction
+    
     // Play startup sound once
     if (!soundStarted) {
         SoundFxManager::playStartupSound();
         soundStarted = true;
     }
     
-    // Update UI first
-    UIManager::update();
+    // Add try-catch block around UI updates
+    try {
+        UIManager::update();  // Remove direction parameter since it's not accepted
+        LEDManager::updateLEDs();
+    } catch (const std::exception& e) {
+        Serial.println("ERROR in UI/LED update: " + String(e.what()));
+    }
     
-    // Update LED animations
-    LEDManager::updateLEDs();
-    
-    // Other updates
+    // Add error checking for behavior updates
     if (millis() - lastDraw >= DRAW_INTERVAL) {
-        RoverBehaviorManager::update();
+        try {
+            RoverBehaviorManager::update();
+        } catch (const std::exception& e) {
+            Serial.println("ERROR in behavior update: " + String(e.what()));
+        }
         lastDraw = millis();
     }
 }

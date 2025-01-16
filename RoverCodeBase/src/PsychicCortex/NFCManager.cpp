@@ -146,15 +146,13 @@ void NFCManager::readCardData() {
     cardData[dataIndex] = '\0';
 }
 
-void NFCManager::handleSideButtonPress() {
+void NFCManager::handleNFCScan() {
     if (isCardPresent()) {
         // Card present - start NFC scan flow
         SoundFxManager::playVoiceLine("card_detected");
         checkForCard();  // Process the card
     } else {
-        // No card - start recording flow
-        SoundFxManager::playVoiceLine("waiting_for_card");
-        SoundFxManager::startRecording();
+        Serial.println("No card present");
     }
 }
 
