@@ -18,7 +18,6 @@ public:
     static bool isBlasting() { return blasting; }
     
 private:
-    static bool blasting;
     static unsigned long lastSendTime;
     static unsigned long lastLEDUpdate;
     static uint16_t currentCode;
@@ -32,6 +31,7 @@ private:
     static void sendCode(uint16_t code);
     static void setupIROutput();
     static void updateLEDAnimation();
+    static bool blasting;
 };
 
 #endif

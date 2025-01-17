@@ -7,6 +7,9 @@
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../MotorCortex/PinDefinitions.h"
+#include <TFT_eSPI.h>
+
+extern TFT_eSPI tft;
 
 // Initialize static members
 RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
@@ -25,7 +28,10 @@ bool RoverViewManager::isAnimating = false;
 int RoverViewManager::animationStep = 0;
 unsigned long RoverViewManager::lastExpressionChange = 0;
 unsigned long RoverViewManager::nextExpressionInterval = DEFAULT_EXPRESSION_INTERVAL;
-bool RoverViewManager::showTime = false;
+
+uint32_t RoverViewManager::roverExperience = 0;
+uint32_t RoverViewManager::roverExperienceToNextLevel = 327;
+uint8_t RoverViewManager::roverLevel = 1;
 
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
@@ -69,8 +75,8 @@ const RoverViewManager::VirtueInfo RoverViewManager::VIRTUE_DATA[] = {
 uint16_t getCurrentDayColor() {
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
-    CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
-    return ColorUtilities::convertToRGB565(dayColor);
+    CRGB dayColor = VisualSynesthesia::getDayColor(timeInfo->tm_wday + 1);
+    return VisualSynesthesia::convertToRGB565(dayColor);
 }
 
 void RoverViewManager::init() {
@@ -546,7 +552,7 @@ void RoverViewManager::drawStatusBar() {
         
         // Get month colors
         CRGB monthColor1, monthColor2;
-        ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+        VisualSynesthesia::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
         
         // Draw month color square
         uint32_t monthTftColor = spr.color565(monthColor1.r, monthColor1.g, monthColor1.b);
@@ -587,8 +593,8 @@ void RoverViewManager::drawStatusBar() {
             case 0:
                 char statsStr[20];
                 sprintf(statsStr, "Lvl:%d Exp:%d", 
-                        (NFCManager::getTotalScans() / 10) + 1,  // Level increases every 10 scans
-                        NFCManager::getTotalScans() * 7);
+                        (roverLevel / 10) + 1,  // Level increases every 10 scans
+                        roverExperience);
                 spr.drawString(statsStr, statusX + 35, STATUS_BAR_Y + dateHeight/2);
                 break;
             case 1:
@@ -613,19 +619,27 @@ void RoverViewManager::drawStatusBar() {
 
 void RoverViewManager::incrementExperience(uint16_t amount) {
     experience += amount;
-    if (experience >= experienceToNextLevel) {
+    
+    while (experience >= 327) {
         level++;
-        experience -= experienceToNextLevel;
-        experienceToNextLevel = calculateNextLevelExperience(level);
-        SoundFxManager::playVoiceLine("level_up");
+        experience -= 327;
         LEDManager::flashLevelUp();
+        
+        char levelStr[32];
+        snprintf(levelStr, sizeof(levelStr), "Level %d!", level);
+        showNotification("LEVEL UP", levelStr, "XP", 2000);
     }
+    
+    // Update experience display
+    char expStr[32];
+    snprintf(expStr, sizeof(expStr), "XP: %d/327", experience);
+    updateExperienceBar(expStr);
 }
 
 uint16_t RoverViewManager::calculateNextLevelExperience(uint8_t currentLevel) {
     // Simple exponential growth formula
     return 100 * (currentLevel + 1);
-}   
+}       
 
 void RoverViewManager::showNotification(const char* header, const char* content, const char* symbol, int duration) {
     currentNotification = {header, content, symbol, millis(), duration};
@@ -803,4 +817,37 @@ void RoverViewManager::drawFullScreenMenu(const char* title, const std::vector<M
     }
     
     spr.pushSprite(0, 0);
+}
+
+void RoverViewManager::drawAppSplash(const char* title, const char* description) {
+    tft.fillScreen(TFT_BLACK);
+
+    // Draw title near center
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(2); // scale up text
+    tft.setTextDatum(MC_DATUM); // middle-center
+    tft.drawString(title, tft.width() / 2, tft.height() / 2 - 20);
+
+    // Draw description a bit lower
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString(description, tft.width() / 2, tft.height() / 2 + 10);
+
+    // Draw instructions at the bottom
+    tft.setTextSize(1);
+    tft.setTextDatum(BC_DATUM); // bottom-center
+    tft.drawString("Press Rotary to Start  |  Side Button = Exit", tft.width() / 2, tft.height() - 5);
+}
+
+void RoverViewManager::drawMenuBackground() {
+    tft.fillScreen(TFT_BLACK);
+}
+
+void RoverViewManager::updateExperienceBar(const String& expStr) {
+    roverExperience += expStr.toInt();
+    if (roverExperience >= roverExperienceToNextLevel) {
+        roverLevel++;
+        roverExperience -= roverExperienceToNextLevel;
+        roverExperienceToNextLevel = calculateNextLevelExperience(roverLevel);
+    }
 }

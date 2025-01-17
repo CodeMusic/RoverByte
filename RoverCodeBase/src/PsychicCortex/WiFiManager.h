@@ -28,7 +28,7 @@ private:
     static unsigned long lastWiFiAttempt;
     static bool timeInitialized;
     static unsigned long lastTimeCheck;
-    // WiFi credentials
+    // WiFi credentials    ( MOVE TO SECRETS )
     static constexpr const char* PRIMARY_SSID = "RevivalNetwork ";
     static constexpr const char* PRIMARY_PASSWORD = "xunjmq84";
     static constexpr const char* BACKUP_SSID = "CodeMusicai";

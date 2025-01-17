@@ -1,7 +1,7 @@
 #ifndef SOUND_FX_MANAGER_H
 #define SOUND_FX_MANAGER_H
 
-#include "../AuditoryCortex/pitches.h"
+#include "../AuditoryCortex/PitchPerception.h"
 #include "../PrefrontalCortex/utilities.h"
 #include "../VisualCortex/RoverManager.h"
 #include <time.h>
@@ -69,7 +69,7 @@ public:
     static void playStartupSound();
     static void playSuccessSound();
     static void playTimerDropSound(CRGB color);
-    static void playTone(int frequency, int duration);
+    static void playTone(int frequency, int duration, int position = 0); // Update this line
     
     // Jingle control
     static void startJingle();
@@ -85,32 +85,7 @@ public:
     static bool isPlaying() { return isPlayingSound; }
     static void audio_eof_mp3(const char* info);
       
-    // Note helpers
-    static inline int getDayBaseNote4() {
-        time_t now = time(nullptr);
-        struct tm* timeInfo = localtime(&now);
-        int dayOfWeek = timeInfo->tm_wday;
-        
-        const int dayNotes[] = {
-            NOTE_C4,  // Sunday
-            NOTE_D4,  // Monday
-            NOTE_E4,  // Tuesday
-            NOTE_F4,  // Wednesday
-            NOTE_G4,  // Thursday
-            NOTE_A4,  // Friday
-            NOTE_B4   // Saturday
-        };
-        
-        return dayNotes[dayOfWeek];
-    }
 
-    static inline int getDayBaseNote5() {
-        return getDayBaseNote4() * 2;
-    }
-
-    static inline int getNoteMinus2(int baseNote) {
-        return baseNote * 8 / 10;
-    }
 
     static void stopJingle();
 

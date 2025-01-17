@@ -11,23 +11,18 @@ CRGB SlotsManager::slotColors[4];
 unsigned long SlotsManager::animationTimer = 0;
 bool SlotsManager::showingResult = false;
 bool SlotsManager::gameActive = false;
+unsigned long SlotsManager::lockTimer = 0;
 
 void SlotsManager::init() {
     gameActive = true;
-    showingResult = false;
+    // Reset game state
     activeSlotPair = 0;
-    
-    // Initialize slots
-    for(int i = 0; i < 4; i++) {
-        slotLocked[i] = false;
-        slotColors[i] = getRainbowColor(random(7));
-        LEDManager::setLED(i*2, slotColors[i]);
-        LEDManager::setLED(i*2+1, slotColors[i]);
-    }
-    LEDManager::showLEDs();
-    
+    showingResult = false;
     animationTimer = millis();
-    MenuManager::hide(); // Hide menu after initialization
+    for (int i = 0; i < 4; i++) {
+        slotLocked[i] = false;
+        slotColors[i] = CRGB::Black;
+    }
 }
 
 void SlotsManager::update() {
@@ -70,11 +65,25 @@ void SlotsManager::update() {
             }
             LEDManager::showLEDs();
             animationTimer = millis();
+            
+            // Check if it's time to lock the next reel
+            if (!slotLocked[activeSlotPair] && millis() >= lockTimer) {
+                slotLocked[activeSlotPair] = true;
+                SoundFxManager::playTone(1000 + (activeSlotPair * 200), 100);
+                
+                activeSlotPair++;
+                if (activeSlotPair < 4) {
+                    // Set next lock timer
+                    lockTimer = millis() + random(200, 1000);
+                } else {
+                    checkResult();
+                }
+            }
         }
     }
 }
 
-void SlotsManager::handleButtonPress() {
+void SlotsManager::spin() {
     if (!gameActive || showingResult) return;
     
     // Lock current slot pair
@@ -149,6 +158,7 @@ void SlotsManager::startGame() {
     LEDManager::showLEDs();
     
     animationTimer = millis();
+    lockTimer = millis() + random(200, 1000); // Set first auto-lock timer
     MenuManager::hide();
-    RoverViewManager::showNotification("SLOTS", "Press to lock reels!", "GAME", 2000);
-} 
+    RoverViewManager::showNotification("SLOTS", "Auto-locking reels...", "GAME", 2000);
+}

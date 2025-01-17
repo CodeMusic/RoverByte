@@ -1,5 +1,5 @@
 #include <time.h>
-#include "ColorUtilities.h"
+#include "VisualSynesthesia.h"
 #include "../PrefrontalCortex/PowerManager.h"
 #include "LEDManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
@@ -64,8 +64,8 @@ void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int 
         spr.fillRect(centerX - (timeWidth/2) - 5, 25, timeWidth + 10, 40, TFT_BLACK);
         
         // Get day color for time display
-        CRGB dayColor = ColorUtilities::getDayColor(timeInfo.tm_wday + 1);
-        uint16_t timeColor = ColorUtilities::convertToRGB565(dayColor);
+        CRGB dayColor = VisualSynesthesia::getDayColor(timeInfo.tm_wday + 1);
+        uint16_t timeColor = VisualSynesthesia::convertToRGB565(dayColor);
         spr.setTextColor(timeColor, TFT_BLACK);
         spr.drawString(timeStr, centerX, 30);
         y = 80;

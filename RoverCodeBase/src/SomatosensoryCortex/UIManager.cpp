@@ -27,31 +27,6 @@ void UIManager::update() {
     updateSideButton();
 }
 
-void UIManager::handleRotaryPress() {
-    static bool lastButtonState = HIGH;
-    static bool timeShown = false;
-    bool currentButtonState = digitalRead(ENCODER_KEY);
-    
-    if (currentButtonState == LOW && lastButtonState == HIGH) {
-        Serial.println("Rotary button pressed");
-        
-        if (RoverViewManager::hasActiveNotification()) {
-            RoverViewManager::clearNotification();
-        } else if (!timeShown) {
-            timeShown = true;
-            RoverViewManager::showTime;
-        } else if (!MenuManager::isVisible()) {
-            Serial.println("Opening menu");
-            MenuManager::show();
-        } else {
-            MenuManager::handleRotaryPress();
-        }
-        PowerManager::updateLastActivityTime();
-    }
-    
-    lastButtonState = currentButtonState;
-}
-
 void UIManager::updateEncoder() {
     encoder->tick();
     int newPos = encoder->getPosition();
@@ -61,28 +36,49 @@ void UIManager::updateEncoder() {
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
         } else {
-            handleRotaryTurn(newPos > lastEncoderPosition ? -1 : 1);
-            SoundFxManager::playRotaryTurnSound(newPos > lastEncoderPosition);
+            int direction = (newPos > lastEncoderPosition) ? 1 : -1;
+            handleRotaryTurn(direction);
+            SoundFxManager::playRotaryTurnSound(direction > 0);
         }
         lastEncoderPosition = newPos;
         PowerManager::updateLastActivityTime();
     }
     
-    // Handle button press
+    // Handle the rotary button press
     handleRotaryPress();
 }
 
 void UIManager::handleRotaryTurn(int direction) {
+    // If the menu is open, navigate it
     if (MenuManager::isVisible()) {
         MenuManager::handleRotaryTurn(direction);
-    } else {
-        // Control views instead of moods
+    } 
+    // Otherwise, switch between different views
+    else {
         if (direction > 0) {
             RoverViewManager::nextView();
         } else {
             RoverViewManager::previousView();
         }
     }
+}
+
+void UIManager::handleRotaryPress() {
+    static bool lastButtonState = HIGH;
+    bool currentButtonState = digitalRead(ENCODER_KEY);
+    
+    if (currentButtonState == LOW && lastButtonState == HIGH) {
+        if (RoverViewManager::hasActiveNotification()) {
+            RoverViewManager::clearNotification();
+        } else if (!MenuManager::isVisible()) {
+            MenuManager::show();
+        } else {
+            MenuManager::handleRotaryPress();
+        }
+        PowerManager::updateLastActivityTime();
+    }
+    
+    lastButtonState = currentButtonState;
 }
 
 void UIManager::updateSideButton() {
@@ -98,7 +94,9 @@ void UIManager::updateSideButton() {
                 if (RoverViewManager::hasActiveNotification()) {
                     RoverViewManager::clearNotification();
                 } else {
-                    RoverBehaviorManager::handleSideButton();
+                    // Previously called RoverBehaviorManager::handleSideButton() or NFC scans here.
+                    // Now removed so the side button won't trigger NFC.
+                    // You can insert other custom logic if desired.
                 }
             }
             PowerManager::updateLastActivityTime();
@@ -106,7 +104,7 @@ void UIManager::updateSideButton() {
         lastState = currentState;
     }
     
-    // Update ears based on button state
+    // Update ears based on the button state
     bool shouldBeUp = (currentState == LOW);
     if (shouldBeUp != RoverManager::earsPerked) {
         RoverManager::earsPerked = shouldBeUp;

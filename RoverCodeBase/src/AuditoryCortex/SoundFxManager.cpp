@@ -1,3 +1,4 @@
+#include "../AuditoryCortex/PitchPerception.h"
 #include "SoundFxManager.h"
 #include "Arduino.h"
 #include <time.h>
@@ -5,6 +6,8 @@
 #include "../PrefrontalCortex/SDManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/RoverManager.h"
+#include "../VisualCortex/LEDManager.h"
+
 
 // Initialize static members
 int SoundFxManager::currentNote = 0;
@@ -18,19 +21,19 @@ File SoundFxManager::recordFile;
 
 // Add after the other jingle definitions
 const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
-    {NOTE_G4, 100, 30},    // G - Base note
-    {NOTE_C5, 100, 30},    // C - Up to C
-    {NOTE_E5, 100, 30},    // E - Complete the C major triad
-    {NOTE_G5, 150, 50},    // G - Octave up, held longer
-    {NOTE_E5, 100, 30},    // E - Back down
-    {NOTE_C5, 100, 30},    // C - Continue down
-    {NOTE_D5, 150, 50},    // D - Surprise note
-    {NOTE_G5, 200, 0}      // G - Final high note, held longest
+    {PitchPerception::NOTE_G4, 100, 30},    // G - Base note
+    {PitchPerception::NOTE_C5, 100, 30},    // C - Up to C
+    {PitchPerception::NOTE_E5, 100, 30},    // E - Complete the C major triad
+    {PitchPerception::NOTE_G5, 150, 50},    // G - Octave up, held longer
+    {PitchPerception::NOTE_E5, 100, 30},    // E - Back down
+    {PitchPerception::NOTE_C5, 100, 30},    // C - Continue down
+    {PitchPerception::NOTE_D5, 150, 50},    // D - Surprise note
+    {PitchPerception::NOTE_G5, 200, 0}      // G - Final high note, held longest
 };
 
-const int SoundFxManager::JINGLE_LENGTH = sizeof(ROVERBYTE_JINGLE) / sizeof(Note);
+const int SoundFxManager::JINGLE_LENGTH = sizeof(SoundFxManager::ROVERBYTE_JINGLE) / sizeof(SoundFxManager::Note);
 
-void SoundFxManager::playTone(int frequency, int duration) {
+void SoundFxManager::playTone(int frequency, int duration, int position) {
     // ESP32 LEDC limitations: freq_hz * duty_resolution < 80MHz
     // Using 8-bit resolution, so max frequency should be around 312.5KHz
     
@@ -44,6 +47,9 @@ void SoundFxManager::playTone(int frequency, int duration) {
     delay(duration);
     ledcWrite(TONE_PWM_CHANNEL, 0);
     ledcDetachPin(BOARD_VOICE_DIN);
+
+    //LEDManager::getNoteColor(PitchPerception::getNoteInfo(frequency));
+    LEDManager::displayNote(frequency, position);
 }
 
 void SoundFxManager::startJingle() {
@@ -58,11 +64,11 @@ void SoundFxManager::updateJingle() {
     unsigned long currentTime = millis();
     if (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].duration + ROVERBYTE_JINGLE[currentNote].delay) {
         if (currentNote < JINGLE_LENGTH) {
-            playTone(ROVERBYTE_JINGLE[currentNote].pitch, ROVERBYTE_JINGLE[currentNote].duration);
+            SoundFxManager::playTone(SoundFxManager::ROVERBYTE_JINGLE[currentNote].pitch, SoundFxManager::ROVERBYTE_JINGLE[currentNote].duration);
             lastNoteTime = currentTime;
             currentNote++;
         } else {
-            stopJingle();
+            SoundFxManager::stopJingle();
         }
     }
 }
@@ -72,91 +78,79 @@ bool SoundFxManager::isJinglePlaying() {
 }
 
 void SoundFxManager::playSuccessSound() {
-    playTone(NOTE_C5, 100);
+    playTone(PitchPerception::NOTE_C5, 100);
     delay(50);
-    playTone(NOTE_E5, 100);
+    playTone(PitchPerception::NOTE_E5, 100);
     delay(50);
-    playTone(NOTE_G5, 200);
+    playTone(PitchPerception::NOTE_G5, 200);
 }
 
 void SoundFxManager::playRotaryPressSound(int mode) {  // 0=Full, 1=Week, 2=Timer
     time_t now = time(nullptr);
     struct tm* timeInfo = localtime(&now);
     int dayOfWeek = timeInfo->tm_wday;  // 0-6 (Sunday-Saturday)
-    
-    // Base notes for each day (C through B)
-    const int dayNotes[] = {
-        NOTE_C4,  // Sunday
-        NOTE_D4,  // Monday
-        NOTE_E4,  // Tuesday
-        NOTE_F4,  // Wednesday
-        NOTE_G4,  // Thursday
-        NOTE_A4,  // Friday
-        NOTE_B4   // Saturday
-    };
-    
-    // Get base note from current day
-    int baseNote = dayNotes[dayOfWeek];
+    uint16_t baseNote = PitchPerception::getDayBaseNote(mode == 1); // Full mode - base octave // Week mode - octave up
+
     
     // Adjust octave based on mode
     switch(mode) {
-        case 0:  // Full mode - base octave
-            playTone(baseNote, 100);
+        case 0: 
+            SoundFxManager::playTone(baseNote, 100);
             break;
-        case 1:  // Week mode - octave up
-            playTone(baseNote * 2, 100);  // Multiply by 2 to go up an octave
+        case 1:  
+            SoundFxManager::playTone(baseNote, 100);  
             break;
         case 2:  // Timer mode - octave up + fifth
-            playTone(baseNote * 3, 100);  // Multiply by 3 for octave + fifth
+            SoundFxManager::playTone(baseNote * 2, 100);  // Multiply by 3 for octave 
             break;
     }
 }
 
 void SoundFxManager::playRotaryTurnSound(bool clockwise) {
     if (clockwise) {
-        playTone(getDayBaseNote4(), 50);
-        playTone(getDayBaseNote5(), 50);
+        playTone(PitchPerception::getDayBaseNote4(), 50);
+        playTone(PitchPerception::getDayBaseNote5(), 50);
     } else {
-        playTone(getDayBaseNote5(), 50);
-        playTone(getDayBaseNote4(), 50);
+        playTone(PitchPerception::getDayBaseNote5(), 50);
+        playTone(PitchPerception::getDayBaseNote4(), 50);
     }
 }
 
 void SoundFxManager::playSideButtonSound(bool start) {
     if (start) {
-        playTone(getDayBaseNote4(), 50);
-        playTone(getDayBaseNote4(), 50);
+        playTone(PitchPerception::getDayBaseNote4(), 50);
+        playTone(PitchPerception::getDayBaseNote4(), 50);
     } else {
-        playTone(getDayBaseNote5(), 100);
-        int baseNote = getDayBaseNote5();
-        playTone(getNoteMinus2(baseNote), 100);
+        playTone(PitchPerception::getDayBaseNote5(), 100);
+        int baseNote = PitchPerception::getDayBaseNote5();
+        playTone(PitchPerception::getNoteMinus2(baseNote), 100);
     }
 }
 
 void SoundFxManager::playErrorSound(int type) {
     switch(type) {
         case 1: // Recording error
-            playTone(NOTE_B5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_B5, 200);
             delay(100);
-            playTone(NOTE_G5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
             delay(100);
-            playTone(NOTE_D5, 400);
+            SoundFxManager::playTone(PitchPerception::NOTE_D5, 400);
             break;
             
         case 2: // SD card error
-            playTone(NOTE_G5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
             delay(100);
-            playTone(NOTE_G5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
             delay(100);
-            playTone(NOTE_G4, 400);
+            SoundFxManager::playTone(PitchPerception::NOTE_G4, 400);
             break;
             
         case 3: // Playback error
-            playTone(NOTE_D5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
             delay(100);
-            playTone(NOTE_D5, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
             delay(100);
-            playTone(NOTE_D4, 400);
+            SoundFxManager::playTone(PitchPerception::NOTE_D4, 400);
             break;
     }
 }
@@ -164,10 +158,10 @@ void SoundFxManager::playErrorSound(int type) {
 void SoundFxManager::playStartupSound() {
     if (!SPIFFS.exists("/initialized.txt")) {
         // Only play on first boot
-        for (int i = 0; i < JINGLE_LENGTH; i++) {
-            playTone(ROVERBYTE_JINGLE[i].pitch, ROVERBYTE_JINGLE[i].duration);
-            if (ROVERBYTE_JINGLE[i].delay > 0) {
-                delay(ROVERBYTE_JINGLE[i].delay);
+        for (int i = 0; i < SoundFxManager::JINGLE_LENGTH; i++) {
+            SoundFxManager::playTone(SoundFxManager::ROVERBYTE_JINGLE[i].pitch, SoundFxManager::ROVERBYTE_JINGLE[i].duration);
+            if (SoundFxManager::ROVERBYTE_JINGLE[i].delay > 0) {
+                delay(SoundFxManager::ROVERBYTE_JINGLE[i].delay);
             }
         }
         
@@ -418,43 +412,43 @@ void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
         }
         else if (strcmp(line, "waiting_for_card") == 0) {
             // Inquisitive searching tune
-            playTone(NOTE_E5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_E5, 100, 0);
             delay(50);
-            playTone(NOTE_G5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 100, 1);
             delay(50);
-            playTone(NOTE_A5, 150);
+            SoundFxManager::playTone(PitchPerception::NOTE_A5, 150, 2);
         }
         else if (strcmp(line, "scan_complete") == 0) {
             // Success tune
-            playTone(NOTE_C5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_C5, 100, 0);
             delay(30);
-            playTone(NOTE_E5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_E5, 100, 1);
             delay(30);
-            playTone(NOTE_G5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 100, 2);
             delay(30);
-            playTone(NOTE_C6, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_C6, 200);
         }
         else if (strcmp(line, "scan_error") == 0) {
             // Error tune
-            playTone(NOTE_G4, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_G4, 200, 0);
             delay(50);
-            playTone(NOTE_E4, 200);
+            SoundFxManager::playTone(PitchPerception::NOTE_E4, 200, 1);
             delay(50);
-            playTone(NOTE_C4, 300);
+            SoundFxManager::playTone(PitchPerception::NOTE_C4, 300, 2);
         }
         else if (strcmp(line, "level_up") == 0) {
             // Mario-style level up fanfare
-            playTone(NOTE_G4, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_G4, 100, 0);
             delay(50);
-            playTone(NOTE_C5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_C5, 100, 1);
             delay(50);
-            playTone(NOTE_E5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_E5, 100, 2);
             delay(50);
-            playTone(NOTE_G5, 100);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 100, 3);
             delay(50);
-            playTone(NOTE_C6, 150);
+            SoundFxManager::playTone(PitchPerception::NOTE_C6, 150, 4);
             delay(100);
-            playTone(NOTE_E6, 400);
+            SoundFxManager::playTone(PitchPerception::NOTE_E6, 400);
         }
     
 }
@@ -462,17 +456,21 @@ void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
 void SoundFxManager::playCardMelody(uint32_t cardId) {
     // Generate melody from all UID bytes
     uint8_t notes[7];  // Support for full 7-byte UID
-    notes[0] = ((cardId >> 24) & 0xFF) % 24;  // Use modulo 24 for two octaves
+    notes[0] = ((cardId >> 24) & 0xFF) % 24;
     notes[1] = ((cardId >> 16) & 0xFF) % 24;
     notes[2] = ((cardId >> 8) & 0xFF) % 24;
     notes[3] = (cardId & 0xFF) % 24;
     
     // Base note frequencies for C4 to B5 (two octaves)
-    const int baseNotes[] = {
-        NOTE_C4, NOTE_CS4, NOTE_D4, NOTE_DS4, NOTE_E4, NOTE_F4,
-        NOTE_FS4, NOTE_G4, NOTE_GS4, NOTE_A4, NOTE_AS4, NOTE_B4,
-        NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_DS5, NOTE_E5, NOTE_F5,
-        NOTE_FS5, NOTE_G5, NOTE_GS5, NOTE_A5, NOTE_AS5, NOTE_B5
+    const uint16_t baseNotes[] = {
+        PitchPerception::NOTE_C4, PitchPerception::NOTE_CS4, PitchPerception::NOTE_D4, 
+        PitchPerception::NOTE_DS4, PitchPerception::NOTE_E4, PitchPerception::NOTE_F4,
+        PitchPerception::NOTE_FS4, PitchPerception::NOTE_G4, PitchPerception::NOTE_GS4, 
+        PitchPerception::NOTE_A4, PitchPerception::NOTE_AS4, PitchPerception::NOTE_B4,
+        PitchPerception::NOTE_C5, PitchPerception::NOTE_CS5, PitchPerception::NOTE_D5, 
+        PitchPerception::NOTE_DS5, PitchPerception::NOTE_E5, PitchPerception::NOTE_F5,
+        PitchPerception::NOTE_FS5, PitchPerception::NOTE_G5, PitchPerception::NOTE_GS5, 
+        PitchPerception::NOTE_A5, PitchPerception::NOTE_AS5, PitchPerception::NOTE_B5
     };
     
     // Set excited expression before playing
@@ -480,38 +478,38 @@ void SoundFxManager::playCardMelody(uint32_t cardId) {
     
     // Play the generated melody
     for (int i = 0; i < 4; i++) {
-        uint8_t duration = 50 + (notes[i] % 100);  // Duration between 50-150ms
-        playTone(baseNotes[notes[i]], duration);
-        delay(duration / 2);  // Dynamic gap between notes
+        uint8_t duration = 50 + (notes[i] % 100);
+        SoundFxManager::playTone(baseNotes[notes[i]], duration, i);
+        delay(duration / 2);
     }
 }
 
 void SoundFxManager::playTimerDropSound(CRGB color) {
     // Convert color to musical note (using same base notes)
     int baseNote;
-    if (color == CRGB::Red) baseNote = NOTE_C4;
-    else if (color == CRGB::Orange) baseNote = NOTE_D4;
-    else if (color == CRGB::Yellow) baseNote = NOTE_E4;
-    else if (color == CRGB::Green) baseNote = NOTE_F4;
-    else if (color == CRGB::Blue) baseNote = NOTE_G4;
-    else if (color == CRGB::Indigo) baseNote = NOTE_A4;
-    else if (color == CRGB::Purple) baseNote = NOTE_B4;
-    else if (color == CRGB::White) baseNote = NOTE_C5;
-    else baseNote = NOTE_C4;
+    if (color == CRGB::Red) baseNote = PitchPerception::NOTE_C4;
+    else if (color == CRGB::Orange) baseNote = PitchPerception::NOTE_D4;
+    else if (color == CRGB::Yellow) baseNote = PitchPerception::NOTE_E4;
+    else if (color == CRGB::Green) baseNote = PitchPerception::NOTE_F4;
+    else if (color == CRGB::Blue) baseNote = PitchPerception::NOTE_G4;
+    else if (color == CRGB::Indigo) baseNote = PitchPerception::NOTE_A4;
+    else if (color == CRGB::Purple) baseNote = PitchPerception::NOTE_B4;
+    else if (color == CRGB::White) baseNote = PitchPerception::NOTE_C5;
+    else baseNote = PitchPerception::NOTE_C4;
 
     // Play initial clear note
-    playTone(baseNote, 50);
+    SoundFxManager::playTone(baseNote, 50, 0);
     delay(10);
 
     // Create gentler water drop effect
-    const int steps = 4;  // Fewer steps
-    const int duration = 20;  // Slightly longer duration
-    const int dropRange = 100;  // Smaller frequency drop range
+    const int steps = 4;
+    const int duration = 20;
+    const int dropRange = 100;
     
     for (int i = 0; i < steps; i++) {
         int freq = baseNote - (dropRange * i / steps);
-        playTone(freq, duration);
-        delay(5);  // Small delay between drops
+        SoundFxManager::playTone(freq, duration);
+        delay(5);
     }
 }
 

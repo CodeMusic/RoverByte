@@ -1,8 +1,10 @@
-#pragma once
-#include <FastLED.h>
-#include "../AuditoryCortex/pitches.h"
+#ifndef VISUAL_SYNESIA_H
+#define VISUAL_SYNESIA_H
 
-class ColorUtilities {
+#include <FastLED.h>
+#include "../AuditoryCortex/PitchPerception.h"
+
+class VisualSynesthesia {
 public:
     // Static color arrays - moved to public and made extern
     static const CRGB BASE_8_COLORS[8];
@@ -17,5 +19,15 @@ public:
     static void getHourColors(uint8_t hour, CRGB& color1, CRGB& color2);
     static CRGB getBatteryColor(uint8_t percentage);
     static CRGB getColorForFrequency(uint16_t freq);
+    static CRGB getNoteColorBlended(const NoteInfo& info);
     static uint16_t convertToRGB565(CRGB color);
+    
+
+    // New synesthesia-specific methods
+    static CRGB blendNoteColors(const NoteInfo& info);
+    static void playNFCCardData(const char* cardData);
+    
+    static void playVisualChord(uint16_t baseFreq, CRGB& root, CRGB& third, CRGB& fifth);
 }; 
+
+#endif // VISUAL_SYNESIA_H

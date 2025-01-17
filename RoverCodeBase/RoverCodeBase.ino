@@ -18,7 +18,7 @@
 #include "src/PrefrontalCortex/PowerManager.h"
 #include "src/VisualCortex/RoverViewManager.h"
 #include "src/VisualCortex/RoverManager.h"
-#include "src/VisualCortex/ColorUtilities.h"
+#include "src/VisualCortex/VisualSynesthesia.h"
 #include "src/VisualCortex/DisplayConfig.h"
 #include "src/AuditoryCortex/SoundFxManager.h"
 #include "src/VisualCortex/LEDManager.h"

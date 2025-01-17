@@ -28,6 +28,30 @@ enum class FestiveTheme {
     CHRISTMAS        // December 25
 };
 
+enum class Pattern {
+    NONE,           // No app pattern active, use selected Mode
+    SLOTS_GAME,     // Slots app is controlling LEDs
+    IR_BLAST,       // IR Blaster is controlling LEDs
+    NFC_SCAN        // NFC scanning pattern
+};
+
+enum class LEDMessage {
+    NONE,
+    SLOTS_WIN,
+    SLOTS_LOSE,
+    IR_SUCCESS,
+    IR_FAIL,
+    NFC_DETECTED,
+    NFC_ERROR
+};
+
+struct NoteState {
+    CRGB color1;
+    CRGB color2;  // For sharps/flats
+    bool isSharp;
+    uint8_t position;
+};
+
 class LEDManager {
 public:
     static void init();
@@ -35,7 +59,7 @@ public:
     static void startLoadingAnimation();
     static void stopLoadingAnimation();
     static void nextMode();
-    static void setMode(Mode newMode);
+    static void setMode(Mode mode);
     static void setFestiveTheme(FestiveTheme theme);
     static void setLED(int index, CRGB color);
     static void syncLEDsForDay();
@@ -50,6 +74,11 @@ public:
     static FestiveTheme currentTheme;
     static void displayCardPattern(uint8_t* uid, uint8_t length);
     static void update();
+    static void setPattern(Pattern pattern);
+    static Pattern getPattern() { return currentPattern; }
+    static void handleMessage(LEDMessage msg, CRGB color = CRGB::Black);
+    static void displayNote(uint16_t frequency, uint8_t position = 0);
+    static void clearNoteDisplay();
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];
@@ -73,4 +102,18 @@ private:
     static void updateTimerMode();
     static void updateFestiveMode();
     static CRGB getRainbowColor(uint8_t index);
+    static Pattern currentPattern;
+    static void updateIRBlastPattern();
+    static void updateSlotsPattern();
+    static void updateNFCScanPattern();
+    static NoteState currentNotes[WS2812_NUM_LEDS];
+    static CRGB getNoteColor(uint16_t frequency);
+    static bool isSharpNote(uint16_t frequency);
+    static CRGB winningColor;
+    static bool transitioningColor;
+    static uint8_t currentFadeIndex;
+    static unsigned long lastUpdate;
+    static CRGB targetColor;
+    static const uint8_t fadeSequence[];
+    static bool readyForMelody;
 }; 

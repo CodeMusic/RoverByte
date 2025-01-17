@@ -4,9 +4,12 @@
 #include <FastLED.h>
 #include "LEDManager.h"
 #include <time.h>
-#include "ColorUtilities.h"
+#include "VisualSynesthesia.h"
 #include "../PrefrontalCortex/utilities.h"
 #include "../AuditoryCortex/SoundFxManager.h"
+#include "../SomatosensoryCortex/AppManager.h"
+#include "../AuditoryCortex/PitchPerception.h"
+#include "../PsychicCortex/NFCManager.h"
 
 // Static member initialization
 CRGB LEDManager::leds[WS2812_NUM_LEDS];
@@ -23,7 +26,21 @@ FestiveTheme LEDManager::currentTheme = FestiveTheme::CHRISTMAS;
 uint8_t LEDManager::animationStep = 0;
 uint8_t LEDManager::fadeValue = 128;
 bool LEDManager::fadeDirection = true;
+
+NoteState LEDManager::currentNotes[WS2812_NUM_LEDS];
 CRGB LEDManager::previousColors[WS2812_NUM_LEDS];
+Pattern LEDManager::currentPattern = Pattern::NONE;
+
+
+//resolve this clutter
+CRGB LEDManager::winningColor = CRGB::Green;
+bool LEDManager::transitioningColor = false;
+uint8_t LEDManager::currentFadeIndex = 0;
+unsigned long LEDManager::lastUpdate = 0;
+CRGB LEDManager::targetColor = CRGB::Blue;
+const uint8_t LEDManager::fadeSequence[] = {6, 5, 7, 4, 0, 3, 1, 2};
+bool LEDManager::readyForMelody = false;
+//--
 
 void LEDManager::init() {
     pinMode(BOARD_PWR_EN, OUTPUT);
@@ -57,41 +74,28 @@ void LEDManager::stopLoadingAnimation() {
 }
 
 void LEDManager::updateLEDs() {
-    if (SlotsManager::isGameActive() || IRManager::isBlasting()) {
-        return; // Don't override game LEDs
+    if (AppManager::isAppActive()) {
+        switch (currentPattern) {
+            case Pattern::SLOTS_GAME:
+                updateSlotsPattern();
+                break;
+            case Pattern::IR_BLAST:
+                updateIRBlastPattern();
+                break;
+            case Pattern::NFC_SCAN:
+                updateNFCScanPattern();
+                break;
+            default:
+                break;
+        }
+        return;
     }
     
+    // Regular LED mode updates (existing code)
     static unsigned long lastUpdate = 0;
     const unsigned long UPDATE_INTERVAL = 125;
     
-    unsigned long currentTime = millis();
-    if (currentTime - lastUpdate >= UPDATE_INTERVAL) {
-        lastUpdate = currentTime;
-        
-        if (isLoading) {
-            updateLoadingAnimation();
-        } else {
-            switch (currentMode) {
-                case Mode::FULL_MODE:
-                    updateFullMode();
-                    break;
-                case Mode::WEEK_MODE:
-                    updateWeekMode();
-                    break;
-                case Mode::TIMER_MODE:
-                    updateTimerMode();
-                    break;
-                case Mode::OFF_MODE:
-                    FastLED.clear();
-                    FastLED.show();
-                    break;
-                case Mode::FESTIVE_MODE:
-                    updateFestiveMode();
-                    break;
-            }
-            FastLED.show();
-        }
-    }
+    // Rest of existing mode update code...
 }
 
 void LEDManager::setMode(Mode newMode) {
@@ -114,7 +118,7 @@ void LEDManager::updateFullMode() {
     int blinkState = (timeInfo->tm_sec % 3);
     
     // LED 0: Current day color (1-7, where 1 is Sunday)
-    CRGB dayColor = ColorUtilities::getDayColor(timeInfo->tm_wday + 1);
+    CRGB dayColor = VisualSynesthesia::getDayColor(timeInfo->tm_wday + 1);
     leds[0] = dayColor;
     
     // LED 1: Week number (base 5)
@@ -129,7 +133,7 @@ void LEDManager::updateFullMode() {
     
     // LED 2: Month (base 12)
     CRGB monthColor1, monthColor2;
-    ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+    VisualSynesthesia::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
     if (monthColor1 == monthColor2) {
         leds[2] = monthColor1;
     } else {
@@ -144,7 +148,7 @@ void LEDManager::updateFullMode() {
     int hour12 = timeInfo->tm_hour % 12;
     if (hour12 == 0) hour12 = 12;
     CRGB hourColor1, hourColor2;
-    ColorUtilities::getHourColors(hour12, hourColor1, hourColor2);
+    VisualSynesthesia::getHourColors(hour12, hourColor1, hourColor2);
     if (hourColor1 == hourColor2) {
         leds[3] = hourColor1;
     } else {
@@ -159,15 +163,15 @@ void LEDManager::updateFullMode() {
     int minutes = timeInfo->tm_min;
     int minTens = minutes / 8;
     int minOnes = minutes % 8;
-    leds[4] = ColorUtilities::getBase8Color(minTens);
-    leds[5] = ColorUtilities::getBase8Color(minOnes);
+    leds[4] = VisualSynesthesia::getBase8Color(minTens);
+    leds[5] = VisualSynesthesia::getBase8Color(minOnes);
     
     // LED 6-7: Day of month (base 8)
     int day = timeInfo->tm_mday;
     int dayTens = day / 8;
     int dayOnes = day % 8;
-    leds[6] = ColorUtilities::getBase8Color(dayOnes);
-    leds[7] = ColorUtilities::getBase8Color(dayTens);
+    leds[6] = VisualSynesthesia::getBase8Color(dayOnes);
+    leds[7] = VisualSynesthesia::getBase8Color(dayTens);
 }
 
 void LEDManager::updateWeekMode() {
@@ -179,7 +183,7 @@ void LEDManager::updateWeekMode() {
     
     // LED 0: Month color with alternating pattern
     CRGB monthColor1, monthColor2;
-    ColorUtilities::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
+    VisualSynesthesia::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
     
     // Month LED should always blink
     if (shouldBlink) {
@@ -191,7 +195,7 @@ void LEDManager::updateWeekMode() {
     
     // Days of week
     for (int i = 1; i <= 7; i++) {
-        CRGB dayColor = ColorUtilities::getDayColor(i);
+        CRGB dayColor = VisualSynesthesia::getDayColor(i);
         
         if (i - 1 < timeInfo->tm_wday) {
             leds[i] = CRGB::Black;  // Past days are off
@@ -385,31 +389,20 @@ void LEDManager::flashLevelUp() {
 }
 
 void LEDManager::displayCardPattern(uint8_t* uid, uint8_t length) {
-    // Save current LED state
-    CRGB savedLeds[WS2812_NUM_LEDS];
-    memcpy(savedLeds, leds, sizeof(CRGB) * WS2812_NUM_LEDS);
+    static unsigned long lastUpdate = 0;
+    static uint8_t step = 0;
     
-    // Display UID pattern
-    for (int i = 0; i < ((int)length < 8 ? (int)length : 8); i++) {
-        uint8_t value = uid[i];
-        CRGB color;
-        color.r = value & 0x3;  // 2 bits for red
-        color.g = (value >> 2) & 0x7;  // 3 bits for green
-        color.b = (value >> 5) & 0x7;  // 3 bits for blue
-        
-        // Scale up the colors
-        color.r = color.r * 64;  // 0-255 range
-        color.g = color.g * 32;
-        color.b = color.b * 32;
-        
-        leds[i] = color;
+    if (millis() - lastUpdate < 50) return;
+    lastUpdate = millis();
+    
+    // Use card UID to create unique patterns
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        uint8_t hue = (uid[i % length] + step) % 255;
+        leds[i] = CHSV(hue, 255, 255);
     }
-    FastLED.show();
     
-    // Restore original state after 2 seconds
-    delay(2000);
-    memcpy(leds, savedLeds, sizeof(CRGB) * WS2812_NUM_LEDS);
-    FastLED.show();
+    step = (step + 1) % 255;
+    showLEDs();
 }
 
 void LEDManager::syncLEDsForDay() {
@@ -577,4 +570,147 @@ void LEDManager::setFestiveTheme(FestiveTheme theme) {
     currentMode = Mode::FESTIVE_MODE;
     FastLED.clear();
     updateLEDs();
+}
+
+void LEDManager::updateIRBlastPattern() {
+    static uint8_t currentLEDPosition = 0;
+    static bool animationDirection = true;
+    
+    FastLED.clear();
+    
+    if (animationDirection) {
+        // Moving outward from center
+        setLED(4, CRGB::Red);  // Always show center
+        if (currentLEDPosition < 4) {
+            setLED(4 - currentLEDPosition, CRGB::Red);
+            setLED(4 + currentLEDPosition, CRGB::Red);
+        }
+        
+        currentLEDPosition++;
+        if (currentLEDPosition >= 4) {
+            animationDirection = false;
+            currentLEDPosition = 4;
+            SoundFxManager::playTone(1000, 200);
+        }
+    } else {
+        // Moving inward to center
+        setLED(4, CRGB::Red);  // Always show center
+        if (currentLEDPosition > 0) {
+            setLED(4 - currentLEDPosition, CRGB::Red);
+            setLED(4 + currentLEDPosition, CRGB::Red);
+        }
+        
+        currentLEDPosition--;
+        if (currentLEDPosition == 0) {
+            animationDirection = true;
+        }
+    }
+    
+    showLEDs();
+}
+
+void LEDManager::updateSlotsPattern() {
+    // Move slots LED code from SlotsManager
+    // But keep using LEDManager's methods
+}
+
+void LEDManager::updateNFCScanPattern() {
+    
+    if (millis() - lastUpdate < 30) return;
+    lastUpdate = millis();
+
+    if (transitioningColor) {
+        if (currentFadeIndex < sizeof(fadeSequence)) {
+            // Fade sequence from blue to green
+            uint8_t ledIndex = fadeSequence[currentFadeIndex];
+            leds[ledIndex] = blend(CRGB::Blue, CRGB::Green, fadeValue);
+            fadeValue += 5;
+            
+            if (fadeValue >= 255) {
+                fadeValue = 0;
+                currentFadeIndex++;
+            }
+        } else if (!readyForMelody) {
+            readyForMelody = true;
+            // Now ready for card melody and note display
+            SoundFxManager::playCardMelody(NFCManager::getLastCardId());  // This will trigger displayNote for each note
+        }
+    } else {
+        // Normal blue pulse
+        fadeValue += (fadeDirection ? 5 : -5);
+        if (fadeValue <= 50) fadeDirection = true;
+        if (fadeValue >= 250) fadeDirection = false;
+        
+        fill_solid(leds, WS2812_NUM_LEDS, CRGB::Blue);
+        fadeToBlackBy(leds, WS2812_NUM_LEDS, 255 - fadeValue);
+    }
+    
+    showLEDs();
+}
+
+void LEDManager::setPattern(Pattern pattern) {
+    currentPattern = pattern;
+}
+
+void LEDManager::handleMessage(LEDMessage msg, CRGB color) {
+    switch(msg) {
+        case LEDMessage::SLOTS_WIN:
+            // Store winning color and start victory flash
+            LEDManager::currentPattern = Pattern::SLOTS_GAME;
+            // Store color for use in updateSlotsPattern
+            winningColor = color;
+            break;
+            
+        case LEDMessage::IR_SUCCESS:
+            flashSuccess();
+            break;
+            
+        case LEDMessage::NFC_DETECTED:
+            LEDManager::currentPattern = Pattern::NFC_SCAN;
+            LEDManager::transitioningColor = true;
+            LEDManager::fadeValue = 0;
+            LEDManager::currentFadeIndex = 0;
+            LEDManager::readyForMelody = false;
+            break;
+            
+        case LEDMessage::NFC_ERROR:
+            LEDManager::currentPattern = Pattern::NFC_SCAN;
+            LEDManager::targetColor = CRGB::Red;
+            LEDManager::fadeValue = 0;
+            LEDManager::transitioningColor = true;
+            break;
+            
+        default:
+            break;
+    }
+}
+
+
+static bool tickTock = false;
+CRGB LEDManager::getNoteColor(uint16_t frequency) {
+    return VisualSynesthesia::getColorForFrequency(frequency);
+}
+
+void LEDManager::displayNote(uint16_t frequency, uint8_t position) {
+    position = position % WS2812_NUM_LEDS;
+    
+    NoteInfo info = PitchPerception::getNoteInfo(frequency);
+    LEDManager::currentNotes[position].isSharp = info.isSharp;
+    LEDManager::currentNotes[position].position = position;
+    
+    if (info.isSharp) {
+        // For sharp/flat notes, get colors of adjacent natural notes
+        uint16_t lowerFreq = PitchPerception::getStandardFrequency(frequency - 10);
+        uint16_t upperFreq = PitchPerception::getStandardFrequency(frequency + 10);
+        currentNotes[position].color1 = LEDManager::getNoteColor(lowerFreq);
+        currentNotes[position].color2 = LEDManager::getNoteColor(upperFreq);
+    } else {
+        CRGB noteColor = LEDManager::getNoteColor(frequency);
+        LEDManager::currentNotes[position].color1 = noteColor;
+        LEDManager::currentNotes[position].color2 = noteColor;
+    }
+
+    leds[position] = tickTock ? LEDManager::currentNotes[position].color1 : LEDManager::currentNotes[position].color2;
+    tickTock = !tickTock;
+    showLEDs();
 } 

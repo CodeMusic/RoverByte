@@ -3,8 +3,14 @@
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../PrefrontalCortex/SDManager.h"
+#include <Wire.h>
+#include <Adafruit_PN532.h>
+#include <string.h> // For strcmp
 
-Adafruit_PN532 NFCManager::nfc(BOARD_PN532_IRQ, BOARD_PN532_RF_REST);
+// Define your I2C or SPI connection to the PN532 module
+#define SDA_PIN 4
+#define SCL_PIN 5
+Adafruit_PN532 NFCManager::nfc(SDA_PIN, SCL_PIN);
 uint32_t NFCManager::lastCardId = 0;
 uint32_t NFCManager::totalScans = 0;
 bool NFCManager::cardPresent = false;
@@ -13,6 +19,13 @@ bool NFCManager::initInProgress = false;
 uint8_t NFCManager::initStage = 0;
 bool NFCManager::isProcessingScan = false;
 char NFCManager::cardData[256] = {0};
+
+// Example valid card IDs
+const char* validCardIDs[] = {
+    "ROVER123",
+    "BYTE456",
+    "ROVERBYTE789"
+};
 
 void NFCManager::init() {
     LOG_PROD("Starting NFC initialization...");
@@ -77,47 +90,31 @@ void NFCManager::update() {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
     uint8_t uidLength;
     
-    success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
-    
-    if (success) {
-        if (uidLength >= 4) {
-            uint32_t cardid = uid[0];
-            cardid <<= 8; cardid |= uid[1];
-            cardid <<= 8; cardid |= uid[2];
-            cardid <<= 8; cardid |= uid[3];
+    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+        if (!cardPresent) {
+            cardPresent = true;
+            LEDManager::setPattern(Pattern::NFC_SCAN);
             
-            if (cardid != lastCardId || (millis() - lastScanTime >= SCAN_COOLDOWN)) {
-                isProcessingScan = true;
-                lastCardId = cardid;
-                lastScanTime = millis();
-                totalScans++;
-                cardPresent = true;
+            if (isCardValid()) {
+                LEDManager::handleMessage(LEDMessage::NFC_DETECTED);
                 
-                uint16_t expGain = (cardid % 20) + 1;
-                bool isNewCard = !SDManager::hasCardBeenScanned(cardid);
-                
-                if (isNewCard) {
-                    SDManager::recordCardScan(cardid);
-                    RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000, TFT_GOLD);  // Golden stars
-                } else {
-                    RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000, TFT_SILVER);  // Silver stars
-                }
-                
-                SoundFxManager::playCardMelody(cardid);
-                LEDManager::displayCardPattern(uid, uidLength);
+                // Calculate experience based on card data
+                uint16_t expGain = (uid[0] + uid[1] + uid[2] + uid[3]) % 50 + 10;
                 RoverViewManager::incrementExperience(expGain);
-                isProcessingScan = false;
                 
-                RoverViewManager::showNotification("NFC Card", "Hold still, reading data...", "NFC", 1000);
+                // Start entertainment pattern using card data
+                LEDManager::displayCardPattern(uid, uidLength);
+                
+                // Read card data and generate song
                 readCardData();
-                
-                char uidStr[32];
-                sprintf(uidStr, "ID: %02X%02X%02X%02X", uid[0], uid[1], uid[2], uid[3]);
-                RoverViewManager::showNotification("NFC Scan", uidStr, cardData, 3000);
+                VisualSynesthesia::playNFCCardData(cardData);
+            } else { 
+                LEDManager::handleMessage(LEDMessage::NFC_ERROR);
             }
         }
     } else {
         cardPresent = false;
+        LEDManager::setPattern(Pattern::NONE);
     }
 }
 
@@ -185,4 +182,22 @@ void NFCManager::checkForCard() {
     } else {
         cardPresent = false;
     }
+}
+
+void NFCManager::stop() {
+    isProcessingScan = false;
+    initInProgress = false;
+    cardPresent = false;
+}
+
+bool NFCManager::isCardValid() {
+    // Assuming cardData holds the scanned card ID
+    for (const char* validID : validCardIDs) {
+        if (strcmp(cardData, validID) == 0) {
+            Serial.println("Card is valid: " + String(cardData));
+            return true; // Card is valid
+        }
+    }
+    Serial.println("Card is not valid: " + String(cardData));
+    return true; // Card is not valid (FOR NOW WE ARE JUST GOING TO ASSUME IT IS VALID)
 }

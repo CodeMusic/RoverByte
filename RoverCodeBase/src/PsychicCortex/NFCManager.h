@@ -18,7 +18,8 @@ public:
     static void readCardData();
     static void startBackgroundInit();
     static bool isInitializing() { return initInProgress; }
-    static void handleSideButtonPress() { handleNFCScan(); }
+    static void stop();
+    static bool isCardValid();
     
 private:
     static Adafruit_PN532 nfc;

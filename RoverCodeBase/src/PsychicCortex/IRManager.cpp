@@ -4,11 +4,8 @@
 
 bool IRManager::blasting = false;
 unsigned long IRManager::lastSendTime = 0;
-unsigned long IRManager::lastLEDUpdate = 0;
 uint16_t IRManager::currentCode = 0;
 uint8_t IRManager::currentRegion = 0;
-uint8_t IRManager::currentLEDPosition = 0;
-bool IRManager::animationDirection = true;
 IRsend IRManager::irsend(BOARD_IR_RX);  // Initialize with IR pin
 
 void IRManager::init() {
@@ -20,38 +17,17 @@ void IRManager::init() {
 
 void IRManager::startBlast() {
     blasting = true;
-    digitalWrite(BOARD_IR_EN, HIGH);
-    lastSendTime = millis();
-    lastLEDUpdate = millis();
-    currentLEDPosition = 4;  // Start at center
-    currentCode = 0;
-    currentRegion = 0;
-    animationDirection = true;
-    
-    LEDManager::setMode(Mode::OFF_MODE);  // Prevent LED pattern interference
-    FastLED.clear();
-    LEDManager::setLED(4, CRGB::Red);  // Center LED
-    LEDManager::showLEDs();
-    
-    MenuManager::hide();
-    RoverViewManager::showNotification("IR", "Starting blast...", "BLAST", 1000);
+    LEDManager::setPattern(Pattern::IR_BLAST);
 }
 
 void IRManager::stopBlast() {
     blasting = false;
-    digitalWrite(BOARD_IR_EN, LOW); // Disable IR
-    FastLED.clear();
-    FastLED.show();
-    RoverViewManager::showNotification("IR Blast", "Stopped!", "IR", 2000);
+    LEDManager::setPattern(Pattern::NONE);
 }
+
+
 void IRManager::update() {
     if (!blasting) return;
-    
-    // Update LED animation
-    if (millis() - lastLEDUpdate >= LED_UPDATE_MS) {
-        updateLEDAnimation();
-        lastLEDUpdate = millis();
-    }
     
     // Update IR codes
     if (millis() - lastSendTime >= SEND_DELAY_MS) {
@@ -79,42 +55,6 @@ void IRManager::update() {
         
         RoverViewManager::showNotification("IR", progressStr, "BLAST", 500);
     }
-}
-
-void IRManager::updateLEDAnimation() {
-    if (!blasting) return;
-    
-    FastLED.clear();
-    
-    if (animationDirection) {
-        // Moving outward from center
-        LEDManager::setLED(4, CRGB::Red);  // Always show center
-        if (currentLEDPosition < 4) {
-            LEDManager::setLED(4 - currentLEDPosition, CRGB::Red);
-            LEDManager::setLED(4 + currentLEDPosition, CRGB::Red);
-        }
-        
-        currentLEDPosition++;
-        if (currentLEDPosition >= 4) {
-            animationDirection = false;
-            currentLEDPosition = 4;
-            SoundFxManager::playTone(1000, 200);
-        }
-    } else {
-        // Moving inward to center
-        LEDManager::setLED(4, CRGB::Red);  // Always show center
-        if (currentLEDPosition > 0) {
-            LEDManager::setLED(4 - currentLEDPosition, CRGB::Red);
-            LEDManager::setLED(4 + currentLEDPosition, CRGB::Red);
-        }
-        
-        currentLEDPosition--;
-        if (currentLEDPosition == 0) {
-            animationDirection = true;
-        }
-    }
-    
-    LEDManager::showLEDs();
 }
 
 void IRManager::sendCode(uint16_t code) {

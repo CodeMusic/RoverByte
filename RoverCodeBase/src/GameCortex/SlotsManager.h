@@ -7,12 +7,9 @@ class SlotsManager {
 public:
     static void init();
     static void update();
-    static void handleButtonPress();
+    static void spin();
     static void reset();
-    static void startGame();
-    static bool isGameActive() { return gameActive; }
-
-private:
+    
     static uint8_t activeSlotPair;
     static bool slotLocked[4];
     static CRGB slotColors[4];
@@ -22,4 +19,7 @@ private:
     static void checkResult();
     static void showResult(bool won);
     static CRGB getRainbowColor(uint8_t index);
+    static unsigned long lockTimer;
+    static bool isGameActive() { return gameActive; }
+    static void startGame();
 }; 

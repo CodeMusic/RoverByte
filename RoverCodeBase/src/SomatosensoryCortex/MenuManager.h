@@ -43,4 +43,5 @@ private:
     static int selectedIndex;
     
     static void goBack();
+    static const unsigned long DEBOUNCE_DELAY = 50;
 }; 

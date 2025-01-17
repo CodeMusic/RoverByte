@@ -3,7 +3,7 @@
 
 #include "TFT_eSPI.h"
 #include "../PrefrontalCortex/utilities.h"
-#include "ColorUtilities.h"
+#include "VisualSynesthesia.h"
 #include "../PrefrontalCortex/PowerManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
 #include <vector>
@@ -39,6 +39,7 @@ public:
     static ViewType getCurrentView() { return currentView; }
     static void drawLoadingScreen(const char* statusText);  
     static void incrementExperience(uint16_t amount);
+    static void drawAppSplash(const char* title, const char* description);
 
     struct Notification {
         const char* header;
@@ -53,8 +54,6 @@ public:
     static void clearNotification();
     static bool hasActiveNotification();
 
-    static bool showTime;
-
     enum class InputType {
         INPUT_LEFT,
         INPUT_RIGHT
@@ -63,6 +62,8 @@ public:
     static void drawWordWrappedText(const char* text, int x, int y, int maxWidth);
 
     static void drawFullScreenMenu(const char* title, const std::vector<MenuItem>& items, int selectedIndex);
+
+    static void drawMenuBackground();
 
 private:
     static int currentFrameX;
@@ -91,6 +92,7 @@ private:
     static const ChakraInfo CHAKRA_DATA[];
     static const VirtueInfo VIRTUE_DATA[];
 
+
     static const int FRAME_X = 2;
     static const int FRAME_Y = 195;
     static const int FRAME_WIDTH = 280;
@@ -99,6 +101,8 @@ private:
     static const int CONTENT_LEFT_OFFSET = 35;
     static const uint16_t FRAME_COLOR = 0xC618;
     static const uint16_t FRAME_BORDER_COLOR = TFT_DARKGREY;
+
+
     
     // Drawing methods for different views
     static void drawFrame();
@@ -109,6 +113,9 @@ private:
     static void drawNextMeal();
     static void drawChakras();
     static void drawVirtues();
+
+    static void updateExperienceBar(const String& expStr);
+
 
     static uint32_t experience;
     static uint16_t experienceToNextLevel;
@@ -127,6 +134,10 @@ private:
     static bool isAnimating;
     static int animationStep;
     static const int TOTAL_ANIMATION_STEPS = 14;
+
+    static uint32_t roverExperience;
+    static uint32_t roverExperienceToNextLevel;
+    static uint8_t roverLevel;
 
     // Expression timing
     static unsigned long lastExpressionChange;
