@@ -10,42 +10,42 @@
 #include <SPIFFS.h>
 
 // Initialize static members
-RoverBehaviorManager::BehaviorState RoverBehaviorManager::currentState = RoverBehaviorManager::LOADING;
-RoverBehaviorManager::LoadingPhase RoverBehaviorManager::loadingPhase = RoverBehaviorManager::BOOTING;
+RoverBehaviorManager::BehaviorState RoverBehaviorManager::currentState = BehaviorState::LOADING;
+RoverBehaviorManager::LoadingPhase RoverBehaviorManager::loadingPhase = LoadingPhase::BOOTING;
 const char* RoverBehaviorManager::currentStatusMessage = "";
 
 void RoverBehaviorManager::init() {
     // Start in LOADING state, BOOTING phase
-    setState(LOADING);
-    setLoadingPhase(BOOTING);
+    setState(BehaviorState::LOADING);
+    setLoadingPhase(LoadingPhase::BOOTING);
     LEDManager::startLoadingAnimation(); // Optional loading animation
 }
 
 void RoverBehaviorManager::update() {
     switch (currentState) {
-        case LOADING:
+        case BehaviorState::LOADING:
             handleLoading();
             break;
-        case HOME:
+        case BehaviorState::HOME:
             handleHome();
             break;
-        case MENU:
+        case BehaviorState::MENU:
             handleMenu();
             break;
-        case APP:
+        case BehaviorState::APP:
             handleApp();
             break;
-        case ERROR:
+        case BehaviorState::ERROR:
             handleError();
             break;
     }
 
     // Decide what to draw
     switch (currentState) {
-        case LOADING:
+        case BehaviorState::LOADING:
             RoverViewManager::drawLoadingScreen(currentStatusMessage);
             break;
-        case HOME:
+        case BehaviorState::HOME:
             if (MenuManager::isVisible()) {
                 MenuManager::drawMenu();
             } else if (RoverViewManager::hasActiveNotification()) {
@@ -54,11 +54,10 @@ void RoverBehaviorManager::update() {
                 RoverViewManager::drawCurrentView();
             }
             break;
-        case MENU:
+        case BehaviorState::MENU:
             MenuManager::drawMenu();
             break;
-        case APP:
-            // If in an app (e.g., a game), could manage sub-logic here
+        case BehaviorState::APP:
             if (MenuManager::isVisible()) {
                 MenuManager::drawMenu();
             } else if (RoverViewManager::hasActiveNotification()) {
@@ -67,7 +66,7 @@ void RoverBehaviorManager::update() {
                 RoverViewManager::drawCurrentView();
             }
             break;
-        case ERROR:
+        case BehaviorState::ERROR:
             RoverViewManager::drawLoadingScreen(currentStatusMessage);
             break;
     }
@@ -83,21 +82,21 @@ RoverBehaviorManager::BehaviorState RoverBehaviorManager::getCurrentState() {
 void RoverBehaviorManager::setState(BehaviorState state) {
     currentState = state;
     switch (state) {
-        case LOADING:
+        case BehaviorState::LOADING:
             currentStatusMessage = "Loading...";
             LEDManager::startLoadingAnimation();
             break;
-        case HOME:
+        case BehaviorState::HOME:
             currentStatusMessage = "Welcome Home!";
             LEDManager::stopLoadingAnimation();
             break;
-        case MENU:
+        case BehaviorState::MENU:
             currentStatusMessage = "Menu";
             break;
-        case APP:
+        case BehaviorState::APP:
             currentStatusMessage = "App Running";
             break;
-        case ERROR:
+        case BehaviorState::ERROR:
             currentStatusMessage = "Error Occurred!";
             LEDManager::stopLoadingAnimation();
             break;
@@ -111,13 +110,13 @@ RoverBehaviorManager::LoadingPhase RoverBehaviorManager::getLoadingPhase() {
 void RoverBehaviorManager::setLoadingPhase(LoadingPhase phase) {
     loadingPhase = phase;
     switch (phase) {
-        case BOOTING:
+        case LoadingPhase::BOOTING:
             currentStatusMessage = "Booting Up...";
             break;
-        case CONNECTING_WIFI:
+        case LoadingPhase::CONNECTING_WIFI:
             currentStatusMessage = "Connecting to Wi-Fi...";
             break;
-        case SYNCING_TIME:
+        case LoadingPhase::SYNCING_TIME:
             currentStatusMessage = "Synchronizing Time...";
             break;
     }
@@ -131,13 +130,13 @@ const char* RoverBehaviorManager::getStatusMessage() {
 
 void RoverBehaviorManager::handleLoading() {
     switch (loadingPhase) {
-        case BOOTING:
+        case LoadingPhase::BOOTING:
             handleBooting();
             break;
-        case CONNECTING_WIFI:
+        case LoadingPhase::CONNECTING_WIFI:
             handleWiFiConnection();
             break;
-        case SYNCING_TIME:
+        case LoadingPhase::SYNCING_TIME:
             handleTimeSync();
             break;
     }
@@ -150,12 +149,13 @@ void RoverBehaviorManager::handleHome() {
 }
 
 void RoverBehaviorManager::handleMenu() {
+    Serial.println("handleMenu");
     // The menu system manages its own logic
 }
 
 void RoverBehaviorManager::handleApp() {
     if (!AppManager::isAppActive()) {
-        setState(HOME);
+        setState(BehaviorState::HOME);
     }
 }
 
@@ -195,7 +195,7 @@ void RoverBehaviorManager::handleBooting() {
         if (step == 0) {
             cycles++;
             if (cycles >= 2) {
-                setLoadingPhase(CONNECTING_WIFI);
+                setLoadingPhase(LoadingPhase::CONNECTING_WIFI);
                 WiFiManager::init();
                 delay(100);
             }
@@ -213,13 +213,13 @@ void RoverBehaviorManager::handleWiFiConnection() {
             lastAttempt = millis();
         }
     } else {
-        setLoadingPhase(SYNCING_TIME);
+        setLoadingPhase(LoadingPhase::SYNCING_TIME);
     }
 }
 
 void RoverBehaviorManager::handleTimeSync() {
     if (WiFiManager::getTimeInitialized()) {
-        setState(HOME);
+        setState(BehaviorState::HOME);
     } else {
         WiFiManager::syncTime();
     }

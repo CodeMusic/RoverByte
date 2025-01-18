@@ -1,4 +1,5 @@
 #include "WiFiManager.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../PrefrontalCortex/PowerManager.h"
@@ -14,10 +15,21 @@ bool WiFiManager::isWiFiConnected = false;
 unsigned long WiFiManager::lastWiFiAttempt = 0;
 bool WiFiManager::timeInitialized = false;
 
-void WiFiManager::init() {
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect(true);  // Disconnect and clear credentials
-    delay(100);
+bool WiFiManager::init() {
+    // Initialization code
+    // Return true if successful, false otherwise
+    bool success = false;
+
+    // Example:
+    WiFi.begin(PRIMARY_SSID, PRIMARY_PASSWORD);
+    if (WiFi.waitForConnectResult() == WL_CONNECTED) {
+        isWiFiConnected = true;
+        success = true;
+    } else {
+        isWiFiConnected = false;
+    }
+
+    return success;
 }
 
 void WiFiManager::checkConnection() {
@@ -62,7 +74,7 @@ void WiFiManager::checkConnection() {
     }
 }
 
-void WiFiManager::syncTime() {
+bool WiFiManager::syncTime() {
     static unsigned long lastTimeCheck = 0;
     static int timeAttempts = 0;
     
@@ -71,6 +83,7 @@ void WiFiManager::syncTime() {
         if (time(nullptr) > 1000000000) {
             timeInitialized = true;
             LOG_PROD("Time sync complete");
+            return true;
         } else {
             timeAttempts++;
             if (timeAttempts >= 40) {
@@ -79,9 +92,10 @@ void WiFiManager::syncTime() {
         }
         lastTimeCheck = millis();
     }
+    return false;
 }
 
-void WiFiManager::connectToWiFi() {
+bool WiFiManager::connectToWiFi() {
     Serial.println("Starting WiFi connection process");
     WiFi.disconnect(true);  // Ensure clean connection attempt
     delay(100);
@@ -89,20 +103,12 @@ void WiFiManager::connectToWiFi() {
     lastWiFiAttempt = millis();
     isWiFiConnected = false;  // Reset connection state
     checkConnection();
+    return isWiFiConnected;
 }
-
 // Generic error handler
 void handleError(const char* errorMessage) {
     LOG_PROD("Error: %s", errorMessage);
     RoverManager::setTemporaryExpression(RoverManager::LOOKING_DOWN, 1000);
-}
-
-// For radio button release
-void handleRadioButtonRelease() {
-    // ... existing radio button code ...
-    
-    delay(1000);  // Wait a second
-    RoverManager::setTemporaryExpression(RoverManager::LOOKING_UP, 1000);
 }
 
 // Example usage in various scenarios

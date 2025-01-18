@@ -7,7 +7,7 @@
 #include "../MotorCortex/PinDefinitions.h"
 
 // Forward declaration
-class RoverViewManager;
+class RoverBehaviorManager;
 
 #define GMT_OFFSET_SEC (-5 * 3600)  // EST (DST)
 #define DAY_LIGHT_OFFSET_SEC 3600   // 1 hour of daylight saving
@@ -15,12 +15,12 @@ class RoverViewManager;
 
 class WiFiManager {
 public:
-    static void init();
+    static bool init();
     static void checkConnection();
     static bool isConnected() { return isWiFiConnected; }
-    static void connectToWiFi();
+    static bool connectToWiFi();
     static bool getTimeInitialized() { return timeInitialized; }
-    static void syncTime();
+    static bool syncTime();
 
 private:
     static bool isRecording;

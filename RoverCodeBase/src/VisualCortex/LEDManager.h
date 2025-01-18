@@ -79,6 +79,7 @@ public:
     static void handleMessage(LEDMessage msg, CRGB color = CRGB::Black);
     static void displayNote(uint16_t frequency, uint8_t position = 0);
     static void clearNoteDisplay();
+    static void setErrorLED(bool state);
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];
@@ -116,4 +117,5 @@ private:
     static CRGB targetColor;
     static const uint8_t fadeSequence[];
     static bool readyForMelody;
+    static constexpr uint8_t ERROR_LED_INDEX = 0; // Adjust index based on your LED strip configuration
 }; 

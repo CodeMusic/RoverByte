@@ -713,4 +713,13 @@ void LEDManager::displayNote(uint16_t frequency, uint8_t position) {
     leds[position] = tickTock ? LEDManager::currentNotes[position].color1 : LEDManager::currentNotes[position].color2;
     tickTock = !tickTock;
     showLEDs();
+}
+
+void LEDManager::setErrorLED(bool state) {
+    if (state) {
+        leds[ERROR_LED_INDEX] = CRGB::Red;
+    } else {
+        leds[ERROR_LED_INDEX] = CRGB::Black;
+    }
+    FastLED.show();
 } 

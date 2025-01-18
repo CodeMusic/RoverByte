@@ -24,6 +24,8 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "memory": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "print": "cpp",
+        "ostream": "cpp"
     }
 }

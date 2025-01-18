@@ -1,10 +1,13 @@
 #ifndef ROVER_BEHAVIOR_MANAGER_H
 #define ROVER_BEHAVIOR_MANAGER_H
 
+// Forward declaration
+class WiFiManager;
+
 class RoverBehaviorManager {
 public:
-    // Top-level states
-    enum BehaviorState {
+    // Enum declarations
+    enum class BehaviorState {
         LOADING,
         HOME,
         MENU,
@@ -12,20 +15,19 @@ public:
         ERROR
     };
 
-    // Sub-phases (used only when currentState == LOADING)
-    enum LoadingPhase {
+    enum class LoadingPhase {
         BOOTING,
         CONNECTING_WIFI,
         SYNCING_TIME
     };
 
+    // Static methods
     static void init();
     static void update();
     
     static BehaviorState getCurrentState();
     static void setState(BehaviorState state);
 
-    // Sub-phase getters/setters for LOADING
     static LoadingPhase getLoadingPhase();
     static void setLoadingPhase(LoadingPhase phase);
 
