@@ -16,6 +16,7 @@ const char* RoverBehaviorManager::currentStatusMessage = "";
 RoverBehaviorManager::BehaviorState RoverBehaviorManager::previousState = BehaviorState::LOADING;
 unsigned long RoverBehaviorManager::warningStartTime = 0;
 int RoverBehaviorManager::currentBootStep = 0;
+bool RoverBehaviorManager::isCountingDown = false;
 
 void RoverBehaviorManager::init() {
     // Start in LOADING state, BOOTING phase
@@ -85,6 +86,11 @@ void RoverBehaviorManager::update() {
 
     // Push rendered sprite to display
     spr.pushSprite(0, 0);
+
+    // Add to existing update function
+    if (currentState == BehaviorState::WARNING) {
+        updateWarningCountdown();
+    }
 }
 
 RoverBehaviorManager::BehaviorState RoverBehaviorManager::getCurrentState() {
@@ -205,11 +211,19 @@ void RoverBehaviorManager::handleFatalError() {
 }
 
 void RoverBehaviorManager::handleWarning() {
-    if (millis() - warningStartTime >= WARNING_DISPLAY_TIME) {
-        setState(previousState);
+    if (!isCountingDown) return;
+    
+    unsigned long elapsed = millis() - warningStartTime;
+    if (elapsed >= RoverBehaviorManager::WARNING_DURATION || UIManager::isRotaryPressed()) {
+        // Clear warning state
+        isCountingDown = false;
+        setState(BehaviorState::IDLE);
         RoverViewManager::isError = false;
         LEDManager::clearErrorPattern();
+        return;
     }
+    
+    updateWarningCountdown();
 }
 
 //----- Sub-phase Handlers for LOADING -----
@@ -329,6 +343,7 @@ void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMes
     } else {
         setState(BehaviorState::WARNING);
         warningStartTime = millis();
+        isCountingDown = true;
     }
     
     RoverViewManager::errorCode = errorCode;
@@ -340,8 +355,36 @@ void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMes
     SoundFxManager::playErrorCode(errorCode, type == ErrorType::FATAL);
     LEDManager::setErrorPattern(errorCode, type == ErrorType::FATAL);
     
-    // Draw error screen
+    // Draw error screen with countdown for warnings
     RoverViewManager::drawErrorScreen(errorCode, errorMessage, type == ErrorType::FATAL);
+}
+
+void RoverBehaviorManager::updateWarningCountdown() {
+    if (!isCountingDown) return;
+    
+    unsigned long elapsed = millis() - warningStartTime;
+    int remainingSeconds = 3 - (elapsed / 1000);
+    
+    if (remainingSeconds <= 0) {
+        // Warning timeout - clear warning state
+        isCountingDown = false;
+        setState(BehaviorState::IDLE);
+        RoverViewManager::isError = false;
+        LEDManager::clearErrorPattern();
+        return;
+    }
+    
+    // Update countdown display
+    char countdownMsg[32];
+    sprintf(countdownMsg, "%s\n\nClearing in %d...", 
+        RoverViewManager::errorMessage, 
+        remainingSeconds
+    );
+    RoverViewManager::drawErrorScreen(
+        RoverViewManager::errorCode,
+        countdownMsg,
+        false
+    );
 }
 
 int RoverBehaviorManager::getCurrentBootStep() {

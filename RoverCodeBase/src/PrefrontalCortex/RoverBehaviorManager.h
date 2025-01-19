@@ -17,7 +17,8 @@ public:
         APP,
         WARNING,
         ERROR,
-        FATAL_ERROR  // New state for unrecoverable errors
+        FATAL_ERROR,  // New state for unrecoverable errors
+        IDLE
     };
 
     enum class LoadingPhase {
@@ -73,15 +74,20 @@ public:
 
     static int getCurrentBootStep();
 
+    static void updateWarningCountdown();
+    static bool isWarningCountdownActive() { return isCountingDown; }
+
+    static const unsigned long WARNING_DURATION = 3000; // 3 seconds for warnings
+
+    static unsigned long getWarningStartTime() { return warningStartTime; }
+
 private:
     static BehaviorState currentState;
     static LoadingPhase loadingPhase;
     static const char* currentStatusMessage;
-
     static BehaviorState previousState;
     static unsigned long warningStartTime;
-    static const unsigned long WARNING_DISPLAY_TIME = 2000; // 2 seconds
-
+    static bool isCountingDown;
     static int currentBootStep;
 
     // Main handlers for each top-level state
