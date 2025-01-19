@@ -80,6 +80,9 @@ public:
     static void displayNote(uint16_t frequency, uint8_t position = 0);
     static void clearNoteDisplay();
     static void setErrorLED(bool state);
+    static void setErrorPattern(uint32_t errorCode, bool isFatal);
+    static void clearErrorPattern();
+    static void updateErrorPattern();
 
 private:
     static CRGB leds[WS2812_NUM_LEDS];
@@ -117,5 +120,12 @@ private:
     static CRGB targetColor;
     static const uint8_t fadeSequence[];
     static bool readyForMelody;
-    static constexpr uint8_t ERROR_LED_INDEX = 0; // Adjust index based on your LED strip configuration
+    static constexpr uint8_t ERROR_LED_INDEX = 0;
+    static constexpr uint8_t ERROR_LED_COUNT = 8;
+
+    // Boot stage colors
+    static const CRGB HARDWARE_INIT_COLOR;
+    static const CRGB SYSTEM_START_COLOR;
+    static const CRGB NETWORK_PREP_COLOR;
+    static const CRGB FINAL_PREP_COLOR;
 }; 

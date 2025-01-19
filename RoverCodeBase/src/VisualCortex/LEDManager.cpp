@@ -10,6 +10,13 @@
 #include "../SomatosensoryCortex/AppManager.h"
 #include "../AuditoryCortex/PitchPerception.h"
 #include "../PsychicCortex/NFCManager.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
+
+// Boot stage colors
+const CRGB LEDManager::HARDWARE_INIT_COLOR = CRGB::Blue;    // Hardware initialization
+const CRGB LEDManager::SYSTEM_START_COLOR = CRGB::Green;    // System startup
+const CRGB LEDManager::NETWORK_PREP_COLOR = CRGB::Purple;   // Network preparation
+const CRGB LEDManager::FINAL_PREP_COLOR = CRGB::Orange;     // Final preparation
 
 // Static member initialization
 CRGB LEDManager::leds[WS2812_NUM_LEDS];
@@ -43,16 +50,26 @@ bool LEDManager::readyForMelody = false;
 //--
 
 void LEDManager::init() {
+    Serial.println("Starting LED Manager initialization...");
+    
     pinMode(BOARD_PWR_EN, OUTPUT);
     digitalWrite(BOARD_PWR_EN, HIGH);  // Power on LEDs
+    Serial.println("Board power enabled");
 
-    FastLED.addLeds<WS2813, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
-    FastLED.setBrightness(50);
-    FastLED.clear(true);
-    FastLED.show();
+    try {
+        FastLED.addLeds<WS2813, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
+        FastLED.setBrightness(50);
+        FastLED.clear(true);
+        FastLED.show();
+        Serial.println("FastLED initialized successfully");
+    } catch (const std::exception& e) {
+        Serial.println("ERROR initializing FastLED: ");
+        Serial.println(e.what());
+    }
+    
     delay(50);
-
-    startLoadingAnimation();  // Start in loading state
+    startLoadingAnimation();
+    Serial.println("Loading animation started");
 }
 
 void LEDManager::stopLoadingAnimation() {
@@ -303,17 +320,46 @@ void LEDManager::startLoadingAnimation() {
 void LEDManager::updateLoadingAnimation() {
     if (!isLoading) return;
     
+    unsigned long currentTime = millis();
+    if (currentTime - lastStepTime < 100) return;
+    
+    // Get current boot step from RoverBehaviorManager
+    int bootStep = RoverBehaviorManager::getCurrentBootStep();
+    
+    // Select color based on boot step
+    CRGB currentColor;
+    switch(bootStep) {
+        case 0:
+            currentColor = HARDWARE_INIT_COLOR;
+            break;
+        case 1:
+            currentColor = SYSTEM_START_COLOR;
+            break;
+        case 2:
+            currentColor = NETWORK_PREP_COLOR;
+            break;
+        case 3:
+            currentColor = FINAL_PREP_COLOR;
+            break;
+        default:
+            currentColor = CRGB::Blue;
+    }
+    
     FastLED.clear();
-    // Set Canadian flag pattern
-    leds[0] = CRGB::Red;
-    leds[4] = CRGB::Red;
-    leds[1] = CRGB::White;
-    leds[2] = CRGB::White;
-    leds[3] = CRGB::White;
-    leds[5] = CRGB::White;
-    leds[6] = CRGB::White;
-    leds[7] = CRGB::White;
+    
+    // Create running light effect with selected color
+    static uint8_t position = 0;
+    for (int i = 0; i < 4; i++) {
+        int ledPos = (position + i) % WS2812_NUM_LEDS;
+        leds[ledPos] = currentColor;
+        leds[ledPos].maximizeBrightness();
+    }
+    
+    position = (position + 1) % WS2812_NUM_LEDS;
+    FastLED.setBrightness(128);
     FastLED.show();
+    
+    lastStepTime = currentTime;
 }
 
 bool LEDManager::isLoadingComplete() {
@@ -722,4 +768,59 @@ void LEDManager::setErrorLED(bool state) {
         leds[ERROR_LED_INDEX] = CRGB::Black;
     }
     FastLED.show();
-} 
+}
+
+void LEDManager::setErrorPattern(uint32_t errorCode, bool isFatal) {
+    // Clear existing pattern first
+    FastLED.clear();
+    
+    // Make error more visible - use first 16 LEDs
+    CRGB errorColor = isFatal ? CRGB::Red : CRGB::Yellow;
+    
+    // Set all error indicator LEDs
+    for (uint8_t i = 0; i < ERROR_LED_COUNT * 2; i++) {
+        leds[i] = errorColor;
+    }
+    
+    // Encode error in binary using brighter LEDs
+    for (uint8_t i = 0; i < ERROR_LED_COUNT; i++) {
+        if (errorCode & (1 << i)) {
+            leds[i].maximizeBrightness();
+        }
+    }
+    
+    FastLED.setBrightness(isFatal ? 255 : 128);  // Full brightness for fatal errors
+    FastLED.show();
+    
+    // Debug output
+    Serial.printf("Error pattern set: code=0x%08X, fatal=%d\n", errorCode, isFatal);
+}
+
+void LEDManager::clearErrorPattern() {
+    // Clear error LEDs
+    fill_solid(leds + ERROR_LED_INDEX, ERROR_LED_COUNT * 2, CRGB::Black);
+    FastLED.show();
+}
+
+void LEDManager::updateErrorPattern() {
+    // Only update for fatal errors (pulsing effect)
+    if (RoverViewManager::isFatalError) {
+        // Update fade value
+        if (fadeDirection) {
+            fadeValue = min(255, fadeValue + 5);
+            if (fadeValue >= 255) fadeDirection = false;
+        } else {
+            fadeValue = max(64, fadeValue - 5);
+            if (fadeValue <= 64) fadeDirection = true;
+        }
+        
+        // Apply fade to error LEDs
+        for (uint8_t i = 0; i < ERROR_LED_COUNT; i++) {
+            if (leds[ERROR_LED_INDEX + i].r > 0) { // Only fade red LEDs (fatal errors)
+                leds[ERROR_LED_INDEX + i].fadeToBlackBy(255 - fadeValue);
+            }
+        }
+        
+        FastLED.show();
+    }
+}

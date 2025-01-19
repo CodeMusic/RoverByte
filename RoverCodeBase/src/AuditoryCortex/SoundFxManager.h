@@ -27,6 +27,11 @@
 #define BYTE_RATE          (EXAMPLE_SAMPLE_RATE * (EXAMPLE_BIT_SAMPLE / 8)) * NUM_CHANNELS
 const int WAVE_HEADER_SIZE = 44;
 
+struct ErrorTone {
+    uint16_t frequency;
+    uint16_t duration;
+};
+
 class SoundFxManager {
 private:
     struct Note {
@@ -100,6 +105,8 @@ public:
             audio_eof_mp3("update");
         }
     }
+
+    static void playErrorCode(uint32_t errorCode, bool isFatal);
 };
 
 #endif 

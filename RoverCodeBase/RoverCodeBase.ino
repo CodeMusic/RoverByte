@@ -43,56 +43,107 @@ RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03)
 bool hasSDCard = false;
 void setup() {
     Serial.begin(115200);
-    delay(100); // Give serial time to initialize
+    delay(100);
     
     // Initialize display first
-    tft.init();
-    tft.setRotation(0);
-    tft.writecommand(TFT_SLPOUT);
-    delay(120);
-    tft.writecommand(TFT_DISPON);
-    spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
-    spr.setTextDatum(MC_DATUM);
+    try {
+        tft.init();
+        tft.setRotation(0);
+        tft.writecommand(TFT_SLPOUT);
+        delay(120);
+        tft.writecommand(TFT_DISPON);
+        spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
+        spr.setTextDatum(MC_DATUM);
+    } catch (const std::exception& e) {
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::DISPLAY_INIT_FAILED),
+            "Display initialization failed"
+        );
+        return;
+    }
     
-    // Initialize core managers with try-catch blocks
+    // Initialize core managers
     try {
         RoverBehaviorManager::init();
     } catch (const std::exception& e) {
-        Serial.println("ERROR: Failed to initialize RoverBehaviorManager");
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::CORE_INIT_FAILED),
+            "Core system initialization failed"
+        );
+        return;
     }
     
     try {
         PowerManager::init();
     } catch (const std::exception& e) {
-        Serial.println("ERROR: Failed to initialize PowerManager");
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::POWER_INIT_FAILED),
+            "Power system initialization failed"
+        );
+        return;
     }
     
     try {
         LEDManager::init();
     } catch (const std::exception& e) {
-        Serial.println("ERROR: Failed to initialize LEDManager");
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::LED_INIT_FAILED),
+            "LED system initialization failed"
+        );
+        return;
     }
     
-    RoverViewManager::init();
-    UIManager::init();
+    try {
+        RoverViewManager::init();
+        UIManager::init();
+    } catch (const std::exception& e) {
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::UI_INIT_FAILED),
+            "UI system initialization failed"
+        );
+        return;
+    }
     
     try {
         MenuManager::init();
     } catch (const std::exception& e) {
-        Serial.println("ERROR: Failed to initialize MenuManager");
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::MENU_INIT_FAILED),
+            "Menu system initialization failed"
+        );
+        return;
     }
     
-    // Initialize audio before other systems
-    SoundFxManager::init();
+    try {
+        SoundFxManager::init();
+    } catch (const std::exception& e) {
+        RoverBehaviorManager::triggerFatalError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::AUDIO_INIT_FAILED),
+            "Audio system initialization failed"
+        );
+        return;
+    }
     
-    // Initialize non-critical systems
-    SDManager::init();
+    // Initialize storage systems
     if (!SPIFFS.begin()) {
-        Serial.println("ERROR: Failed to initialize SPIFFS");
+        RoverBehaviorManager::triggerError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::STORAGE_INIT_FAILED),
+            "Storage init failed",
+            RoverBehaviorManager::ErrorType::WARNING
+        );
+        delay(2000);
     }
     
-    // Start background processes last
-    WiFiManager::init();
+    // Initialize WiFi last
+    try {
+        WiFiManager::init();
+    } catch (const std::exception& e) {
+        RoverBehaviorManager::triggerError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::WIFI_INIT_FAILED),
+            "WiFi init failed",
+            RoverBehaviorManager::ErrorType::FATAL
+        );
+    }
 }
 
 void loop() {
@@ -102,23 +153,26 @@ void loop() {
     
     // Handle encoder direction
     encoder.tick();
-    // Swap pins in encoder initialization instead of trying to negate the direction
     
     // Play startup sound once
     if (!soundStarted) {
+        Serial.println("Playing startup sound...");
         SoundFxManager::playStartupSound();
         soundStarted = true;
     }
     
+    // Update LED animation
+    LEDManager::updateLoadingAnimation();
+    
     // Add try-catch block around UI updates
     try {
         UIManager::update();
-        LEDManager::updateLEDs();
         SlotsManager::update();
         IRManager::update();
         NFCManager::update();
     } catch (const std::exception& e) {
-        Serial.println("ERROR in update: " + String(e.what()));
+        Serial.println("ERROR in update: ");
+        Serial.println(e.what());
     }
     
     // Add error checking for behavior updates
@@ -126,7 +180,8 @@ void loop() {
         try {
             RoverBehaviorManager::update();
         } catch (const std::exception& e) {
-            Serial.println("ERROR in behavior update: " + String(e.what()));
+            Serial.println("ERROR in behavior update: ");
+            Serial.println(e.what());
         }
         lastDraw = millis();
     }

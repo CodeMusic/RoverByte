@@ -33,6 +33,11 @@ uint32_t RoverViewManager::roverExperience = 0;
 uint32_t RoverViewManager::roverExperienceToNextLevel = 327;
 uint8_t RoverViewManager::roverLevel = 1;
 
+bool RoverViewManager::isError = false;
+bool RoverViewManager::isFatalError = false;
+uint32_t RoverViewManager::errorCode = 0;
+const char* RoverViewManager::errorMessage = nullptr;
+
 // Forward declare all drawing functions
 void drawRootChakra(int x, int y, int size);
 void drawSacralChakra(int x, int y, int size);
@@ -850,4 +855,73 @@ void RoverViewManager::updateExperienceBar(const String& expStr) {
         roverExperience -= roverExperienceToNextLevel;
         roverExperienceToNextLevel = calculateNextLevelExperience(roverLevel);
     }
+}
+
+void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* errorMessage, bool isFatal) {
+    spr.fillSprite(TFT_BLACK);
+    
+    // Draw error code at top
+    spr.setTextFont(2);
+    spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
+    char errorCodeStr[30];
+    sprintf(errorCodeStr, "ERRORBYTE 0x%08X", errorCode);
+    spr.drawCentreString(errorCodeStr, SCREEN_CENTER_X - 20, 30, 2);
+    
+    // Draw small rover with X eyes
+    const int roverY = 80;
+    const int roverX = SCREEN_CENTER_X - 40;
+    const float scale = 0.8;
+    
+    // Draw Rover's body (taller)
+    spr.fillRect(roverX, roverY, 80*scale, 66*scale, TFT_WHITE);  // Increased height
+    
+    // Draw drooped ears
+    spr.fillTriangle(roverX + 10*scale, roverY - 10*scale,
+                     roverX + 25*scale, roverY + 5*scale,
+                     roverX + 40*scale, roverY - 10*scale, TFT_WHITE);
+    spr.fillTriangle(roverX + 60*scale, roverY - 10*scale,
+                     roverX + 75*scale, roverY + 5*scale,
+                     roverX + 90*scale, roverY - 10*scale, TFT_WHITE);
+    
+    // Draw eye panel (taller)
+    spr.fillRect(roverX + 15*scale, roverY + 5*scale, 70*scale, 35*scale, TFT_BLACK);
+    
+    // Draw X eyes in appropriate color
+    uint16_t eyeColor = isFatal ? TFT_RED : TFT_YELLOW;
+    const int eyeSize = 4 * scale;
+    // Left X
+    spr.drawLine(roverX + 30*scale - eyeSize, roverY + 20*scale - eyeSize,
+                 roverX + 30*scale + eyeSize, roverY + 20*scale + eyeSize, eyeColor);
+    spr.drawLine(roverX + 30*scale - eyeSize, roverY + 20*scale + eyeSize,
+                 roverX + 30*scale + eyeSize, roverY + 20*scale - eyeSize, eyeColor);
+    
+    // Right X
+    spr.drawLine(roverX + 70*scale - eyeSize, roverY + 20*scale - eyeSize,
+                 roverX + 70*scale + eyeSize, roverY + 20*scale + eyeSize, eyeColor);
+    spr.drawLine(roverX + 70*scale - eyeSize, roverY + 20*scale + eyeSize,
+                 roverX + 70*scale + eyeSize, roverY + 20*scale - eyeSize, eyeColor);
+    
+    // Draw sad mouth (moved down)
+    spr.drawCircle(roverX + 40*scale, roverY + 50*scale, 8*scale, TFT_BLACK);  // Moved down
+    spr.fillRect(roverX + 32*scale, roverY + 42*scale, 16*scale, 8*scale, TFT_WHITE);
+    
+    // Draw error message (truncated to 21 chars)
+    char truncatedMsg[22];  // 21 chars + null terminator
+    strncpy(truncatedMsg, errorMessage, 21);
+    truncatedMsg[21] = '\0';
+    spr.setTextFont(1);
+    spr.setTextColor(TFT_WHITE);
+    spr.drawCentreString(truncatedMsg, SCREEN_CENTER_X, 160, 2);
+    
+    // Only show reboot instruction for fatal errors
+    if (isFatal) {
+        spr.setTextFont(1);
+        spr.setTextColor(TFT_YELLOW);
+        spr.drawCentreString("Press Rotary to REBOOT", SCREEN_CENTER_X - 15, 225, 1);
+    }
+    
+    spr.pushSprite(0, 0);
+    
+    // Set error LED pattern with both parameters
+    LEDManager::setErrorPattern(errorCode, isFatal);
 }

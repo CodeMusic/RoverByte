@@ -513,3 +513,25 @@ void SoundFxManager::playTimerDropSound(CRGB color) {
     }
 }
 
+void SoundFxManager::playErrorCode(uint32_t errorCode, bool isFatal) {
+    // Base frequencies for fatal vs warning
+    uint16_t baseFreq = isFatal ? 440 : 880; // A4 for fatal, A5 for warning
+    
+    // Play binary representation of error code
+    for (int i = 7; i >= 0; i--) {
+        if (errorCode & (1 << i)) {
+            playTone(baseFreq, 100);
+        } else {
+            playTone(baseFreq/2, 100);
+        }
+        delay(50);
+    }
+    
+    // Final tone indicates fatal/warning
+    if (isFatal) {
+        playTone(220, 500); // Low A3 for fatal
+    } else {
+        playTone(1760, 200); // High A6 for warning
+    }
+}
+

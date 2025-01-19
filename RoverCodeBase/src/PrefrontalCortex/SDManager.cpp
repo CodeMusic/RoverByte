@@ -1,6 +1,10 @@
 #include "SDManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverManager.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include <SD.h>
+#include <SPI.h>
+
 bool SDManager::initialized = false;
 const char* SDManager::NFC_FOLDER = "/NFC";
 const char* SDManager::SCANNED_CARDS_FILE = "/NFC/scannedcards.inf";
@@ -11,24 +15,29 @@ void SDManager::init() {
         pinMode(SD_CS, OUTPUT);
         digitalWrite(SD_CS, HIGH);
         
-        // Initialize SPI for SD card with lower speed initially
+        // End any existing SPI transactions
+        SPI.endTransaction();
+        
+        // Initialize SPI for SD card with dedicated bus
         SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
-        SPI.setFrequency(4000000);  // Start at 4MHz
         
-        if (!SD.begin(SD_CS)) {
+        // Configure SD-specific SPI settings
+        SPISettings sdSettings(4000000, MSBFIRST, SPI_MODE0);
+        SPI.beginTransaction(sdSettings);
+        
+        if (!SD.begin(SD_CS, SPI)) {  // Pass SPI instance explicitly
             LOG_ERROR("SD card initialization failed!");
-            // Continue without SD - it's not critical for core functionality
+            RoverBehaviorManager::triggerError(
+                static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::STORAGE_INIT_FAILED),
+                "SD Card not found",
+                RoverBehaviorManager::ErrorType::WARNING
+            );
+            SPI.endTransaction();
             return;
         }
         
-        uint8_t cardType = SD.cardType();
-        if (cardType == CARD_NONE) {
-            LOG_ERROR("No SD card detected!");
-            return;
-        }
-        
-        // Increase SPI speed after successful init
-        SPI.setFrequency(20000000);  // Increase to 20MHz
+        // End SD transaction so other devices can use SPI
+        SPI.endTransaction();
         
         initialized = true;
         LOG_PROD("SD card initialized successfully");

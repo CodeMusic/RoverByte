@@ -13,6 +13,9 @@
 RoverBehaviorManager::BehaviorState RoverBehaviorManager::currentState = BehaviorState::LOADING;
 RoverBehaviorManager::LoadingPhase RoverBehaviorManager::loadingPhase = LoadingPhase::BOOTING;
 const char* RoverBehaviorManager::currentStatusMessage = "";
+RoverBehaviorManager::BehaviorState RoverBehaviorManager::previousState = BehaviorState::LOADING;
+unsigned long RoverBehaviorManager::warningStartTime = 0;
+int RoverBehaviorManager::currentBootStep = 0;
 
 void RoverBehaviorManager::init() {
     // Start in LOADING state, BOOTING phase
@@ -37,6 +40,12 @@ void RoverBehaviorManager::update() {
             break;
         case BehaviorState::ERROR:
             handleError();
+            break;
+        case BehaviorState::WARNING:
+            handleWarning();
+            break;
+        case BehaviorState::FATAL_ERROR:
+            handleFatalError();
             break;
     }
 
@@ -69,6 +78,9 @@ void RoverBehaviorManager::update() {
         case BehaviorState::ERROR:
             RoverViewManager::drawLoadingScreen(currentStatusMessage);
             break;
+        case BehaviorState::FATAL_ERROR:
+            handleFatalError();
+            break;
     }
 
     // Push rendered sprite to display
@@ -98,6 +110,13 @@ void RoverBehaviorManager::setState(BehaviorState state) {
             break;
         case BehaviorState::ERROR:
             currentStatusMessage = "Error Occurred!";
+            LEDManager::stopLoadingAnimation();
+            break;
+        case BehaviorState::WARNING:
+            currentStatusMessage = "Warning!";
+            break;
+        case BehaviorState::FATAL_ERROR:
+            currentStatusMessage = "Fatal Error!";
             LEDManager::stopLoadingAnimation();
             break;
     }
@@ -172,55 +191,159 @@ void RoverBehaviorManager::handleError() {
     }
 }
 
-//----- Sub-phase Handlers for LOADING -----
+void RoverBehaviorManager::handleFatalError() {
+    RoverViewManager::drawErrorScreen(
+        RoverViewManager::errorCode,
+        RoverViewManager::errorMessage,
+        true  // isFatal = true
+    );
+    
+    // Check for rotary button press
+    if (UIManager::isRotaryPressed()) {
+        ESP.restart();
+    }
+}
 
+void RoverBehaviorManager::handleWarning() {
+    if (millis() - warningStartTime >= WARNING_DISPLAY_TIME) {
+        setState(previousState);
+        RoverViewManager::isError = false;
+        LEDManager::clearErrorPattern();
+    }
+}
+
+//----- Sub-phase Handlers for LOADING -----
 void RoverBehaviorManager::handleBooting() {
     static unsigned long lastMsgChange = 0;
     static int step = 0;
     const unsigned long stepDelay = 800;
-    const char* bootMsgs[] = {
-        "Initializing modules...",
-        "Starting up...",
-        "Preparing environment...",
-        "Entering next phase..."
-    };
-
+    
+    Serial.print("Boot step: ");
+    Serial.println(step);
+    
     if (millis() - lastMsgChange > stepDelay) {
-        currentStatusMessage = bootMsgs[step];
+        switch(step) {
+            case 0:
+                Serial.println("Initializing hardware...");
+                currentStatusMessage = "Initializing hardware...";
+                break;
+            case 1:
+                Serial.println("Starting systems...");
+                currentStatusMessage = "Starting systems...";
+                break;
+            case 2:
+                Serial.println("Preparing network...");
+                currentStatusMessage = "Preparing network...";
+                break;
+            case 3:
+                Serial.println("Almost ready...");
+                currentStatusMessage = "Almost ready...";
+                break;
+        }
+        
         lastMsgChange = millis();
         step = (step + 1) % 4;
-
-        // After two cycles, move to WiFi
-        static int cycles = 0;
+        
+        // After completing one full cycle, move to WiFi phase
         if (step == 0) {
-            cycles++;
-            if (cycles >= 2) {
-                setLoadingPhase(LoadingPhase::CONNECTING_WIFI);
-                WiFiManager::init();
-                delay(100);
-            }
+            Serial.println("Moving to WiFi connection phase");
+            setLoadingPhase(LoadingPhase::CONNECTING_WIFI);
+            WiFiManager::init();
         }
     }
 }
+
 
 void RoverBehaviorManager::handleWiFiConnection() {
     static unsigned long lastAttempt = 0;
     const unsigned long retryDelay = 5000;
+    static int retryCount = 0;
+    const int MAX_RETRIES = 3;
 
     if (!WiFiManager::isConnected()) {
         if (millis() - lastAttempt > retryDelay) {
+            if (retryCount >= MAX_RETRIES) {
+                triggerFatalError(
+                    static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::WIFI_INIT_FAILED),
+                    "Failed to connect to WiFi"
+                );
+                return;
+            }
             WiFiManager::connectToWiFi();
             lastAttempt = millis();
+            retryCount++;
         }
     } else {
         setLoadingPhase(LoadingPhase::SYNCING_TIME);
+        retryCount = 0;
     }
 }
 
 void RoverBehaviorManager::handleTimeSync() {
-    if (WiFiManager::getTimeInitialized()) {
-        setState(BehaviorState::HOME);
+    static int retryCount = 0;
+    const int MAX_RETRIES = 3;
+    
+    if (!WiFiManager::getTimeInitialized()) {
+        if (retryCount >= MAX_RETRIES) {
+            triggerError(
+                static_cast<uint32_t>(StartupErrorCode::TIME_SYNC_FAILED),
+                "Failed to sync time",
+                ErrorType::WARNING
+            );
+            return;
+        }
+        retryCount++;
     } else {
-        WiFiManager::syncTime();
+        setState(BehaviorState::HOME);
     }
-} 
+}
+
+void RoverBehaviorManager::triggerFatalError(uint32_t errorCode, const char* errorMessage) {
+    setState(BehaviorState::FATAL_ERROR);
+    RoverViewManager::errorCode = errorCode;
+    RoverViewManager::errorMessage = errorMessage;
+    RoverViewManager::isError = true;
+    RoverViewManager::isFatalError = true;
+    
+    // Draw error screen
+    RoverViewManager::drawErrorScreen(errorCode, errorMessage, true);
+}
+
+void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type) {
+    // Always log to serial
+    Serial.printf("ERROR 0x%08X: %s (Type: %s)\n", 
+        errorCode, 
+        errorMessage, 
+        type == ErrorType::FATAL ? "FATAL" : 
+        type == ErrorType::WARNING ? "WARNING" : "SILENT"
+    );
+    
+    // For silent errors, only log to serial and return
+    if (type == ErrorType::SILENT) {
+        return;
+    }
+    
+    // Handle visible errors
+    if (type == ErrorType::FATAL) {
+        setState(BehaviorState::FATAL_ERROR);
+    } else {
+        setState(BehaviorState::WARNING);
+        warningStartTime = millis();
+    }
+    
+    RoverViewManager::errorCode = errorCode;
+    RoverViewManager::errorMessage = errorMessage;
+    RoverViewManager::isError = true;
+    RoverViewManager::isFatalError = (type == ErrorType::FATAL);
+    
+    // Play error sound and set LED pattern
+    SoundFxManager::playErrorCode(errorCode, type == ErrorType::FATAL);
+    LEDManager::setErrorPattern(errorCode, type == ErrorType::FATAL);
+    
+    // Draw error screen
+    RoverViewManager::drawErrorScreen(errorCode, errorMessage, type == ErrorType::FATAL);
+}
+
+int RoverBehaviorManager::getCurrentBootStep() {
+    return currentBootStep;
+}

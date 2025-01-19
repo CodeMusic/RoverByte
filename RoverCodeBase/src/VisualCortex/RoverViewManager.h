@@ -65,6 +65,12 @@ public:
 
     static void drawMenuBackground();
 
+    static void drawErrorScreen(uint32_t errorCode, const char* errorMessage, bool isFatal);
+    static uint32_t errorCode;
+    static const char* errorMessage;
+    static bool isError;
+    static bool isFatalError;
+
 private:
     static int currentFrameX;
     static int currentFrameY;

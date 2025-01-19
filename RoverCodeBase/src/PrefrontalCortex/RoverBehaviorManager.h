@@ -1,6 +1,9 @@
 #ifndef ROVER_BEHAVIOR_MANAGER_H
 #define ROVER_BEHAVIOR_MANAGER_H
 
+#include <stdint.h>  // Add this for uint32_t
+#include "../SomatosensoryCortex/UIManager.h"  // Add this for UIManager
+
 // Forward declaration
 class WiFiManager;
 
@@ -12,13 +15,40 @@ public:
         HOME,
         MENU,
         APP,
-        ERROR
+        WARNING,
+        ERROR,
+        FATAL_ERROR  // New state for unrecoverable errors
     };
 
     enum class LoadingPhase {
         BOOTING,
         CONNECTING_WIFI,
         SYNCING_TIME
+    };
+
+    enum class StartupErrorCode : uint32_t {
+        CORE_INIT_FAILED = 0x01,
+        POWER_INIT_FAILED = 0x02,
+        LED_INIT_FAILED = 0x03,
+        DISPLAY_INIT_FAILED = 0x04,
+        UI_INIT_FAILED = 0x05,
+        MENU_INIT_FAILED = 0x06,
+        AUDIO_INIT_FAILED = 0x07,
+        STORAGE_INIT_FAILED = 0x08,
+        WIFI_INIT_FAILED = 0x09,
+        TIME_SYNC_FAILED = 0x0A
+    };
+
+    enum class ErrorType {
+        WARNING,
+        FATAL,
+        SILENT  // New error type for serial-only output
+    };
+
+    struct ErrorInfo {
+        uint32_t code;
+        const char* message;
+        ErrorType type;
     };
 
     // Static methods
@@ -33,10 +63,26 @@ public:
 
     static const char* getStatusMessage();
 
+    static void triggerFatalError(uint32_t errorCode, const char* errorMessage);
+    static void handleFatalError();
+
+    static void triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type);
+    static void handleWarning();
+
+    static bool isErrorFatal(uint32_t errorCode);
+
+    static int getCurrentBootStep();
+
 private:
     static BehaviorState currentState;
     static LoadingPhase loadingPhase;
     static const char* currentStatusMessage;
+
+    static BehaviorState previousState;
+    static unsigned long warningStartTime;
+    static const unsigned long WARNING_DISPLAY_TIME = 2000; // 2 seconds
+
+    static int currentBootStep;
 
     // Main handlers for each top-level state
     static void handleLoading();
