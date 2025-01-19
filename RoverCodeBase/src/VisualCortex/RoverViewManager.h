@@ -149,6 +149,9 @@ private:
     static unsigned long lastExpressionChange;
     static unsigned long nextExpressionInterval;
     static const unsigned long DEFAULT_EXPRESSION_INTERVAL = 60000; // 1 minute default
+
+    static constexpr unsigned long WARNING_DURATION = 3000; // 3 seconds
+    static unsigned long warningStartTime;
 };
 
 #endif 

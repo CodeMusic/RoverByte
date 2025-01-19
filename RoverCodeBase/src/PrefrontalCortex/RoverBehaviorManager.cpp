@@ -17,6 +17,8 @@ RoverBehaviorManager::BehaviorState RoverBehaviorManager::previousState = Behavi
 unsigned long RoverBehaviorManager::warningStartTime = 0;
 int RoverBehaviorManager::currentBootStep = 0;
 bool RoverBehaviorManager::isCountingDown = false;
+unsigned long RoverBehaviorManager::fatalErrorStartTime = 0;
+bool RoverBehaviorManager::isFatalError = false;
 
 void RoverBehaviorManager::init() {
     // Start in LOADING state, BOOTING phase
@@ -43,7 +45,7 @@ void RoverBehaviorManager::update() {
             handleError();
             break;
         case BehaviorState::WARNING:
-            handleWarning();
+            updateWarningCountdown();
             break;
         case BehaviorState::FATAL_ERROR:
             handleFatalError();
@@ -185,37 +187,36 @@ void RoverBehaviorManager::handleApp() {
 }
 
 void RoverBehaviorManager::handleError() {
-    // Simple error handling: blink or wait, then reboot
-    static unsigned long errorStartTime = 0;
+    // Remove auto-reboot completely
     static bool inError = false;
     if (!inError) {
         inError = true;
-        errorStartTime = millis();
     }
-    if (millis() - errorStartTime > 5000) {
-        ESP.restart();
-    }
+    // No reboot logic here
 }
 
 void RoverBehaviorManager::handleFatalError() {
-    RoverViewManager::drawErrorScreen(
-        RoverViewManager::errorCode,
-        RoverViewManager::errorMessage,
-        true  // isFatal = true
-    );
+    if (!RoverViewManager::isFatalError) return;
     
-    // Check for rotary button press
+    // Only check for manual reboot via button press, but don't actually reboot
     if (UIManager::isRotaryPressed()) {
-        ESP.restart();
+        // ESP.restart(); - Removed
     }
 }
 
-void RoverBehaviorManager::handleWarning() {
-    if (!isCountingDown) return;
+void RoverBehaviorManager::updateWarningCountdown() {
+    if (!isCountingDown && !isFatalError) return;
     
-    unsigned long elapsed = millis() - warningStartTime;
-    if (elapsed >= RoverBehaviorManager::WARNING_DURATION || UIManager::isRotaryPressed()) {
-        // Clear warning state
+    unsigned long elapsed;
+    if (isFatalError) {
+        elapsed = millis() - fatalErrorStartTime;
+        // Remove reboot logic completely
+        return;
+    }
+    
+    // Rest of the warning countdown logic remains the same
+    elapsed = millis() - warningStartTime;
+    if (elapsed >= WARNING_DURATION) {
         isCountingDown = false;
         setState(BehaviorState::IDLE);
         RoverViewManager::isError = false;
@@ -223,7 +224,15 @@ void RoverBehaviorManager::handleWarning() {
         return;
     }
     
-    updateWarningCountdown();
+    // Update countdown display
+    int remainingSeconds = ((WARNING_DURATION - elapsed) / 1000);
+    char countdownMsg[32];
+    sprintf(countdownMsg, "%s", RoverViewManager::errorMessage);
+    RoverViewManager::drawErrorScreen(
+        RoverViewManager::errorCode,
+        countdownMsg,
+        false
+    );
 }
 
 //----- Sub-phase Handlers for LOADING -----
@@ -269,27 +278,25 @@ void RoverBehaviorManager::handleBooting() {
 
 
 void RoverBehaviorManager::handleWiFiConnection() {
-    static unsigned long lastAttempt = 0;
-    const unsigned long retryDelay = 5000;
-    static int retryCount = 0;
-    const int MAX_RETRIES = 3;
-
-    if (!WiFiManager::isConnected()) {
-        if (millis() - lastAttempt > retryDelay) {
-            if (retryCount >= MAX_RETRIES) {
-                triggerFatalError(
-                    static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::WIFI_INIT_FAILED),
-                    "Failed to connect to WiFi"
-                );
-                return;
-            }
-            WiFiManager::connectToWiFi();
-            lastAttempt = millis();
-            retryCount++;
-        }
-    } else {
+    static unsigned long startAttempt = millis();
+    static bool timeoutWarningShown = false;
+    const unsigned long WIFI_TIMEOUT = 10000; // 10 second timeout
+    
+    if (!timeoutWarningShown && millis() - startAttempt > WIFI_TIMEOUT) {
+        // Only show timeout warning once
+        timeoutWarningShown = true;
+        triggerError(
+            static_cast<uint32_t>(StartupErrorCode::WIFI_INIT_FAILED),
+            "WiFi connection timeout",
+            ErrorType::WARNING
+        );
+        setLoadingPhase(LoadingPhase::SYNCING_TIME); // Skip to next phase
+        return;
+    }
+    
+    // Continue with normal WiFi connection attempts
+    if (WiFiManager::isConnected()) {
         setLoadingPhase(LoadingPhase::SYNCING_TIME);
-        retryCount = 0;
     }
 }
 
@@ -304,11 +311,14 @@ void RoverBehaviorManager::handleTimeSync() {
                 "Failed to sync time",
                 ErrorType::WARNING
             );
+            setState(BehaviorState::HOME); // Continue to home even if time sync fails
             return;
         }
+        WiFiManager::syncTime(); // Actually try to sync
         retryCount++;
     } else {
         setState(BehaviorState::HOME);
+        retryCount = 0; // Reset for next time
     }
 }
 
@@ -357,34 +367,6 @@ void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMes
     
     // Draw error screen with countdown for warnings
     RoverViewManager::drawErrorScreen(errorCode, errorMessage, type == ErrorType::FATAL);
-}
-
-void RoverBehaviorManager::updateWarningCountdown() {
-    if (!isCountingDown) return;
-    
-    unsigned long elapsed = millis() - warningStartTime;
-    int remainingSeconds = 3 - (elapsed / 1000);
-    
-    if (remainingSeconds <= 0) {
-        // Warning timeout - clear warning state
-        isCountingDown = false;
-        setState(BehaviorState::IDLE);
-        RoverViewManager::isError = false;
-        LEDManager::clearErrorPattern();
-        return;
-    }
-    
-    // Update countdown display
-    char countdownMsg[32];
-    sprintf(countdownMsg, "%s\n\nClearing in %d...", 
-        RoverViewManager::errorMessage, 
-        remainingSeconds
-    );
-    RoverViewManager::drawErrorScreen(
-        RoverViewManager::errorCode,
-        countdownMsg,
-        false
-    );
 }
 
 int RoverBehaviorManager::getCurrentBootStep() {

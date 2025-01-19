@@ -49,6 +49,8 @@ const uint8_t LEDManager::fadeSequence[] = {6, 5, 7, 4, 0, 3, 1, 2};
 bool LEDManager::readyForMelody = false;
 //--
 
+uint8_t LEDManager::loadingPosition = 0;
+
 void LEDManager::init() {
     Serial.println("Starting LED Manager initialization...");
     
@@ -322,47 +324,34 @@ void LEDManager::updateLoadingAnimation() {
     
     unsigned long currentTime = millis();
     if (currentTime - lastStepTime < 100) return;
+    lastStepTime = currentTime;
     
     int bootStep = RoverBehaviorManager::getCurrentBootStep();
     static int lastBootStep = -1;
-    static int ledsPerStep = 3;
     
-    // Clear only new LEDs, keeping previous step colors
+    // Only initialize new LEDs when boot step changes
     if (bootStep != lastBootStep) {
-        int startLed = bootStep * ledsPerStep;
-        int endLed = startLed + ledsPerStep;
-        for (int i = startLed; i < endLed && i < WS2812_NUM_LEDS; i++) {
-            leds[i] = CRGB::Black;
-        }
         lastBootStep = bootStep;
+        loadingPosition = bootStep * LEDS_PER_STEP;
     }
     
-    // Select color based on boot step
+    // Select color based on current boot step
     CRGB currentColor;
     switch(bootStep) {
         case 0: currentColor = HARDWARE_INIT_COLOR; break;
         case 1: currentColor = SYSTEM_START_COLOR; break;
         case 2: currentColor = NETWORK_PREP_COLOR; break;
         case 3: currentColor = FINAL_PREP_COLOR; break;
-        default: currentColor = CRGB::Blue;
+        default: currentColor = HARDWARE_INIT_COLOR;
     }
     
-    // Animate only the current step's LEDs
-    static uint8_t position = 0;
-    int startPos = bootStep * ledsPerStep;
-    for (int i = 0; i < ledsPerStep; i++) {
-        int ledPos = startPos + ((position + i) % ledsPerStep);
-        if (ledPos < WS2812_NUM_LEDS) {
-            leds[ledPos] = currentColor;
-            leds[ledPos].maximizeBrightness();
-        }
+    // Light up one LED at a time within current step's section
+    if (loadingPosition < (bootStep + 1) * LEDS_PER_STEP) {
+        leds[loadingPosition] = currentColor;
+        loadingPosition++;
     }
     
-    position = (position + 1) % ledsPerStep;
-    FastLED.setBrightness(128);
     FastLED.show();
-    
-    lastStepTime = currentTime;
 }
 
 bool LEDManager::isLoadingComplete() {

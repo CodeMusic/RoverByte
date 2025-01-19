@@ -75,10 +75,14 @@ public:
     static int getCurrentBootStep();
 
     static void updateWarningCountdown();
+    static constexpr unsigned long WARNING_DURATION = 120000;  // 2 minutes
+    static constexpr unsigned long FATAL_REBOOT_DELAY = 60000;  // 1 minute
     static bool isWarningCountdownActive() { return isCountingDown; }
-
-    static const unsigned long WARNING_DURATION = 3000; // 3 seconds for warnings
-
+    static int getRemainingWarningSeconds() {
+        if (!isCountingDown) return 0;
+        unsigned long elapsed = millis() - warningStartTime;
+        return (WARNING_DURATION - elapsed) / 1000 + 1;
+    }
     static unsigned long getWarningStartTime() { return warningStartTime; }
 
 private:
@@ -89,6 +93,8 @@ private:
     static unsigned long warningStartTime;
     static bool isCountingDown;
     static int currentBootStep;
+    static unsigned long fatalErrorStartTime;
+    static bool isFatalError;
 
     // Main handlers for each top-level state
     static void handleLoading();

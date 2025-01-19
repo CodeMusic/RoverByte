@@ -15,32 +15,31 @@ void SDManager::init() {
         pinMode(SD_CS, OUTPUT);
         digitalWrite(SD_CS, HIGH);
         
-        // End any existing SPI transactions
-        SPI.endTransaction();
-        
-        // Initialize SPI for SD card with dedicated bus
+        // Initialize SPI for SD card with slower speed
         SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
         
-        // Configure SD-specific SPI settings
-        SPISettings sdSettings(4000000, MSBFIRST, SPI_MODE0);
+        // Use slower speed for SD card initialization
+        SPISettings sdSettings(1000000, MSBFIRST, SPI_MODE0);  // Reduced to 1MHz
         SPI.beginTransaction(sdSettings);
         
-        if (!SD.begin(SD_CS, SPI)) {  // Pass SPI instance explicitly
-            LOG_ERROR("SD card initialization failed!");
-            RoverBehaviorManager::triggerError(
-                static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::STORAGE_INIT_FAILED),
-                "SD Card not found",
-                RoverBehaviorManager::ErrorType::WARNING
-            );
-            SPI.endTransaction();
-            return;
+        // Try multiple times
+        for(int retry = 0; retry < 3; retry++) {
+            if (SD.begin(SD_CS, SPI)) {
+                initialized = true;
+                LOG_PROD("SD card initialized successfully");
+                SPI.endTransaction();
+                return;
+            }
+            delay(100);  // Wait before retry
         }
         
-        // End SD transaction so other devices can use SPI
+        LOG_ERROR("SD card initialization failed!");
+        RoverBehaviorManager::triggerError(
+            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::STORAGE_INIT_FAILED),
+            "SD Card not found",
+            RoverBehaviorManager::ErrorType::WARNING
+        );
         SPI.endTransaction();
-        
-        initialized = true;
-        LOG_PROD("SD card initialized successfully");
     }
 }
 

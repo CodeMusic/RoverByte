@@ -31,9 +31,10 @@
 #include "src/GameCortex/SlotsManager.h"
 #include "src/PsychicCortex/IRManager.h"
 #include "src/PsychicCortex/NFCManager.h"
+#include <esp_task_wdt.h>
 
 // Core configuration
-#define CLOCK_PIN 45
+#define CLOCK_PIN 45    
 
 // Global objects
 TFT_eSPI tft = TFT_eSPI();
@@ -43,8 +44,8 @@ RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03)
 bool hasSDCard = false;
 void setup() {
     Serial.begin(115200);
-    delay(100);
-    
+    Serial.println("Starting setup...");
+
     // Initialize display first
     try {
         tft.init();
@@ -64,6 +65,8 @@ void setup() {
     
     // Initialize core managers
     try {
+        // esp_task_wdt_init(10, true);  // 10 second timeout, panic on timeout
+        // esp_task_wdt_add(NULL);       // Add current thread to WDT watch
         RoverBehaviorManager::init();
     } catch (const std::exception& e) {
         RoverBehaviorManager::triggerFatalError(
@@ -74,6 +77,8 @@ void setup() {
     }
     
     try {
+        // esp_task_wdt_init(10, true);  // 10 second timeout, panic on timeout
+        // esp_task_wdt_add(NULL);       // Add current thread to WDT watch
         PowerManager::init();
     } catch (const std::exception& e) {
         RoverBehaviorManager::triggerFatalError(
@@ -131,7 +136,6 @@ void setup() {
             "Storage init failed",
             RoverBehaviorManager::ErrorType::WARNING
         );
-        delay(2000);
     }
     
     // Initialize WiFi last
@@ -144,6 +148,9 @@ void setup() {
             RoverBehaviorManager::ErrorType::FATAL
         );
     }
+
+    // esp_task_wdt_reset();  // Final watchdog reset after successful setup
+    Serial.println("Setup complete!");
 }
 
 void loop() {

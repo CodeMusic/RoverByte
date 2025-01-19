@@ -128,4 +128,7 @@ private:
     static const CRGB SYSTEM_START_COLOR;
     static const CRGB NETWORK_PREP_COLOR;
     static const CRGB FINAL_PREP_COLOR;
+
+    static uint8_t loadingPosition;
+    static const uint8_t LEDS_PER_STEP = 3;
 }; 

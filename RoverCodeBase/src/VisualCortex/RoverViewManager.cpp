@@ -309,7 +309,7 @@ void drawTemperanceSymbol(int x, int y, int size) {
     uint16_t symbolColor = getCurrentDayColor();
     
     spr.drawLine(x - size/2, y, x + size/2, y, symbolColor);
-    spr.fillTriangle(x, y, x - size/6, y + size/6, x + size/6, y + size/6, symbolColor);
+    spr.fillTriangle(x, y + size/6, x - size/6, y + size/6, x + size/6, y + size/6, symbolColor);
     spr.drawLine(x, y + size/6, x, y + size/2, symbolColor);
     spr.drawLine(x - size/4, y + size/2, x + size/4, y + size/2, symbolColor);
     spr.fillCircle(x - size/2, y, size/8, symbolColor);
@@ -861,22 +861,25 @@ void RoverViewManager::updateExperienceBar(const String& expStr) {
 void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* errorMessage, bool isFatal) {
     spr.fillSprite(TFT_BLACK);
     
-    // Move error code left
+    // Draw ERRORBYTE text and code centered
     spr.setTextFont(2);
+    spr.setTextColor(TFT_RED);  // ERRORBYTE always red
+    spr.drawCentreString("ERRORBYTE", SCREEN_CENTER_X - 40, 20, 2);
+    
+    char errorCodeStr[32];
+    sprintf(errorCodeStr, "0x%08X", (uint8_t)errorCode);
     spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-    char errorCodeStr[30];
-    sprintf(errorCodeStr, "ERRORBYTE 0x%08X", errorCode);
-    spr.drawCentreString(errorCodeStr, SCREEN_CENTER_X - 40, 30, 2);
+    spr.drawCentreString(errorCodeStr, SCREEN_CENTER_X - 40, 40, 2);
     
-    // Draw taller rover with adjusted proportions
+    // Define scale first
+    static const float scale = 0.8f;  // Make it static const
+    
+    // Center all rover graphics
     const int roverY = 80;
-    const int roverX = SCREEN_CENTER_X - 50;  // Moved left
-    const float scale = 0.8;
+    const int roverX = SCREEN_CENTER_X - (int)(90*scale/2) - 35;  // Cast to int
     
-    // Taller body
-    spr.fillRect(roverX, roverY, 80*scale, 76*scale, TFT_WHITE);
-    
-    // Drooped ears
+    // Body and ears - wider body
+    spr.fillRect(roverX, roverY, 90*scale, 76*scale, TFT_WHITE);
     spr.fillTriangle(roverX + 10*scale, roverY - 10*scale,
                      roverX + 25*scale, roverY + 5*scale,
                      roverX + 40*scale, roverY - 10*scale, TFT_WHITE);
@@ -884,59 +887,57 @@ void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* errorMess
                      roverX + 75*scale, roverY + 5*scale,
                      roverX + 90*scale, roverY - 10*scale, TFT_WHITE);
     
-    // Eye panel (dark silver)
-    spr.fillRect(roverX + 10*scale, roverY + 5*scale, 75*scale, 40*scale, 0x7BEF);
+    // Eye panel - shorter width
+    spr.fillRect(roverX + 10*scale, roverY + 10*scale, 75*scale, 30*scale, 0x7BEF);
     
-    // Draw X eyes or countdown eyes based on type
+    // Draw X eyes with thicker lines
     uint16_t eyeColor = isFatal ? TFT_RED : TFT_YELLOW;
-    if (isFatal) {
-        // X eyes for fatal errors
-        const int eyeSize = 4 * scale;
-        // Left X
-        spr.drawLine(roverX + 25*scale, roverY + 15*scale, 
-                     roverX + 35*scale, roverY + 25*scale, eyeColor);
-        spr.drawLine(roverX + 35*scale, roverY + 15*scale,
-                     roverX + 25*scale, roverY + 25*scale, eyeColor);
-        // Right X
-        spr.drawLine(roverX + 55*scale, roverY + 15*scale,
-                     roverX + 65*scale, roverY + 25*scale, eyeColor);
-        spr.drawLine(roverX + 65*scale, roverY + 15*scale,
-                     roverX + 55*scale, roverY + 25*scale, eyeColor);
-    } else {
-        // Countdown number eyes for warnings
-        spr.setTextFont(4);
-        char countStr[2];
-        int remainingSeconds = 3 - ((millis() - RoverBehaviorManager::warningStartTime) / 1000);
-        sprintf(countStr, "%d", remainingSeconds);
-        spr.drawCentreString(countStr, roverX + 30*scale, roverY + 15*scale, 4);
-        spr.drawCentreString(countStr, roverX + 60*scale, roverY + 15*scale, 4);
+    // Left X - thicker
+    for(int i = 0; i < 2; i++) {
+        spr.drawLine(roverX + (20+i)*scale, roverY + 15*scale, 
+                    roverX + (30+i)*scale, roverY + 25*scale, eyeColor);
+        spr.drawLine(roverX + (30+i)*scale, roverY + 15*scale,
+                    roverX + (20+i)*scale, roverY + 25*scale, eyeColor);
+    }
+    // Right X - thicker
+    for(int i = 0; i < 2; i++) {
+        spr.drawLine(roverX + (60+i)*scale, roverY + 15*scale,
+                    roverX + (70+i)*scale, roverY + 25*scale, eyeColor);
+        spr.drawLine(roverX + (70+i)*scale, roverY + 15*scale,
+                    roverX + (60+i)*scale, roverY + 25*scale, eyeColor);
     }
     
-    // Frowning mouth
-    spr.fillRect(roverX + 20*scale, roverY + 50*scale, 40*scale, 2*scale, TFT_BLACK);
-    spr.fillRect(roverX + 20*scale, roverY + 48*scale, 2*scale, 4*scale, TFT_BLACK);
-    spr.fillRect(roverX + 58*scale, roverY + 48*scale, 2*scale, 4*scale, TFT_BLACK);
+    // Draw triangular nose
+    spr.fillTriangle(roverX + 45*scale, roverY + 35*scale, 
+                     roverX + 40*scale, roverY + 45*scale, 
+                     roverX + 50*scale, roverY + 45*scale, TFT_BLACK);
     
-    // Draw message
+    // Vertical line from nose to mouth
+    spr.drawLine(roverX + 45*scale, roverY + 45*scale,
+                 roverX + 45*scale, roverY + 55*scale, TFT_BLACK);
+    
+    // Draw full frown with ends
+    spr.drawArc(roverX + 45*scale, roverY + 70*scale, 20*scale, 15*scale, 180, 360, TFT_BLACK, TFT_BLACK);
+    // Left end
+    spr.fillRect(roverX + 25*scale, roverY + 65*scale, 2*scale, 4*scale, TFT_BLACK);
+    // Right end
+    spr.fillRect(roverX + 63*scale, roverY + 65*scale, 2*scale, 4*scale, TFT_BLACK);
+    
+    // Draw error message
     spr.setTextFont(2);
     spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
+    spr.drawCentreString(errorMessage, SCREEN_CENTER_X - 40, 160, 2);
     
-    // Truncate message if too long
-    char truncatedMsg[64];
-    strncpy(truncatedMsg, errorMessage, 63);
-    truncatedMsg[63] = '\0';
-    
-    // Only show countdown for warnings
+    // For warnings, show countdown on separate line in white
     if (!isFatal && RoverBehaviorManager::isWarningCountdownActive()) {
-        int remainingSeconds = 3 - ((millis() - RoverBehaviorManager::warningStartTime) / 1000);
-        char countdownMsg[64];
-        sprintf(countdownMsg, "%s\n\nClearing in %d...", errorMessage, remainingSeconds);
-        spr.drawCentreString(countdownMsg, SCREEN_CENTER_X - 40, 160, 2);
-    } else {
-        spr.drawCentreString(truncatedMsg, SCREEN_CENTER_X - 40, 160, 2);
+        spr.setTextColor(TFT_WHITE);
+        char countdownStr[32];
+        int remainingSeconds = RoverBehaviorManager::getRemainingWarningSeconds();
+        sprintf(countdownStr, "Clearing in %d...", remainingSeconds);
+        spr.drawCentreString(countdownStr, SCREEN_CENTER_X - 40, 180, 2);
     }
     
-    // Only show reboot instruction for fatal errors
+    // Show reboot instruction ONLY for fatal errors
     if (isFatal) {
         spr.setTextFont(1);
         spr.setTextColor(TFT_YELLOW);
@@ -944,7 +945,5 @@ void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* errorMess
     }
     
     spr.pushSprite(0, 0);
-    
-    // Set error LED pattern with both parameters
     LEDManager::setErrorPattern(errorCode, isFatal);
 }
