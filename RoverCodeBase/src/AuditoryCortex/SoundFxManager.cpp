@@ -309,7 +309,7 @@ void SoundFxManager::stopRecording() {
         return;
     }
     
-    SDManager::closeFile(recordFile);
+    //SDManager::closeFile(recordFile);
     RoverManager::setEarsDown();  // Put ears down after successful recording/playback start
     
 }

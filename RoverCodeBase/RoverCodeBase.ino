@@ -32,6 +32,7 @@
 #include "src/PsychicCortex/IRManager.h"
 #include "src/PsychicCortex/NFCManager.h"
 #include <esp_task_wdt.h>
+#include "src/PrefrontalCortex/SPIManager.h"
 
 // Core configuration
 #define CLOCK_PIN 45    
@@ -44,25 +45,33 @@ RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03)
 bool hasSDCard = false;
 void setup() {
     Serial.begin(115200);
-    Serial.println("Starting setup...");
+    LOG_PROD("Starting setup...");
 
-    // Initialize display first
-    try {
-        tft.init();
-        tft.setRotation(0);
-        tft.writecommand(TFT_SLPOUT);
-        delay(120);
-        tft.writecommand(TFT_DISPON);
-        spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
-        spr.setTextDatum(MC_DATUM);
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::DISPLAY_INIT_FAILED),
-            "Display initialization failed"
-        );
-        return;
-    }
+    // Initialize SPI bus and chip selects first
+    SPIManager::initSPI();
     
+    LOG_DEBUG("Starting display initialization...");
+    tft.init();
+    LOG_DEBUG("TFT init successful");
+    
+    tft.setRotation(0);
+    LOG_DEBUG("Rotation set");
+    
+    tft.writecommand(TFT_SLPOUT);
+    LOG_DEBUG("Sleep out command sent");
+    
+    delay(120);
+    
+    tft.writecommand(TFT_DISPON);
+    LOG_DEBUG("Display on command sent");
+    
+    if (!spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT)) {
+        throw std::runtime_error("Sprite creation failed");
+    }
+    LOG_DEBUG("Sprite created successfully");
+    
+    spr.setTextDatum(MC_DATUM);
+
     // Initialize core managers
     try {
         // esp_task_wdt_init(10, true);  // 10 second timeout, panic on timeout
@@ -71,86 +80,18 @@ void setup() {
     } catch (const std::exception& e) {
         RoverBehaviorManager::triggerFatalError(
             static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::CORE_INIT_FAILED),
-            "Core system initialization failed"
+            e.what()
         );
         return;
-    }
-    
-    try {
-        // esp_task_wdt_init(10, true);  // 10 second timeout, panic on timeout
-        // esp_task_wdt_add(NULL);       // Add current thread to WDT watch
-        PowerManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::POWER_INIT_FAILED),
-            "Power system initialization failed"
-        );
-        return;
-    }
-    
-    try {
-        LEDManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::LED_INIT_FAILED),
-            "LED system initialization failed"
-        );
-        return;
-    }
-    
-    try {
-        RoverViewManager::init();
-        UIManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::UI_INIT_FAILED),
-            "UI system initialization failed"
-        );
-        return;
-    }
-    
-    try {
-        MenuManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::MENU_INIT_FAILED),
-            "Menu system initialization failed"
-        );
-        return;
-    }
-    
-    try {
-        SoundFxManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::AUDIO_INIT_FAILED),
-            "Audio system initialization failed"
-        );
-        return;
-    }
-    
-    // Initialize storage systems
-    if (!SPIFFS.begin()) {
-        RoverBehaviorManager::triggerError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::STORAGE_INIT_FAILED),
-            "Storage init failed",
-            RoverBehaviorManager::ErrorType::WARNING
-        );
-    }
-    
-    // Initialize WiFi last
-    try {
-        WiFiManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::WIFI_INIT_FAILED),
-            "WiFi init failed",
-            RoverBehaviorManager::ErrorType::FATAL
-        );
     }
 
     // esp_task_wdt_reset();  // Final watchdog reset after successful setup
     Serial.println("Setup complete!");
+
+    // After successful initialization
+    spr.fillSprite(TFT_BLACK);
+    spr.pushSprite(0, 0);
+    delay(100); 
 }
 
 void loop() {
@@ -167,21 +108,7 @@ void loop() {
         SoundFxManager::playStartupSound();
         soundStarted = true;
     }
-    
-    // Update LED animation
-    LEDManager::updateLoadingAnimation();
-    
-    // Add try-catch block around UI updates
-    try {
-        UIManager::update();
-        SlotsManager::update();
-        IRManager::update();
-        NFCManager::update();
-    } catch (const std::exception& e) {
-        Serial.println("ERROR in update: ");
-        Serial.println(e.what());
-    }
-    
+
     // Add error checking for behavior updates
     if (millis() - lastDraw >= DRAW_INTERVAL) {
         try {

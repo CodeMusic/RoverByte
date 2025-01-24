@@ -156,6 +156,8 @@ const char* RoverBehaviorManager::getStatusMessage() {
 //----- Main State Handlers -----
 
 void RoverBehaviorManager::handleLoading() {
+    LEDManager::updateLoadingAnimation();
+
     switch (loadingPhase) {
         case LoadingPhase::BOOTING:
             handleBooting();
@@ -236,42 +238,87 @@ void RoverBehaviorManager::updateWarningCountdown() {
 }
 
 //----- Sub-phase Handlers for LOADING -----
+static int step = 0;
 void RoverBehaviorManager::handleBooting() {
     static unsigned long lastMsgChange = 0;
-    static int step = 0;
+    
     const unsigned long stepDelay = 800;
     
-    Serial.print("Boot step: ");
-    Serial.println(step);
-    
     if (millis() - lastMsgChange > stepDelay) {
-        switch(step) {
-            case 0:
-                Serial.println("Initializing hardware...");
-                currentStatusMessage = "Initializing hardware...";
-                break;
-            case 1:
-                Serial.println("Starting systems...");
-                currentStatusMessage = "Starting systems...";
-                break;
-            case 2:
-                Serial.println("Preparing network...");
-                currentStatusMessage = "Preparing network...";
-                break;
-            case 3:
-                Serial.println("Almost ready...");
-                currentStatusMessage = "Almost ready...";
-                break;
-        }
+        LOG_DEBUG("Boot step: %d", step);
         
-        lastMsgChange = millis();
-        step = (step + 1) % 4;
-        
-        // After completing one full cycle, move to WiFi phase
-        if (step == 0) {
-            Serial.println("Moving to WiFi connection phase");
-            setLoadingPhase(LoadingPhase::CONNECTING_WIFI);
-            WiFiManager::init();
+        try {
+            switch(step) {
+                case 0:
+                    LOG_DEBUG("Hardware initialization started.");
+                    currentStatusMessage = "Initializing hardware...";
+                    LEDManager::init();
+                    SoundFxManager::init();
+                    break;
+                case 1:
+                    LOG_DEBUG("System startup in progress.");
+                    currentStatusMessage = "Starting systems...";
+                    PowerManager::init();
+                    LOG_DEBUG("Initializing SD card...");
+                    SDManager::init();
+                    LOG_DEBUG("SD card initialization complete.");
+                    break;
+                    
+                case 2:
+                    LOG_DEBUG("Network preparation started.");
+                    currentStatusMessage = "Preparing network...";
+                    WiFiManager::init();
+                    break;
+                    
+                case 3:
+                    LOG_DEBUG("Boot process nearing completion.");
+                    currentStatusMessage = "Almost ready...";
+                    RoverViewManager::init();
+                    UIManager::init();
+                    MenuManager::init();
+                    break;
+            }
+
+            
+            currentBootStep = step;
+            lastMsgChange = millis();
+            step++;
+            
+            if (step >= 4) {
+                LOG_DEBUG("Transitioning to WiFi connection phase.");
+                setLoadingPhase(LoadingPhase::CONNECTING_WIFI);
+            }
+            RoverViewManager::drawLoadingScreen(currentStatusMessage);
+            
+        } catch (const std::exception& e) {
+            switch(step) {
+                case 0:
+                    triggerFatalError(
+                        static_cast<uint32_t>(StartupErrorCode::STORAGE_INIT_FAILED),
+                        "Storage initialization failed"
+                    );
+                    break;
+                case 1:
+                    triggerFatalError(
+                        static_cast<uint32_t>(StartupErrorCode::POWER_INIT_FAILED),
+                        "Power system initialization failed"
+                    );
+                    break;
+                case 2:
+                    triggerFatalError(
+                        static_cast<uint32_t>(StartupErrorCode::UI_INIT_FAILED),
+                        "UI system initialization failed"
+                    );
+                    break;
+                case 3:
+                    triggerError(
+                        static_cast<uint32_t>(StartupErrorCode::WIFI_INIT_FAILED),
+                        "WiFi init failed",
+                        ErrorType::FATAL
+                    );
+                    break;
+            }
+            return;
         }
     }
 }

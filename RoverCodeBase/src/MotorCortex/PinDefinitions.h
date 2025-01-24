@@ -90,9 +90,9 @@
 #define CLOCK_PIN 45
 
 // Add if not already present:
-#define SD_CS    10  // SD Card CS pin
-#define SD_MOSI  11  // SD Card MOSI pin
-#define SD_MISO  13  // SD Card MISO pin
-#define SD_SCK   12  // SD Card SCK pin    
+#define SD_CS    13  // SD Card CS pin
+#define SD_MOSI  10  // SD Card MOSI pin
+#define SD_MISO  9  // SD Card MISO pin
+#define SD_SCK   11  // SD Card SCK pin    
 
 #endif 
