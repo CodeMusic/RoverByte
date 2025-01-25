@@ -12,7 +12,7 @@ public:
     static bool isRotaryPressed() { return rotaryPressed; }
     static bool isSideButtonPressed() { return sideButtonPressed; }
     static int getEncoderPosition() { return lastEncoderPosition; }
-    
+    static bool isInitialized() { return _isInitialized; }
 private:
     static RotaryEncoder* encoder;
     static int lastEncoderPosition;
@@ -25,6 +25,7 @@ private:
     static void handleRotaryPress();
     static void updateEncoder();
     static void updateSideButton();
+    static bool _isInitialized;
 };
 
 #endif

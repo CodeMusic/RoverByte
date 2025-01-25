@@ -30,7 +30,7 @@ public:
     static void hide();
     static bool isVisible() { return isMenuVisible; }
     static void handleRotaryTurn(int direction);
-    static void handleRotaryPress();
+    static void handleMenuSelect();
     static void drawMenu();
     static void enterSubmenu(const std::vector<MenuItem>& submenu);
     static void handleIRBlastMenu();

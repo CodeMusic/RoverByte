@@ -7,54 +7,95 @@
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../SomatosensoryCortex/MenuManager.h"
 
+using BehaviorState = RoverBehaviorManager::BehaviorState;
+
 // Static member initialization
 RotaryEncoder* UIManager::encoder = nullptr;
 int UIManager::lastEncoderPosition = 0;
 bool UIManager::rotaryPressed = false;
 bool UIManager::sideButtonPressed = false;
 unsigned long UIManager::lastDebounceTime = 0;
-
+bool UIManager::_isInitialized = false;
 void UIManager::init() {
+    if (encoder != nullptr) {
+        delete encoder;  // Clean up if already initialized
+    }
+    
     encoder = new RotaryEncoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
+    
+    // Configure input pins with internal pullups
     pinMode(BOARD_USER_KEY, INPUT_PULLUP);
     pinMode(ENCODER_KEY, INPUT_PULLUP);
+    
+    // Add interrupt handlers for encoder
+    attachInterrupt(digitalPinToInterrupt(ENCODER_INA), []() { 
+        if (encoder) encoder->tick(); 
+    }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(ENCODER_INB), []() { 
+        if (encoder) encoder->tick(); 
+    }, CHANGE);
+    
     lastEncoderPosition = encoder->getPosition();
-    Serial.println("UIManager initialized");
+    LOG_DEBUG("UIManager initialized with interrupts");
+    _isInitialized = true;
 }
 
 void UIManager::update() {
+    if (!_isInitialized) {
+        UIManager::init();
+    }
     updateEncoder();
     updateSideButton();
 }
 
 void UIManager::updateEncoder() {
-    encoder->tick();
-    int newPos = encoder->getPosition();
+    LOG_DEBUG("Updating encoder");
+    if (!encoder) return;  // Guard against null encoder
     
-    // Handle rotation
+    int newPos = encoder->getPosition();
     if (newPos != lastEncoderPosition) {
-        if (RoverViewManager::hasActiveNotification()) {
-            RoverViewManager::clearNotification();
-        } else {
-            int direction = (newPos > lastEncoderPosition) ? 1 : -1;
-            handleRotaryTurn(direction);
-            SoundFxManager::playRotaryTurnSound(direction > 0);
-        }
+        LOG_DEBUG("Encoder position changed: %d", newPos);
         lastEncoderPosition = newPos;
         PowerManager::updateLastActivityTime();
+        
+        // Handle encoder movement based on context
+        if (MenuManager::isVisible()) {
+            // In menu - navigate menu items
+            MenuManager::handleRotaryTurn(newPos > lastEncoderPosition ? 1 : -1);
+        } else {
+            // On home screen - change views
+            if (newPos > lastEncoderPosition) {
+                RoverViewManager::nextView();
+            } else {
+                RoverViewManager::previousView();
+            }
+        }
     }
     
-    // Handle the rotary button press
-    handleRotaryPress();
+    // Check encoder button
+    static bool lastButtonState = HIGH;
+    bool currentButtonState = digitalRead(ENCODER_KEY);
+    
+    if (currentButtonState != lastButtonState) {
+        delay(50);  // Debounce
+        currentButtonState = digitalRead(ENCODER_KEY);
+        if (currentButtonState != lastButtonState) {
+            lastButtonState = currentButtonState;
+            if (currentButtonState == LOW) {  // Button pressed
+                MenuManager::handleMenuSelect();
+            }
+        }
+    }
 }
 
 void UIManager::handleRotaryTurn(int direction) {
+    LOG_DEBUG("Rotary turn: %d", direction);
     // If the menu is open, navigate it
     if (MenuManager::isVisible()) {
         MenuManager::handleRotaryTurn(direction);
     } 
-    // Otherwise, switch between different views
-    else {
+    else 
+    {
         if (direction > 0) {
             RoverViewManager::nextView();
         } else {
@@ -64,16 +105,15 @@ void UIManager::handleRotaryTurn(int direction) {
 }
 
 void UIManager::handleRotaryPress() {
+    LOG_DEBUG("Rotary press");
     static bool lastButtonState = HIGH;
     bool currentButtonState = digitalRead(ENCODER_KEY);
     
     if (currentButtonState == LOW && lastButtonState == HIGH) {
         if (RoverViewManager::hasActiveNotification()) {
             RoverViewManager::clearNotification();
-        } else if (!MenuManager::isVisible()) {
-            MenuManager::show();
         } else {
-            MenuManager::handleRotaryPress();
+            MenuManager::handleMenuSelect();
         }
         PowerManager::updateLastActivityTime();
     }
@@ -82,37 +122,24 @@ void UIManager::handleRotaryPress() {
 }
 
 void UIManager::updateSideButton() {
-    static bool lastState = HIGH;
-    bool currentState = digitalRead(BOARD_USER_KEY);
+    LOG_DEBUG("Updating side button");
+    static bool lastButtonState = HIGH;
+    bool currentButtonState = digitalRead(BOARD_USER_KEY);
     
-    if (currentState != lastState) {
-        if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-            lastDebounceTime = millis();
-            sideButtonPressed = (currentState == LOW);
-            
-            if (sideButtonPressed) {
-                if (RoverViewManager::hasActiveNotification()) {
-                    RoverViewManager::clearNotification();
-                } else {
-                    // Previously called RoverBehaviorManager::handleSideButton() or NFC scans here.
-                    // Now removed so the side button won't trigger NFC.
-                    // You can insert other custom logic if desired.
+    if (currentButtonState != lastButtonState) {
+        delay(50);  // Simple debounce
+        currentButtonState = digitalRead(BOARD_USER_KEY);
+        if (currentButtonState != lastButtonState) {
+            lastButtonState = currentButtonState;
+            if (currentButtonState == LOW) {  // Button pressed
+                LOG_DEBUG("Side button pressed");
+                PowerManager::updateLastActivityTime();
+                
+                // If menu is visible, hide it and return to home
+                if (MenuManager::isVisible()) {
+                    MenuManager::hide();
                 }
             }
-            PowerManager::updateLastActivityTime();
         }
-        lastState = currentState;
-    }
-    
-    // Update ears based on the button state
-    bool shouldBeUp = (currentState == LOW);
-    if (shouldBeUp != RoverManager::earsPerked) {
-        RoverManager::earsPerked = shouldBeUp;
-        if (shouldBeUp) {
-            RoverManager::setEarsUp();
-        } else {
-            RoverManager::setEarsDown();
-        }
-        RoverViewManager::drawCurrentView();
     }
 }

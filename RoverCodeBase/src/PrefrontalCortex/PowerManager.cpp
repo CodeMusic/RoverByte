@@ -10,6 +10,10 @@ PowerManager::SleepState PowerManager::currentSleepState = PowerManager::AWAKE;
 bool PowerManager::showTime = false;
 
 void PowerManager::init() {
+    // Ensure LED power stays enabled
+    pinMode(BOARD_PWR_EN, OUTPUT);
+    digitalWrite(BOARD_PWR_EN, HIGH);
+    
     // Initialize LEDC for backlight first
     setupBacklight();
     
@@ -161,7 +165,7 @@ void PowerManager::updateLastActivityTime() {
 
 void PowerManager::enterDeepSleep() {
     LEDManager::stopLoadingAnimation();
-    
+
     FastLED.show();
     tft.writecommand(TFT_DISPOFF);
     tft.writecommand(TFT_SLPIN);

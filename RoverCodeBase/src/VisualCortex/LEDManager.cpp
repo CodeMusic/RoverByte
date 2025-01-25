@@ -47,49 +47,55 @@ unsigned long LEDManager::lastUpdate = 0;
 CRGB LEDManager::targetColor = CRGB::Blue;
 const uint8_t LEDManager::fadeSequence[] = {6, 5, 7, 4, 0, 3, 1, 2};
 bool LEDManager::readyForMelody = false;
+
 //--
 
 uint8_t LEDManager::loadingPosition = 0;
 
 void LEDManager::init() {
-    Serial.println("Starting LED Manager initialization...");
+    LOG_DEBUG("Starting LED Manager initialization...");
     
+    // Ensure power is enabled
     pinMode(BOARD_PWR_EN, OUTPUT);
-    digitalWrite(BOARD_PWR_EN, HIGH);  // Power on LEDs
-    Serial.println("Board power enabled");
-
+    digitalWrite(BOARD_PWR_EN, HIGH);
+    delay(50);  // Give power time to stabilize
+    
     try {
         FastLED.addLeds<WS2813, WS2812_DATA_PIN, GRB>(leds, WS2812_NUM_LEDS);
         FastLED.setBrightness(50);
         FastLED.clear(true);
         FastLED.show();
-        Serial.println("FastLED initialized successfully");
+        
+        // Test pattern
+        fill_solid(leds, WS2812_NUM_LEDS, CRGB::Blue);
+        FastLED.show();
+        delay(100);
+        FastLED.clear(true);
+        FastLED.show();
+        
+        LOG_DEBUG("FastLED initialized successfully");
     } catch (const std::exception& e) {
-        Serial.println("ERROR initializing FastLED: ");
-        Serial.println(e.what());
+        LOG_ERROR("FastLED init failed: %s", e.what());
     }
     
-    delay(50);
     startLoadingAnimation();
-    Serial.println("Loading animation started");
 }
 
 void LEDManager::stopLoadingAnimation() {
-    if (!isLoading) return;  // Guard against multiple calls
+    if (!isLoading) return;
     
     isLoading = false;
-    FastLED.clear();
-    FastLED.show();
+    currentMode = Mode::FULL_MODE;
     
-    // Only set mode and start updates if time is synchronized
-    if (time(nullptr) > 1000000000) {
-        currentMode = Mode::FULL_MODE;
-        updateLEDs();
-    } else {
-        // If time isn't synced, keep LEDs off
-        FastLED.clear();
-        FastLED.show();
+    // Initialize FULL_MODE pattern
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        leds[i] = CRGB::Blue;  // Start with blue
+        previousColors[i] = CRGB::Black;
     }
+    FastLED.show();
+
+    
+    LOG_DEBUG("LED Manager: Transitioned to FULL_MODE with patterns");
 }
 
 void LEDManager::updateLEDs() {
@@ -130,67 +136,18 @@ void LEDManager::nextMode() {
 }
 
 void LEDManager::updateFullMode() {
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
+    static unsigned long lastUpdate = 0;
+    unsigned long currentTime = millis();
     
-    // Create a 3-state blink cycle (0, 1, 2) using integer division of seconds
-    int blinkState = (timeInfo->tm_sec % 3);
-    
-    // LED 0: Current day color (1-7, where 1 is Sunday)
-    CRGB dayColor = VisualSynesthesia::getDayColor(timeInfo->tm_wday + 1);
-    leds[0] = dayColor;
-    
-    // LED 1: Week number (base 5)
-    int weekNum = (timeInfo->tm_mday + 6) / 7;
-    switch(weekNum) {
-        case 1: leds[1] = CRGB::Red; break;
-        case 2: leds[1] = CRGB::Orange; break;
-        case 3: leds[1] = CRGB::Yellow; break;
-        case 4: leds[1] = CRGB::Green; break;
-        default: leds[1] = CRGB::Blue; break;
-    }
-    
-    // LED 2: Month (base 12)
-    CRGB monthColor1, monthColor2;
-    VisualSynesthesia::getMonthColors(timeInfo->tm_mon + 1, monthColor1, monthColor2);
-    if (monthColor1 == monthColor2) {
-        leds[2] = monthColor1;
-    } else {
-        switch(blinkState) {
-            case 0: leds[2] = monthColor1; break;
-            case 1: leds[2] = monthColor2; break;
-            case 2: leds[2] = CRGB::Black; break;
+    if (currentTime - lastUpdate >= 100) {  // Update every 100ms
+        lastUpdate = currentTime;
+        
+        // Create a moving rainbow pattern
+        for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+            leds[i] = CHSV(((i * 256 / WS2812_NUM_LEDS) + currentTime/10) % 256, 255, 255);
         }
+        FastLED.show();
     }
-    
-    // LED 3: Hours (base 12)
-    int hour12 = timeInfo->tm_hour % 12;
-    if (hour12 == 0) hour12 = 12;
-    CRGB hourColor1, hourColor2;
-    VisualSynesthesia::getHourColors(hour12, hourColor1, hourColor2);
-    if (hourColor1 == hourColor2) {
-        leds[3] = hourColor1;
-    } else {
-        switch(blinkState) {
-            case 0: leds[3] = hourColor1; break;
-            case 1: leds[3] = hourColor2; break;
-            case 2: leds[3] = CRGB::Black; break;
-        }
-    }
-    
-    // LED 4-5: Minutes (base 8)
-    int minutes = timeInfo->tm_min;
-    int minTens = minutes / 8;
-    int minOnes = minutes % 8;
-    leds[4] = VisualSynesthesia::getBase8Color(minTens);
-    leds[5] = VisualSynesthesia::getBase8Color(minOnes);
-    
-    // LED 6-7: Day of month (base 8)
-    int day = timeInfo->tm_mday;
-    int dayTens = day / 8;
-    int dayOnes = day % 8;
-    leds[6] = VisualSynesthesia::getBase8Color(dayOnes);
-    leds[7] = VisualSynesthesia::getBase8Color(dayTens);
 }
 
 void LEDManager::updateWeekMode() {

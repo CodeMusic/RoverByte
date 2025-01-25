@@ -98,26 +98,32 @@ void loop() {
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;
-    
-    // Handle encoder direction
-    encoder.tick();
-    
+
+    if (RoverBehaviorManager::getCurrentState() != RoverBehaviorManager::BehaviorState::LOADING) {
+        LEDManager::stopLoadingAnimation();
+        LEDManager::setMode(Mode::FULL_MODE);
+    }    
+
+    UIManager::update(); // Handle update to user input and update the UI
+    LEDManager::update(); // Update LED patterns
+    RoverBehaviorManager::update(); // The main state of RoverOS
+
     // Play startup sound once
-    if (!soundStarted) {
+    if (SoundFxManager::isInitialized() && !SoundFxManager::isPlaying() && !soundStarted) {
         Serial.println("Playing startup sound...");
         SoundFxManager::playStartupSound();
         soundStarted = true;
     }
-
-    // Add error checking for behavior updates
-    if (millis() - lastDraw >= DRAW_INTERVAL) {
-        try {
-            RoverBehaviorManager::update();
-        } catch (const std::exception& e) {
-            Serial.println("ERROR in behavior update: ");
-            Serial.println(e.what());
+    
+    // Handle display updates at fixed interval
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastDraw >= DRAW_INTERVAL) {
+        lastDraw = currentMillis;
+        if (RoverBehaviorManager::getCurrentState() == RoverBehaviorManager::BehaviorState::LOADING) {
+            RoverViewManager::drawLoadingScreen(RoverBehaviorManager::getStatusMessage());
+        } else {
+            RoverViewManager::drawCurrentView();
         }
-        lastDraw = millis();
     }
 }
 

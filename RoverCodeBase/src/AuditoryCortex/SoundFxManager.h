@@ -56,7 +56,7 @@ private:
     static bool isJingleActive;
     static unsigned long jingleStartTime;
     static int currentJingleNote;
-    
+    static bool _isInitialized;
 
     static void init_microphone();
     static void initializeAudio();
@@ -75,7 +75,7 @@ public:
     static void playSuccessSound();
     static void playTimerDropSound(CRGB color);
     static void playTone(int frequency, int duration, int position = 0); // Update this line
-    
+    static bool isInitialized() { return _isInitialized; }
     // Jingle control
     static void startJingle();
     static void updateJingle();

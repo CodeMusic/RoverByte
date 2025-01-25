@@ -18,6 +18,7 @@ bool SoundFxManager::isPlayingSound = false;
 const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
 bool SoundFxManager::isRecording = false;
 File SoundFxManager::recordFile;
+bool SoundFxManager::_isInitialized = false;
 
 // Add after the other jingle definitions
 const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
@@ -368,6 +369,7 @@ void SoundFxManager::generate_wav_header(char* wav_header, uint32_t wav_size, ui
 }
 
 void SoundFxManager::init() {
+    if (_isInitialized) return;
     // Initialize audio hardware
     audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
     audio.setVolume(42);  // Set a reasonable volume level
@@ -398,6 +400,7 @@ void SoundFxManager::init() {
     }
     
     playStartupSound();
+    _isInitialized = true;
 }
 
 void SoundFxManager::stopJingle() {

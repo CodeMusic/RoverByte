@@ -109,6 +109,7 @@ void RoverBehaviorManager::setState(BehaviorState state) {
         case BehaviorState::HOME:
             currentStatusMessage = "Welcome Home!";
             LEDManager::stopLoadingAnimation();
+
             break;
         case BehaviorState::MENU:
             currentStatusMessage = "Menu";
@@ -241,7 +242,6 @@ void RoverBehaviorManager::updateWarningCountdown() {
 static int step = 0;
 void RoverBehaviorManager::handleBooting() {
     static unsigned long lastMsgChange = 0;
-    
     const unsigned long stepDelay = 800;
     
     if (millis() - lastMsgChange > stepDelay) {
@@ -252,16 +252,17 @@ void RoverBehaviorManager::handleBooting() {
                 case 0:
                     LOG_DEBUG("Hardware initialization started.");
                     currentStatusMessage = "Initializing hardware...";
+                    PowerManager::init();  // Move power init first
                     LEDManager::init();
                     SoundFxManager::init();
                     break;
+                    
                 case 1:
                     LOG_DEBUG("System startup in progress.");
                     currentStatusMessage = "Starting systems...";
-                    PowerManager::init();
-                    LOG_DEBUG("Initializing SD card...");
+                    
+                    UIManager::init(); 
                     SDManager::init();
-                    LOG_DEBUG("SD card initialization complete.");
                     break;
                     
                 case 2:
@@ -274,11 +275,10 @@ void RoverBehaviorManager::handleBooting() {
                     LOG_DEBUG("Boot process nearing completion.");
                     currentStatusMessage = "Almost ready...";
                     RoverViewManager::init();
-                    UIManager::init();
                     MenuManager::init();
+                    LEDManager::stopLoadingAnimation();  // Explicitly stop loading
                     break;
             }
-
             
             currentBootStep = step;
             lastMsgChange = millis();

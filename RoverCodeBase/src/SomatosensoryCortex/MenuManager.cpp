@@ -90,7 +90,7 @@ void MenuManager::handleRotaryTurn(int direction) {
     drawMenu();
 }
 
-void MenuManager::handleRotaryPress() {
+void MenuManager::handleMenuSelect() {
     if (!isMenuVisible || currentMenu.empty()) {
         show();
         return;
