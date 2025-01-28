@@ -1,9 +1,6 @@
+#include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#define FASTLED_ESP32_SPI_BUS FSPI
-#define FASTLED_ALL_PINS_HARDWARE_SPI
-#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
-
 #include <FastLED.h>
 #include "TFT_eSPI.h"
 #include <RotaryEncoder.h>
@@ -13,85 +10,104 @@
 #include "Audio.h"
 #include <XPowersLib.h>
 #include "driver/i2s.h"
-#include "src/VisualCortex/DisplayConfig.h"
+#include <vector>
+
+// Core system includes
 #include "src/PrefrontalCortex/utilities.h"
 #include "src/PrefrontalCortex/PowerManager.h"
+#include "src/PrefrontalCortex/SPIManager.h"
+#include "src/PrefrontalCortex/SDManager.h"
+#include "src/PrefrontalCortex/RoverBehaviorManager.h"
+
+// Sensory system includes
+#include "src/VisualCortex/DisplayConfig.h"
 #include "src/VisualCortex/RoverViewManager.h"
 #include "src/VisualCortex/RoverManager.h"
 #include "src/VisualCortex/VisualSynesthesia.h"
-#include "src/VisualCortex/DisplayConfig.h"
-#include "src/AuditoryCortex/SoundFxManager.h"
 #include "src/VisualCortex/LEDManager.h"
-#include "src/PsychicCortex/WiFiManager.h"
-#include "src/PrefrontalCortex/SDManager.h"
+#include "src/AuditoryCortex/SoundFxManager.h"
 #include "src/SomatosensoryCortex/UIManager.h"
-#include "src/PrefrontalCortex/RoverBehaviorManager.h"
 #include "src/SomatosensoryCortex/MenuManager.h"
-#include "src/MotorCortex/PinDefinitions.h"
-#include "src/GameCortex/SlotsManager.h"
+
+// Communication includes
+#include "src/PsychicCortex/WiFiManager.h"
 #include "src/PsychicCortex/IRManager.h"
 #include "src/PsychicCortex/NFCManager.h"
-#include <esp_task_wdt.h>
-#include "src/PrefrontalCortex/SPIManager.h"
 
-// Core configuration
-#define CLOCK_PIN 45    
+// Motor control includes
+#include "src/MotorCortex/PinDefinitions.h"
+
+// Game system includes
+#include "src/GameCortex/SlotsManager.h"
+
+#include <esp_task_wdt.h>
+
+#include "src/CorpusCallosum/SynapticPathways.h"
+using namespace CorpusCallosum;
+using PC::Utilities;
+using PC::SPIManager;
+using PC::RoverBehaviorManager;
+using SC::UIManager;
+using VC::RoverViewManager;
 
 // Global objects
-TFT_eSPI tft = TFT_eSPI();
-TFT_eSprite spr = TFT_eSprite(&tft);
-RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder encoder(static_cast<uint8_t>(ENCODER_INA), 
+                     static_cast<uint8_t>(ENCODER_INB), 
+                     RotaryEncoder::LatchMode::TWO03);
 
-bool hasSDCard = false;
 void setup() {
     Serial.begin(115200);
-    LOG_PROD("Starting setup...");
+    Utilities::LOG_PROD("Starting setup...");
+
+    // Check free heap memory before initialization
+    //Utilities::LOG_DEBUG("Free heap before initialization: %d", ESP.getFreeHeap());
 
     // Initialize SPI bus and chip selects first
-    SPIManager::initSPI();
-    
-    LOG_DEBUG("Starting display initialization...");
-    tft.init();
-    LOG_DEBUG("TFT init successful");
-    
-    tft.setRotation(0);
-    LOG_DEBUG("Rotation set");
-    
-    tft.writecommand(TFT_SLPOUT);
-    LOG_DEBUG("Sleep out command sent");
-    
-    delay(120);
-    
-    tft.writecommand(TFT_DISPON);
-    LOG_DEBUG("Display on command sent");
-    
-    if (!spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT)) {
-        throw std::runtime_error("Sprite creation failed");
-    }
-    LOG_DEBUG("Sprite created successfully");
-    
-    spr.setTextDatum(MC_DATUM);
+    SPIManager::init();
+    Utilities::LOG_DEBUG("SPI Manager initialized.");
 
-    // Initialize core managers
-    try {
-        // esp_task_wdt_init(10, true);  // 10 second timeout, panic on timeout
-        // esp_task_wdt_add(NULL);       // Add current thread to WDT watch
-        RoverBehaviorManager::init();
-    } catch (const std::exception& e) {
-        RoverBehaviorManager::triggerFatalError(
-            static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::CORE_INIT_FAILED),
-            e.what()
-        );
+    try 
+    {
+        RoverViewManager::init();
+        Utilities::LOG_DEBUG("Display initialized successfully.");
+    } 
+    catch (const std::exception& e) 
+    {
+        Utilities::LOG_ERROR("Display initialization failed: %s", e.what());
         return;
     }
 
-    // esp_task_wdt_reset();  // Final watchdog reset after successful setup
-    Serial.println("Setup complete!");
-
     // After successful initialization
-    spr.fillSprite(TFT_BLACK);
-    spr.pushSprite(0, 0);
-    delay(100); 
+    VisualCortex::RoverViewManager::drawErrorScreen(
+        VisualCortex::RoverViewManager::errorCode,
+        VisualCortex::RoverViewManager::errorMessage,
+        VisualCortex::RoverViewManager::isFatalError
+    );
+    VisualCortex::RoverViewManager::drawLoadingScreen(RoverBehaviorManager::getStatusMessage());
+    delay(100);
+    if (!RoverBehaviorManager::IsInitialized()) 
+    {
+        try 
+        {
+            Utilities::LOG_DEBUG("Starting RoverBehaviorManager...");
+            PrefrontalCortex::RoverBehaviorManager::init();
+            Utilities::LOG_DEBUG("RoverBehaviorManager started successfully.");
+        } 
+        catch (const std::exception& e) 
+        {
+            Utilities::LOG_ERROR("Initialization error: %s", e.what());
+            PrefrontalCortex::RoverBehaviorManager::triggerFatalError(
+                static_cast<uint32_t>(PrefrontalCortex::RoverBehaviorManager::StartupErrorCode::CORE_INIT_FAILED),
+                e.what()
+            );
+            return;
+        }
+    }
+
+    // Check free heap memory after initialization
+    //Utilities::LOG_DEBUG("Free heap after initialization: %d", ESP.getFreeHeap());
+
+
 }
 
 void loop() {
@@ -99,32 +115,86 @@ void loop() {
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;
 
-    if (RoverBehaviorManager::getCurrentState() != RoverBehaviorManager::BehaviorState::LOADING) {
-        LEDManager::stopLoadingAnimation();
-        LEDManager::setMode(Mode::FULL_MODE);
-    }    
+    // Handle critical updates first with error checking
+    try {
+        PrefrontalCortex::RoverBehaviorManager::update();
+        delay(1);
 
-    UIManager::update(); // Handle update to user input and update the UI
-    LEDManager::update(); // Update LED patterns
-    RoverBehaviorManager::update(); // The main state of RoverOS
-
-    // Play startup sound once
-    if (SoundFxManager::isInitialized() && !SoundFxManager::isPlaying() && !soundStarted) {
-        Serial.println("Playing startup sound...");
-        SoundFxManager::playStartupSound();
-        soundStarted = true;
+        // Only update UI and LED if we're not in LOADING state
+        if (PrefrontalCortex::RoverBehaviorManager::getCurrentState() != 
+            PrefrontalCortex::RoverBehaviorManager::BehaviorState::LOADING) {
+            UIManager::update();
+            delay(1);
+            
+            VisualCortex::LEDManager::update();
+            delay(1);
+            
+            // Handle sound initialization
+            if (!soundStarted && AuditoryCortex::SoundFxManager::isInitialized() && 
+                !AuditoryCortex::SoundFxManager::isPlaying()) {
+                AuditoryCortex::SoundFxManager::playStartupSound();
+                soundStarted = true;
+                delay(1);
+            }
+        }
+        
+        // Handle display updates at fixed interval
+        unsigned long currentMillis = millis();
+        if (currentMillis - lastDraw >= DRAW_INTERVAL) 
+        {
+            lastDraw = currentMillis;
+            
+            // Clear sprite first
+            VisualCortex::RoverViewManager::clearSprite();
+            
+            // Handle different cognitive states
+            if (VisualCortex::RoverViewManager::isError || 
+                VisualCortex::RoverViewManager::isFatalError) 
+            {
+                // Only draw error screen in error state
+                VisualCortex::RoverViewManager::drawErrorScreen(
+                    VisualCortex::RoverViewManager::errorCode,
+                    VisualCortex::RoverViewManager::errorMessage,
+                    VisualCortex::RoverViewManager::isFatalError
+                );
+            }
+            else if (PrefrontalCortex::RoverBehaviorManager::getCurrentState() == 
+                     PrefrontalCortex::RoverBehaviorManager::BehaviorState::LOADING) 
+            {
+                // Draw loading screen during initialization
+                VisualCortex::RoverViewManager::drawLoadingScreen(
+                    PrefrontalCortex::RoverBehaviorManager::getStatusMessage()
+                );
+            }
+            else 
+            {
+                // Normal operation - draw current view and rover
+                VisualCortex::RoverViewManager::drawCurrentView();
+                
+                if (!VisualCortex::RoverViewManager::isError && 
+                    !VisualCortex::RoverViewManager::isFatalError) 
+                {
+                    VisualCortex::RoverManager::drawRover(
+                        VisualCortex::RoverManager::getCurrentMood(),
+                        VisualCortex::RoverManager::earsPerked,
+                        !VisualCortex::RoverManager::showTime,
+                        10,
+                        VisualCortex::RoverManager::showTime ? 50 : 80
+                    );
+                }
+            }
+            
+            // Push sprite to display with minimal delay
+            VisualCortex::RoverViewManager::pushSprite();
+            delay(1); // Reduced delay for better performance
+        }
+    } catch (const std::exception& e) {
+        Utilities::LOG_ERROR("Loop error: %s", e.what());
+        delay(100); // Give system time to recover
     }
     
-    // Handle display updates at fixed interval
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastDraw >= DRAW_INTERVAL) {
-        lastDraw = currentMillis;
-        if (RoverBehaviorManager::getCurrentState() == RoverBehaviorManager::BehaviorState::LOADING) {
-            RoverViewManager::drawLoadingScreen(RoverBehaviorManager::getStatusMessage());
-        } else {
-            RoverViewManager::drawCurrentView();
-        }
-    }
+    // Final yield
+    delay(2);
 }
 
 

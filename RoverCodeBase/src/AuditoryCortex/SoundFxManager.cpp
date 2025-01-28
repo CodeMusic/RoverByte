@@ -7,410 +7,469 @@
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/RoverManager.h"
 #include "../VisualCortex/LEDManager.h"
+#include <vector>
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../PrefrontalCortex/Utilities.h"
+
+// Add after the existing using declarations
+using namespace VisualCortex;  // For RoverManager
+
+#define EXAMPLE_I2S_CH I2S_NUM_0
+#define EXAMPLE_SAMPLE_RATE 44100
+#define WAVE_HEADER_SIZE 44
+#define BYTE_RATE (EXAMPLE_SAMPLE_RATE * 2)
+
+namespace AuditoryCortex
+{
+    // Initialize static members
+    int SoundFxManager::currentNote = 0;
+    unsigned long SoundFxManager::lastNoteTime = 0;
+    bool SoundFxManager::isTunePlaying = false;
+    Audio SoundFxManager::audio;
+    bool SoundFxManager::isPlayingSound = false;
+    const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
+    bool SoundFxManager::isRecording = false;
+    File SoundFxManager::recordFile;
+    bool SoundFxManager::_isInitialized = false;
+    int SoundFxManager::volume = 42;
+
+    Tunes::TunesTypes SoundFxManager::selectedSong = Tunes::TunesTypes::ROVERBYTE_JINGLE;
 
 
-// Initialize static members
-int SoundFxManager::currentNote = 0;
-unsigned long SoundFxManager::lastNoteTime = 0;
-bool SoundFxManager::jinglePlaying = false;
-Audio SoundFxManager::audio;
-bool SoundFxManager::isPlayingSound = false;
-const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
-bool SoundFxManager::isRecording = false;
-File SoundFxManager::recordFile;
-bool SoundFxManager::_isInitialized = false;
 
-// Add after the other jingle definitions
-const SoundFxManager::Note SoundFxManager::ROVERBYTE_JINGLE[] = {
-    {PitchPerception::NOTE_G4, 100, 30},    // G - Base note
-    {PitchPerception::NOTE_C5, 100, 30},    // C - Up to C
-    {PitchPerception::NOTE_E5, 100, 30},    // E - Complete the C major triad
-    {PitchPerception::NOTE_G5, 150, 50},    // G - Octave up, held longer
-    {PitchPerception::NOTE_E5, 100, 30},    // E - Back down
-    {PitchPerception::NOTE_C5, 100, 30},    // C - Continue down
-    {PitchPerception::NOTE_D5, 150, 50},    // D - Surprise note
-    {PitchPerception::NOTE_G5, 200, 0}      // G - Final high note, held longest
-};
+    void SoundFxManager::playTone(int frequency, int duration, int position) {
+        // ESP32 LEDC limitations: freq_hz * duty_resolution < 80MHz
+        // Using 8-bit resolution, so max frequency should be around 312.5KHz
+        
+        // Clamp frequency to safe range
+        if (frequency < 100) frequency = 100;  // Minimum frequency
+        if (frequency > 10000) frequency = 10000;  // Maximum frequency
+        
+        ledcSetup(TONE_PWM_CHANNEL, frequency, 8);  // 8-bit resolution
+        ledcAttachPin(BOARD_VOICE_DIN, TONE_PWM_CHANNEL);
+        ledcWrite(TONE_PWM_CHANNEL, 127);  // 50% duty cycle
+        delay(duration);
+        ledcWrite(TONE_PWM_CHANNEL, 0);
+        ledcDetachPin(BOARD_VOICE_DIN);
 
-const int SoundFxManager::JINGLE_LENGTH = sizeof(SoundFxManager::ROVERBYTE_JINGLE) / sizeof(SoundFxManager::Note);
-
-void SoundFxManager::playTone(int frequency, int duration, int position) {
-    // ESP32 LEDC limitations: freq_hz * duty_resolution < 80MHz
-    // Using 8-bit resolution, so max frequency should be around 312.5KHz
-    
-    // Clamp frequency to safe range
-    if (frequency < 100) frequency = 100;  // Minimum frequency
-    if (frequency > 10000) frequency = 10000;  // Maximum frequency
-    
-    ledcSetup(TONE_PWM_CHANNEL, frequency, 8);  // 8-bit resolution
-    ledcAttachPin(BOARD_VOICE_DIN, TONE_PWM_CHANNEL);
-    ledcWrite(TONE_PWM_CHANNEL, 127);  // 50% duty cycle
-    delay(duration);
-    ledcWrite(TONE_PWM_CHANNEL, 0);
-    ledcDetachPin(BOARD_VOICE_DIN);
-
-    //LEDManager::getNoteColor(PitchPerception::getNoteInfo(frequency));
-    LEDManager::displayNote(frequency, position);
-}
-
-void SoundFxManager::startJingle() {
-    currentNote = 0;
-    jinglePlaying = true;
-    lastNoteTime = 0;
-}
-
-void SoundFxManager::updateJingle() {
-    if (!jinglePlaying || currentNote >= JINGLE_LENGTH) return;
-    
-    unsigned long currentTime = millis();
-    if (currentTime - lastNoteTime >= ROVERBYTE_JINGLE[currentNote].duration + ROVERBYTE_JINGLE[currentNote].delay) {
-        if (currentNote < JINGLE_LENGTH) {
-            SoundFxManager::playTone(SoundFxManager::ROVERBYTE_JINGLE[currentNote].pitch, SoundFxManager::ROVERBYTE_JINGLE[currentNote].duration);
-            lastNoteTime = currentTime;
-            currentNote++;
-        } else {
-            SoundFxManager::stopJingle();
-        }
+        //LEDManager::getNoteColor(PitchPerception::getNoteInfo(frequency));
+        VisualCortex::LEDManager::displayNote(frequency, position);
     }
-}
 
-bool SoundFxManager::isJinglePlaying() {
-    return jinglePlaying;
-}
-
-void SoundFxManager::playSuccessSound() {
-    playTone(PitchPerception::NOTE_C5, 100);
-    delay(50);
-    playTone(PitchPerception::NOTE_E5, 100);
-    delay(50);
-    playTone(PitchPerception::NOTE_G5, 200);
-}
-
-void SoundFxManager::playRotaryPressSound(int mode) {  // 0=Full, 1=Week, 2=Timer
-    time_t now = time(nullptr);
-    struct tm* timeInfo = localtime(&now);
-    int dayOfWeek = timeInfo->tm_wday;  // 0-6 (Sunday-Saturday)
-    uint16_t baseNote = PitchPerception::getDayBaseNote(mode == 1); // Full mode - base octave // Week mode - octave up
-
-    
-    // Adjust octave based on mode
-    switch(mode) {
-        case 0: 
-            SoundFxManager::playTone(baseNote, 100);
-            break;
-        case 1:  
-            SoundFxManager::playTone(baseNote, 100);  
-            break;
-        case 2:  // Timer mode - octave up + fifth
-            SoundFxManager::playTone(baseNote * 2, 100);  // Multiply by 3 for octave 
-            break;
+    void SoundFxManager::startTune() {
+        currentNote = 0;
+        isTunePlaying = true;
+        lastNoteTime = 0;
     }
-}
 
-void SoundFxManager::playRotaryTurnSound(bool clockwise) {
-    if (clockwise) {
-        playTone(PitchPerception::getDayBaseNote4(), 50);
-        playTone(PitchPerception::getDayBaseNote5(), 50);
-    } else {
-        playTone(PitchPerception::getDayBaseNote5(), 50);
-        playTone(PitchPerception::getDayBaseNote4(), 50);
-    }
-}
-
-void SoundFxManager::playSideButtonSound(bool start) {
-    if (start) {
-        playTone(PitchPerception::getDayBaseNote4(), 50);
-        playTone(PitchPerception::getDayBaseNote4(), 50);
-    } else {
-        playTone(PitchPerception::getDayBaseNote5(), 100);
-        int baseNote = PitchPerception::getDayBaseNote5();
-        playTone(PitchPerception::getNoteMinus2(baseNote), 100);
-    }
-}
-
-void SoundFxManager::playErrorSound(int type) {
-    switch(type) {
-        case 1: // Recording error
-            SoundFxManager::playTone(PitchPerception::NOTE_B5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_D5, 400);
-            break;
-            
-        case 2: // SD card error
-            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_G4, 400);
-            break;
-            
-        case 3: // Playback error
-            SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
-            delay(100);
-            SoundFxManager::playTone(PitchPerception::NOTE_D4, 400);
-            break;
-    }
-}
-
-void SoundFxManager::playStartupSound() {
-    if (!SPIFFS.exists("/initialized.txt")) {
-        // Only play on first boot
-        for (int i = 0; i < SoundFxManager::JINGLE_LENGTH; i++) {
-            SoundFxManager::playTone(SoundFxManager::ROVERBYTE_JINGLE[i].pitch, SoundFxManager::ROVERBYTE_JINGLE[i].duration);
-            if (SoundFxManager::ROVERBYTE_JINGLE[i].delay > 0) {
-                delay(SoundFxManager::ROVERBYTE_JINGLE[i].delay);
+    void SoundFxManager::updateTune() {
+        if (!isTunePlaying || currentNote >= TUNE_LENGTH) return;
+        
+        unsigned long currentTime = millis();
+        if (currentTime - lastNoteTime >= TUNE[currentNote].duration + TUNE[currentNote].delay) {
+            if (currentNote < TUNE_LENGTH) {
+                SoundFxManager::playTone(SoundFxManager::TUNE[currentNote].pitch, SoundFxManager::TUNE[currentNote].duration);
+                lastNoteTime = currentTime;
+                currentNote++;
+            } else {
+                SoundFxManager::stopTune();
             }
         }
+    }
+
+    bool SoundFxManager::isTunePlaying() {
+        return isTunePlaying;
+    }
+
+    void SoundFxManager::playSuccessSound() {
+        playTone(PitchPerception::NOTE_C5, 100);
+        delay(50);
+        playTone(PitchPerception::NOTE_E5, 100);
+        delay(50);
+        playTone(PitchPerception::NOTE_G5, 200);
+    }
+
+    void SoundFxManager::playRotaryPressSound(int mode) {  // 0=Full, 1=Week, 2=Timer
+        time_t now = time(nullptr);
+        struct tm* timeInfo = localtime(&now);
+        int dayOfWeek = timeInfo->tm_wday;  // 0-6 (Sunday-Saturday)
+        uint16_t baseNote = PitchPerception::getDayBaseNote(mode == 1); // Full mode - base octave // Week mode - octave up
+
         
-        // Create initialization file
-        File f = SPIFFS.open("/initialized.txt", "w");
-        if (f) {
-            f.println("initialized");
-            f.close();
+        // Adjust octave based on mode
+        switch(mode) {
+            case 0: 
+                SoundFxManager::playTone(baseNote, 100);
+                break;
+            case 1:  
+                SoundFxManager::playTone(baseNote, 100);  
+                break;
+            case 2:  // Timer mode - octave up + fifth
+                SoundFxManager::playTone(baseNote * 2, 100);  // Multiply by 3 for octave 
+                break;
         }
     }
-}
 
-void SoundFxManager::playJingle() {
-    if (!jinglePlaying) {
-        jinglePlaying = true;
-        currentNote = 0;
-        lastNoteTime = millis();
-    }
-}
-
-
-// Add audio callback
-void SoundFxManager::audio_eof_mp3(const char *info) {
-    Serial.printf("Audio playback finished: %s\n", info);
-    // Delete temporary recording after playback
-    if (!SD.remove(RECORD_FILENAME)) {
-        Serial.println("Failed to delete temporary recording file");
-        playErrorSound(2);
-    }
-    isPlayingSound = false;
-}
-
-
-void SoundFxManager::startRecording() {
-    if (!SDManager::isInitialized()) return;
-    if (isRecording) return;
-    
-    Serial.println("=== Starting Recording ===");
-    
-    // Initialize microphone
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
-        .sample_rate = EXAMPLE_SAMPLE_RATE,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
-        .dma_buf_count = 4,
-        .dma_buf_len = 64,
-        .use_apll = false,
-    };
-
-    i2s_pin_config_t pin_config = {
-        .mck_io_num = I2S_PIN_NO_CHANGE,
-        .bck_io_num = I2S_PIN_NO_CHANGE,
-        .ws_io_num = BOARD_MIC_CLK,
-        .data_out_num = I2S_PIN_NO_CHANGE,
-        .data_in_num = BOARD_MIC_DATA,
-    };
-
-    if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
-        Serial.println("ERROR: Failed to install I2S driver");
-        SoundFxManager::playErrorSound(1);
-        RoverManager::setEarsDown();
-        return;
-    }
-    
-    if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
-        Serial.println("ERROR: Failed to set I2S pins");
-        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        SoundFxManager::playErrorSound(1);
-        RoverManager::setEarsDown();
-        return;
+    void SoundFxManager::playRotaryTurnSound(bool clockwise) {
+        if (clockwise) {
+            playTone(PitchPerception::getDayBaseNote4(), 50);
+            playTone(PitchPerception::getDayBaseNote5(), 50);
+        } else {
+            playTone(PitchPerception::getDayBaseNote5(), 50);
+            playTone(PitchPerception::getDayBaseNote4(), 50);
+        }
     }
 
-    // Create new WAV file
-    recordFile = SD.open(RECORD_FILENAME, FILE_WRITE);
-    if (!recordFile) {
-        Serial.println("ERROR: Failed to open file for recording");
-        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        SoundFxManager::playErrorSound(2);
-        RoverManager::setEarsDown();
-        return;
+    void SoundFxManager::playSideButtonSound(bool start) {
+        if (start) {
+            playTone(PitchPerception::getDayBaseNote4(), 50);
+            playTone(PitchPerception::getDayBaseNote4(), 50);
+        } else {
+            playTone(PitchPerception::getDayBaseNote5(), 100);
+            int baseNote = PitchPerception::getDayBaseNote5();
+            playTone(PitchPerception::getNoteMinus2(baseNote), 100);
+        }
     }
 
-    // Reserve space for the header
-    for (int i = 0; i < WAVE_HEADER_SIZE; i++) {
-        recordFile.write(0);
+    void SoundFxManager::playErrorSound(int type) {
+        switch(type) {
+            case 1: // Recording error
+                SoundFxManager::playTone(PitchPerception::NOTE_B5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_D5, 400);
+                break;
+                
+            case 2: // SD card error
+                SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_G4, 400);
+                break;
+                
+            case 3: // Playback error
+                SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
+                delay(100);
+                SoundFxManager::playTone(PitchPerception::NOTE_D4, 400);
+                break;
+        }
     }
 
-    isRecording = true;
-    Serial.println("Recording started!");
-}
+    void SoundFxManager::playTune(Tunes::TunesTypes type) {
+        selectedSong = type;
+        activeTune = Tunes::getTune(selectedSong);
+        activeTuneLength = activeTune.notes.size();
+        if (!isTunePlaying) {
+            isTunePlaying = true;
+            currentNote = 0;
+            lastNoteTime = millis();
+        }
 
-void SoundFxManager::stopRecording() {
-    if (!isRecording) return;
-
-    Serial.println("=== Stopping Recording ===");
-    isRecording = false;
-    
-    // Get final size
-    uint32_t file_size = recordFile.size() - WAVE_HEADER_SIZE;
-    
-    // Generate and write header
-    char wav_header[WAVE_HEADER_SIZE];
-    generate_wav_header(wav_header, file_size, EXAMPLE_SAMPLE_RATE);
-    
-    if (!recordFile.seek(0)) {
-        Serial.println("ERROR: Failed to seek in file");
-        recordFile.close();
-        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        SoundFxManager::playErrorSound(2);
-        RoverManager::setEarsDown();
-        return;
+        // Play the tune
+        for (int i = 0; i < activeTuneLength; i++) {
+            // Play the current note
+            SoundFxManager::playTone(activeTune.notes[i].pitch, activeTune.notes[i].duration);
+            
+            // Log the note being played
+            Utilities::LOG_DEBUG("Playing note: %d", activeTune.notes[i].pitch);
+            
+            // Update LEDs based on the current note's animation
+            for (int j = 0; j < WS2812_NUM_LEDS; j++) {
+                // Get the color for the current note
+                uint16_t frequency = PitchPerception::getNoteFrequency(activeTune.notes[i]);
+                CRGB color = CRGB(VisualSynesthesia::getNoteColorBlended(frequency));
+                
+                // Update the LED if the bit for this LED is set
+                if (activeTune.ledAnimation[i].bitRead(j) == 1) {
+                    VisualCortex::LEDManager::setLED(j, color);
+                } else {
+                    VisualCortex::LEDManager::setLED(j, CRGB::Black); // Turn off the LED if not set
+                }
+            }
+            
+            // Delay between notes if specified
+            int aDelay = Tunes::timeSignatureToDelay(activeTune.timeSignature);
+            if (aDelay > 0) {
+                delay(aDelay);
+            }
+        }
     }
-    
-    if (recordFile.write((uint8_t *)wav_header, WAVE_HEADER_SIZE) != WAVE_HEADER_SIZE) {
-        Serial.println("ERROR: Failed to write WAV header");
-        recordFile.close();
-        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-        SoundFxManager::playErrorSound(2);
-        RoverManager::setEarsDown();
-        return;
-    }
-    
-    recordFile.close();
-    i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
 
-    // Play the recording
-    Serial.println("Attempting to play recording...");
-    audio.setVolume(21);
-    
-    if (SD.exists(RECORD_FILENAME)) {
-        Serial.println("Found recording file, playing...");
-        if (!audio.connecttoFS(SD, RECORD_FILENAME)) {
-            Serial.println("ERROR: Failed to start playback");
-            SoundFxManager::playErrorSound(3);
-            RoverManager::setEarsDown();
+    // Add audio callback
+    void SoundFxManager::audio_eof_mp3(const char *info) {
+        Serial.printf("Audio playback finished: %s\n", info);
+        // Delete temporary recording after playback
+        if (!SD.remove(RECORD_FILENAME)) {
+            Serial.println("Failed to delete temporary recording file");
+            playErrorSound(2);
+        }
+        isPlayingSound = false;
+    }
+
+
+    void SoundFxManager::startRecording() {
+        if (!SDManager::isInitialized()) return;
+        if (isRecording) return;
+        
+        Serial.println("=== Starting Recording ===");
+        
+        // Initialize microphone
+        i2s_config_t i2s_config = {
+            .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+            .sample_rate = EXAMPLE_SAMPLE_RATE,
+            .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+            .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+            .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+            .dma_buf_count = 4,
+            .dma_buf_len = 64,
+            .use_apll = false,
+        };
+
+        i2s_pin_config_t pin_config = {
+            .mck_io_num = I2S_PIN_NO_CHANGE,
+            .bck_io_num = I2S_PIN_NO_CHANGE,
+            .ws_io_num = BOARD_MIC_CLK,
+            .data_out_num = I2S_PIN_NO_CHANGE,
+            .data_in_num = BOARD_MIC_DATA,
+        };
+
+        if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
+            Serial.println("ERROR: Failed to install I2S driver");
+            SoundFxManager::playErrorSound(1);
+            RoverManager::setEarsPerked(false);
             return;
         }
-    } else {
-        Serial.println("ERROR: Recording file not found!");
-        SoundFxManager::playErrorSound(3);
-        RoverManager::setEarsDown();
-        return;
+        
+        if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
+            Serial.println("ERROR: Failed to set I2S pins");
+            i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+            SoundFxManager::playErrorSound(1);
+            RoverManager::setEarsPerked(false);
+            return;
+        }
+
+        // Create new WAV file
+        recordFile = SD.open(RECORD_FILENAME, FILE_WRITE);
+        if (!recordFile) {
+            Serial.println("ERROR: Failed to open file for recording");
+            i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+            SoundFxManager::playErrorSound(2);
+            RoverManager::setEarsPerked(false);
+            return;
+        }
+
+        // Reserve space for the header
+        for (int i = 0; i < WAVE_HEADER_SIZE; i++) {
+            recordFile.write(0);
+        }
+
+        isRecording = true;
+        Serial.println("Recording started!");
     }
-    
-    //SDManager::closeFile(recordFile);
-    RoverManager::setEarsDown();  // Put ears down after successful recording/playback start
-    
-}
 
+    void SoundFxManager::stopRecording() 
+    {
+        if (!isRecording) return;
 
-void SoundFxManager::init_microphone() {
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
-        .sample_rate = EXAMPLE_SAMPLE_RATE,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
-        .dma_buf_count = 8,
-        .dma_buf_len = 200,
-        .use_apll = 0
-    };
+        Serial.println("=== Stopping Recording ===");
+        isRecording = false;
+        
+        // Memory-safe header generation
+        uint32_t fileSize = recordFile.size() - WAVE_HEADER_SIZE;
+        char wavHeader[WAVE_HEADER_SIZE];
+        generate_wav_header(wavHeader, fileSize, EXAMPLE_SAMPLE_RATE);
+        
+        // Error handling with cognitive state tracking
+        bool headerWriteSuccess = true;
+        
+        if (!recordFile.seek(0)) 
+        {
+            Serial.println("ERROR: Failed to seek in file");
+            headerWriteSuccess = false;
+        }
+        else if (recordFile.write((uint8_t *)wavHeader, WAVE_HEADER_SIZE) != WAVE_HEADER_SIZE) 
+        {
+            Serial.println("ERROR: Failed to write WAV header");
+            headerWriteSuccess = false;
+        }
+        
+        // Cleanup resources
+        recordFile.close();
+        i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
+        
+        if (!headerWriteSuccess) 
+        {
+            SoundFxManager::playErrorSound(2);
+            RoverManager::setEarsPerked(false);
+            return;
+        }
 
-    i2s_pin_config_t pin_config = {
-        .mck_io_num = I2S_PIN_NO_CHANGE,
-        .bck_io_num = I2S_PIN_NO_CHANGE,
-        .ws_io_num = BOARD_MIC_CLK,
-        .data_out_num = I2S_PIN_NO_CHANGE,
-        .data_in_num = BOARD_MIC_DATA
-    };
+        // Attempt playback
+        audio.setVolume(volume);
+        if (!SD.exists(RECORD_FILENAME) || !audio.connecttoFS(SD, RECORD_FILENAME)) 
+        {
+            Serial.println("ERROR: Playback failed");
+            SoundFxManager::playErrorSound(3);
+            RoverManager::setEarsPerked(false);
+            return;
+        }
 
-    ESP_ERROR_CHECK(i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL));
-    ESP_ERROR_CHECK(i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config));
-    ESP_ERROR_CHECK(i2s_set_clk((i2s_port_t)EXAMPLE_I2S_CH, EXAMPLE_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO));
-}
-
-
-void SoundFxManager::generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate)
-{
-    // See this for reference: http://soundfile.sapp.org/doc/WaveFormat/
-    uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
-    uint32_t byte_rate = BYTE_RATE;
-
-    const char set_wav_header[] = {
-        'R','I','F','F', // ChunkID
-        (char)file_size, (char)(file_size >> 8), (char)(file_size >> 16), (char)(file_size >> 24), // ChunkSize
-        'W','A','V','E', // Format
-        'f','m','t',' ', // Subchunk1ID
-        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
-        0x01, 0x00, // AudioFormat (1 for PCM)
-        0x01, 0x00, // NumChannels (1 channel)
-        (char)sample_rate, (char)(sample_rate >> 8), (char)(sample_rate >> 16), (char)(sample_rate >> 24), // SampleRate
-        (char)byte_rate, (char)(byte_rate >> 8), (char)(byte_rate >> 16), (char)(byte_rate >> 24), // ByteRate
-        0x02, 0x00, // BlockAlign
-        0x10, 0x00, // BitsPerSample (16 bits)
-        'd','a','t','a', // Subchunk2ID
-        (char)wav_size, (char)(wav_size >> 8), (char)(wav_size >> 16), (char)(wav_size >> 24), // Subchunk2Size
-    };
-
-    memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
-}
-
-void SoundFxManager::init() {
-    if (_isInitialized) return;
-    // Initialize audio hardware
-    audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
-    audio.setVolume(42);  // Set a reasonable volume level
-    
-    // Initialize SPIFFS for sound files
-    if (!SPIFFS.begin(true)) {
-        LOG_ERROR("Failed to initialize SPIFFS");
-        return;
+        RoverManager::setEarsPerked(false);
     }
-    
-    // Initialize I2S
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-        .sample_rate = 44100,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 4,
-        .dma_buf_len = 32,
-        .use_apll = false
-    };
-    
-    if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) == ESP_OK) {
-        LOG_PROD("I2S driver installed successfully");
-    } else {
-        LOG_ERROR("I2S driver installation failed");
+
+
+    void SoundFxManager::init_microphone() {
+        i2s_config_t i2s_config = {
+            .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
+            .sample_rate = EXAMPLE_SAMPLE_RATE,
+            .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+            .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+            .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+            .dma_buf_count = 8,
+            .dma_buf_len = 200,
+            .use_apll = 0
+        };
+
+        i2s_pin_config_t pin_config = {
+            .mck_io_num = I2S_PIN_NO_CHANGE,
+            .bck_io_num = I2S_PIN_NO_CHANGE,
+            .ws_io_num = BOARD_MIC_CLK,
+            .data_out_num = I2S_PIN_NO_CHANGE,
+            .data_in_num = BOARD_MIC_DATA
+        };
+
+        ESP_ERROR_CHECK(i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL));
+        ESP_ERROR_CHECK(i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config));
+        ESP_ERROR_CHECK(i2s_set_clk((i2s_port_t)EXAMPLE_I2S_CH, EXAMPLE_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO));
     }
-    
-    playStartupSound();
-    _isInitialized = true;
-}
 
-void SoundFxManager::stopJingle() {
-    jinglePlaying = false;
-    currentNote = 0;
-    lastNoteTime = 0;
-}
 
-void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
-    if (strcmp(line, "card_detected") == 0 && cardId != 0) {
+    void SoundFxManager::generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate)
+    {
+        // Cognitive mapping of WAV format structure
+        const WavHeaderInfo headerInfo = 
+        {
+            .fileSize = wav_size + WAVE_HEADER_SIZE - 8,
+            .byteRate = BYTE_RATE,
+            .sampleRate = sample_rate,
+            .numChannels = 1,  // Mono recording
+            .bitsPerSample = 16
+        };
+
+        // Memory-safe header construction using array bounds
+        const size_t headerSize = WAVE_HEADER_SIZE;
+        
+        // Validate output buffer
+        if (!wav_header) return;
+
+        // Clear header memory first
+        memset(wav_header, 0, headerSize);
+
+        // Construct header in a memory-safe way
+        const char header[WAVE_HEADER_SIZE] = 
+        {
+            // RIFF chunk descriptor
+            'R', 'I', 'F', 'F',
+            static_cast<char>(headerInfo.fileSize & 0xFF),
+            static_cast<char>((headerInfo.fileSize >> 8) & 0xFF),
+            static_cast<char>((headerInfo.fileSize >> 16) & 0xFF), 
+            static_cast<char>((headerInfo.fileSize >> 24) & 0xFF),
+            
+            // WAVE chunk
+            'W', 'A', 'V', 'E',
+            
+            // Format subchunk
+            'f', 'm', 't', ' ',
+            0x10, 0x00, 0x00, 0x00,  // Subchunk1Size (16 for PCM)
+            0x01, 0x00,              // AudioFormat (1 for PCM)
+            static_cast<char>(headerInfo.numChannels & 0xFF),
+            0x00,
+            
+            // Sample rate
+            static_cast<char>(headerInfo.sampleRate & 0xFF),
+            static_cast<char>((headerInfo.sampleRate >> 8) & 0xFF),
+            static_cast<char>((headerInfo.sampleRate >> 16) & 0xFF),
+            static_cast<char>((headerInfo.sampleRate >> 24) & 0xFF),
+            
+            // Byte rate
+            static_cast<char>(headerInfo.byteRate & 0xFF),
+            static_cast<char>((headerInfo.byteRate >> 8) & 0xFF),
+            static_cast<char>((headerInfo.byteRate >> 16) & 0xFF),
+            static_cast<char>((headerInfo.byteRate >> 24) & 0xFF)
+        };
+
+        // Copy constructed header to output buffer
+        memcpy(wav_header, header, headerSize);
+    }
+
+    void SoundFxManager::init() {
+        if (_isInitialized) return;
+        // Initialize audio hardware
+        audio.setPinout(BOARD_VOICE_BCLK, BOARD_VOICE_LRCLK, BOARD_VOICE_DIN);
+        audio.setVolume(volume);  // Set a reasonable volume level
+        
+        // Initialize SPIFFS for sound files
+        if (!SPIFFS.begin(true)) {
+            Utilities::LOG_ERROR("Failed to initialize SPIFFS");
+            return;
+        }
+        
+        // Initialize I2S
+        i2s_config_t i2s_config = 
+        {
+            .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+            .sample_rate = 44100,
+            .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+            .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+            .dma_buf_count = 8,  // Increased from 4 for better buffering
+            .dma_buf_len = 64,   // Increased from 32 for better performance
+            .use_apll = true     // Changed to true for better audio quality
+        };
+        
+        if (i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL) != ESP_OK) 
+        {
+            Utilities::LOG_ERROR("I2S driver installation failed");
+            return;
+        }
+
+        Utilities::LOG_PROD("I2S driver installed successfully");
+        playStartupSound();
+        _isInitialized = true;
+    }
+
+    void SoundFxManager::adjustVolume(int amount) {
+        volume += amount;
+        
+        // Cognitive boundary checks for volume limits
+        if (volume < 0) 
+        {
+            volume = 91;  // Wrap around to max volume
+        }
+        if (volume > 100) 
+        {
+            volume = 0;   // Wrap around to mute
+        }
+        
+        audio.setVolume(volume);
+    }
+
+    void SoundFxManager::stopJingle() 
+    {
+        isTunePlaying = false;  // Use the existing class member instead of jinglePlaying
+        currentNote = 0;
+        lastNoteTime = 0;
+    }
+
+    void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
+        if (strcmp(line, "card_detected") == 0 && cardId != 0) {
             playCardMelody(cardId);
         }
         else if (strcmp(line, "waiting_for_card") == 0) {
@@ -453,88 +512,159 @@ void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
             delay(100);
             SoundFxManager::playTone(PitchPerception::NOTE_E6, 400);
         }
-    
-}
-
-void SoundFxManager::playCardMelody(uint32_t cardId) {
-    // Generate melody from all UID bytes
-    uint8_t notes[7];  // Support for full 7-byte UID
-    notes[0] = ((cardId >> 24) & 0xFF) % 24;
-    notes[1] = ((cardId >> 16) & 0xFF) % 24;
-    notes[2] = ((cardId >> 8) & 0xFF) % 24;
-    notes[3] = (cardId & 0xFF) % 24;
-    
-    // Base note frequencies for C4 to B5 (two octaves)
-    const uint16_t baseNotes[] = {
-        PitchPerception::NOTE_C4, PitchPerception::NOTE_CS4, PitchPerception::NOTE_D4, 
-        PitchPerception::NOTE_DS4, PitchPerception::NOTE_E4, PitchPerception::NOTE_F4,
-        PitchPerception::NOTE_FS4, PitchPerception::NOTE_G4, PitchPerception::NOTE_GS4, 
-        PitchPerception::NOTE_A4, PitchPerception::NOTE_AS4, PitchPerception::NOTE_B4,
-        PitchPerception::NOTE_C5, PitchPerception::NOTE_CS5, PitchPerception::NOTE_D5, 
-        PitchPerception::NOTE_DS5, PitchPerception::NOTE_E5, PitchPerception::NOTE_F5,
-        PitchPerception::NOTE_FS5, PitchPerception::NOTE_G5, PitchPerception::NOTE_GS5, 
-        PitchPerception::NOTE_A5, PitchPerception::NOTE_AS5, PitchPerception::NOTE_B5
-    };
-    
-    // Set excited expression before playing
-    RoverManager::setTemporaryExpression(RoverManager::EXCITED, 2000);  // Show excited face for 2 seconds
-    
-    // Play the generated melody
-    for (int i = 0; i < 4; i++) {
-        uint8_t duration = 50 + (notes[i] % 100);
-        SoundFxManager::playTone(baseNotes[notes[i]], duration, i);
-        delay(duration / 2);
-    }
-}
-
-void SoundFxManager::playTimerDropSound(CRGB color) {
-    // Convert color to musical note (using same base notes)
-    int baseNote;
-    if (color == CRGB::Red) baseNote = PitchPerception::NOTE_C4;
-    else if (color == CRGB::Orange) baseNote = PitchPerception::NOTE_D4;
-    else if (color == CRGB::Yellow) baseNote = PitchPerception::NOTE_E4;
-    else if (color == CRGB::Green) baseNote = PitchPerception::NOTE_F4;
-    else if (color == CRGB::Blue) baseNote = PitchPerception::NOTE_G4;
-    else if (color == CRGB::Indigo) baseNote = PitchPerception::NOTE_A4;
-    else if (color == CRGB::Purple) baseNote = PitchPerception::NOTE_B4;
-    else if (color == CRGB::White) baseNote = PitchPerception::NOTE_C5;
-    else baseNote = PitchPerception::NOTE_C4;
-
-    // Play initial clear note
-    SoundFxManager::playTone(baseNote, 50, 0);
-    delay(10);
-
-    // Create gentler water drop effect
-    const int steps = 4;
-    const int duration = 20;
-    const int dropRange = 100;
-    
-    for (int i = 0; i < steps; i++) {
-        int freq = baseNote - (dropRange * i / steps);
-        SoundFxManager::playTone(freq, duration);
-        delay(5);
-    }
-}
-
-void SoundFxManager::playErrorCode(uint32_t errorCode, bool isFatal) {
-    // Base frequencies for fatal vs warning
-    uint16_t baseFreq = isFatal ? 440 : 880; // A4 for fatal, A5 for warning
-    
-    // Play binary representation of error code
-    for (int i = 7; i >= 0; i--) {
-        if (errorCode & (1 << i)) {
-            playTone(baseFreq, 100);
-        } else {
-            playTone(baseFreq/2, 100);
+        else if (strcmp(line, "volume_up") == 0) {
+            // Volume up tune
+            SoundFxManager::playTone(PitchPerception::NOTE_C5, 100, 0);
+            delay(50);
+            SoundFxManager::playTone(PitchPerception::NOTE_E5, 100, 1);
+            delay(50);
+            SoundFxManager::playTone(PitchPerception::NOTE_G5, 100, 2);
         }
-        delay(50);
+        else if (strcmp(line, "volume_down") == 0) {
+            // Volume down tune
+            SoundFxManager::playTone(PitchPerception::NOTE_G4, 100, 0);
+            delay(50);
+            SoundFxManager::playTone(PitchPerception::NOTE_E4, 100, 1);
+            delay(50);
+            SoundFxManager::playTone(PitchPerception::NOTE_C4, 100, 2);
+        }
+        
     }
-    
-    // Final tone indicates fatal/warning
-    if (isFatal) {
-        playTone(220, 500); // Low A3 for fatal
-    } else {
-        playTone(1760, 200); // High A6 for warning
+
+    void SoundFxManager::playMenuCloseSound() {
+        // Play a descending tone sequence for closing
+        playTone(PitchPerception::NOTE_C5, 100); // C5
+        delay(50);
+        playTone(PitchPerception::NOTE_B4, 100); // B4
+        delay(50);
+        playTone(PitchPerception::NOTE_A4, 100); // A4
+        delay(50);
+        playTone(PitchPerception::NOTE_G4, 100); // G4
+    }
+
+    void SoundFxManager::playMenuOpenSound() {
+        // Play an ascending tone sequence for opening
+        playTone(PitchPerception::NOTE_G4, 100); // G4
+        delay(50);
+        playTone(PitchPerception::NOTE_A4, 100); // A4
+        delay(50);
+        playTone(PitchPerception::NOTE_B4, 100); // B4
+        delay(50);
+        playTone(PitchPerception::NOTE_C5, 100); // C5
+    }
+
+    void SoundFxManager::playMenuSelectSound() {
+        // Play a short, sharp tone with a slight variation
+        playTone(PitchPerception::NOTE_E5, 100); // E5 for selection
+        delay(50);
+        playTone(PitchPerception::NOTE_C5, 100); // C5
+        delay(50);
+        playTone(PitchPerception::NOTE_E5, 100); // E5 again
+        delay(50);
+        playTone(PitchPerception::NOTE_G5, 100); // G5 for a higher note
+    }
+
+    void SoundFxManager::playCardMelody(uint32_t cardId) 
+    {
+        // Generate melody from card ID with harmonic relationships
+        const uint8_t MELODY_LENGTH = 4;
+        uint8_t notes[MELODY_LENGTH];
+        
+        // Extract meaningful patterns from card ID
+        notes[0] = ((cardId >> 24) & 0xFF) % 12;  // Root note (first octave)
+        notes[1] = ((cardId >> 16) & 0xFF) % 12 + 12;  // Harmony note (second octave)
+        notes[2] = ((cardId >> 8) & 0xFF) % 12;   // Return to first octave
+        notes[3] = (cardId & 0xFF) % 24;          // Wide range for final note
+        
+        // Base frequencies optimized for cognitive recognition
+        const uint16_t baseNotes[] = {
+            PitchPerception::NOTE_C4, PitchPerception::NOTE_CS4, PitchPerception::NOTE_D4, 
+            PitchPerception::NOTE_DS4, PitchPerception::NOTE_E4, PitchPerception::NOTE_F4,
+            PitchPerception::NOTE_FS4, PitchPerception::NOTE_G4, PitchPerception::NOTE_GS4, 
+            PitchPerception::NOTE_A4, PitchPerception::NOTE_AS4, PitchPerception::NOTE_B4,
+            PitchPerception::NOTE_C5, PitchPerception::NOTE_CS5, PitchPerception::NOTE_D5, 
+            PitchPerception::NOTE_DS5, PitchPerception::NOTE_E5, PitchPerception::NOTE_F5,
+            PitchPerception::NOTE_FS5, PitchPerception::NOTE_G5, PitchPerception::NOTE_GS5, 
+            PitchPerception::NOTE_A5, PitchPerception::NOTE_AS5, PitchPerception::NOTE_B5
+        };
+        
+        // Set excited expression
+        VisualCortex::RoverManager::setTemporaryExpression(
+            VisualCortex::RoverManager::EXCITED, 
+            2000
+        );
+        
+        // Play melody with dynamic timing
+        for (int i = 0; i < MELODY_LENGTH; i++) 
+        {
+            uint8_t duration = 50 + (notes[i] % 100);  // Variable note length
+            SoundFxManager::playTone(baseNotes[notes[i]], duration, i);
+            delay(duration * 0.6);  // Overlap notes slightly for smoother transition
+        }
+    }
+
+    void SoundFxManager::playTimerDropSound(CRGB color) 
+    {
+        // Map colors to musical scale degrees for cognitive association
+        const int colorToNoteMap[] = {
+            PitchPerception::NOTE_C4,  // Red - grounding
+            PitchPerception::NOTE_D4,  // Orange - warmth
+            PitchPerception::NOTE_E4,  // Yellow - brightness
+            PitchPerception::NOTE_F4,  // Green - nature
+            PitchPerception::NOTE_G4,  // Blue - depth
+            PitchPerception::NOTE_A4,  // Indigo - mystery
+            PitchPerception::NOTE_B4,  // Purple - complexity
+            PitchPerception::NOTE_C5   // White - completion
+        };
+        
+        int baseNote = PitchPerception::NOTE_C4;  // Default
+        
+        // Color to note mapping with improved psychological associations
+        if (color == CRGB::Red) baseNote = colorToNoteMap[0];
+        else if (color == CRGB::Orange) baseNote = colorToNoteMap[1];
+        else if (color == CRGB::Yellow) baseNote = colorToNoteMap[2];
+        else if (color == CRGB::Green) baseNote = colorToNoteMap[3];
+        else if (color == CRGB::Blue) baseNote = colorToNoteMap[4];
+        else if (color == CRGB::Indigo) baseNote = colorToNoteMap[5];
+        else if (color == CRGB::Purple) baseNote = colorToNoteMap[6];
+        else if (color == CRGB::White) baseNote = colorToNoteMap[7];
+        
+        // Initial clear note for attention
+        SoundFxManager::playTone(baseNote, 50, 0);
+        delay(10);
+        
+        // Enhanced water drop effect with harmonic series
+        const int STEPS = 4;
+        const int DURATION = 20;
+        const int DROP_RANGE = 100;
+        
+        for (int i = 0; i < STEPS; i++) 
+        {
+            int pitch = baseNote - (DROP_RANGE >> i);  // Exponential pitch drop
+            SoundFxManager::playTone(pitch, DURATION, 0);
+            delay(DURATION - (i * 2));  // Accelerating tempo
+        }
+    }
+
+    void SoundFxManager::playErrorCode(uint32_t errorCode, bool isFatal) {
+        // Base frequencies for fatal vs warning
+        uint16_t baseFreq = isFatal ? 440 : 880; // A4 for fatal, A5 for warning
+        
+        // Play binary representation of error code
+        for (int i = 7; i >= 0; i--) {
+            if (errorCode & (1 << i)) {
+                playTone(baseFreq, 100);
+            } else {
+                playTone(baseFreq/2, 100);
+            }
+            delay(50);
+        }
+        
+        // Final tone indicates fatal/warning
+        if (isFatal) {
+            playTone(220, 500); // Low A3 for fatal
+        } else {
+            playTone(1760, 200); // High A6 for warning
+        }
     }
 }
-
