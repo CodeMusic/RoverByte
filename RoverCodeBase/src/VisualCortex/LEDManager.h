@@ -4,6 +4,7 @@
 #include "../MotorCortex/PinDefinitions.h"
 #include "../GameCortex/SlotsManager.h"
 #include "../PsychicCortex/IRManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 using namespace MotorCortex;
 using namespace CorpusCallosum;
 

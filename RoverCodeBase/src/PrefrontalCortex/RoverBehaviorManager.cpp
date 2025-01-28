@@ -2,61 +2,91 @@
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
 
+#include "../CorpusCallosum/SynapticPathways.h"
 #include "RoverBehaviorManager.h"
+#include "Utilities.h"
+#include "SPIManager.h"
+#include "SDManager.h"
 #include "../PsychicCortex/WiFiManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverManager.h"
 #include "../SomatosensoryCortex/MenuManager.h"
 #include "../AuditoryCortex/SoundFxManager.h"
-#include "../PrefrontalCortex/SDManager.h"
 #include "../GameCortex/AppManager.h"
 #include "../GameCortex/AppRegistration.h"
 #include "../SomatosensoryCortex/UIManager.h"
-#include "../CorpusCallosum/SynapticPathways.h"
 #include <SPIFFS.h>
-
-
-using namespace CorpusCallosum;     // For SynapticPathways
 
 namespace PrefrontalCortex 
 {
+    using namespace CorpusCallosum;
+    using VC::RoverViewManager;
+    using VC::LEDManager;
+    using VC::RoverManager;
+    using SC::MenuManager;
+    using SC::UIManager;
+    using AC::SoundFxManager;
+    using GC::AppManager;
+    using GC::AppRegistration;
+    using PSY::WiFiManager;  // Use PSY namespace for WiFiManager
 
-    // Initialize static members
-    RoverBehaviorManager::BehaviorState RoverBehaviorManager::currentState = BehaviorState::LOADING;
-    RoverBehaviorManager::LoadingPhase RoverBehaviorManager::loadingPhase = LoadingPhase::BOOTING;
-    const char* RoverBehaviorManager::currentStatusMessage = "";
-    RoverBehaviorManager::BehaviorState RoverBehaviorManager::previousState = BehaviorState::LOADING;
-    unsigned long RoverBehaviorManager::warningStartTime = 0;
-    int RoverBehaviorManager::currentBootStep = 0;
-    bool RoverBehaviorManager::isCountingDown = false;
-    unsigned long RoverBehaviorManager::fatalErrorStartTime = 0;
-    bool RoverBehaviorManager::isFatalError = false;
+    // Static member initialization
     bool RoverBehaviorManager::initialized = false;
+    BehaviorState RoverBehaviorManager::currentState = BehaviorState::INITIALIZING;
+    String RoverBehaviorManager::statusMessage = "Starting...";
 
-    void RoverBehaviorManager::init() {
-        try {
-            // Start in LOADING state, BOOTING phase
-            Utilities::LOG_DEBUG("RoverBehaviorManager init called");
-            setState(BehaviorState::LOADING);
-            setLoadingPhase(LoadingPhase::BOOTING);
-            
-            // Initialize only the most critical systems
-            PowerManager::init();
+    void RoverBehaviorManager::init() 
+    {
+        if (initialized) 
+        {
+            Utilities::LOG_DEBUG("RoverBehaviorManager already initialized");
+            return;
+        }
+
+        try 
+        {
+            // Initialize SD card first
+            SDManager::init();
+            Utilities::LOG_DEBUG("SD Manager initialized");
+
+            // Initialize other managers
             LEDManager::init();
-            SDManager::init(SD_CS);
-            
-            // Set initialized to allow the loading screen to work
+            RoverViewManager::init();
+            MenuManager::init();
+            SoundFxManager::init();
+            AppManager::init();
+
             initialized = true;
-            
-            // The rest of initialization will happen in handleBooting()
-            Utilities::LOG_DEBUG("Core systems initialized, continuing with boot sequence");
-            
-        } catch (const std::exception& e) {
+            Utilities::LOG_DEBUG("RoverBehaviorManager initialized successfully");
+        }
+        catch (const std::exception& e) 
+        {
             Utilities::LOG_ERROR("RoverBehaviorManager init failed: %s", e.what());
             throw;
         }
-    } 
+    }
+
+    void RoverBehaviorManager::setState(BehaviorState newState) 
+    {
+        if (currentState == newState) return;
+
+        currentState = newState;
+        
+        switch (currentState) 
+        {
+            case BehaviorState::FULL_DISPLAY:
+                LEDManager::setEncodingMode(VC::EncodingModes::FULL_MODE);
+                break;
+
+            case BehaviorState::MENU_MODE:
+                LEDManager::setEncodingMode(VC::EncodingModes::MENU_MODE);
+                break;
+
+            default:
+                break;
+        }
+    }
 
     bool RoverBehaviorManager::IsInitialized() {
         return initialized;
@@ -90,7 +120,7 @@ namespace PrefrontalCortex
         // Decide what to draw
         switch (currentState) {
             case BehaviorState::LOADING:
-                RoverViewManager::drawLoadingScreen(currentStatusMessage);
+                RoverViewManager::drawLoadingScreen(statusMessage);
                 break;
             case BehaviorState::HOME:
                 if (MenuManager::isVisible()) {
@@ -114,7 +144,7 @@ namespace PrefrontalCortex
                 }
                 break;
             case BehaviorState::ERROR:
-                RoverViewManager::drawLoadingScreen(currentStatusMessage);
+                RoverViewManager::drawLoadingScreen(statusMessage);
                 break;
             case BehaviorState::FATAL_ERROR:
                 handleFatalError();
@@ -130,70 +160,9 @@ namespace PrefrontalCortex
         }
     }
 
-    RoverBehaviorManager::BehaviorState RoverBehaviorManager::getCurrentState() {
+    BehaviorState RoverBehaviorManager::getCurrentState() {
         return currentState;
     }
-
-    void RoverBehaviorManager::setState(BehaviorState state) {
-        currentState = state;
-        switch (state) {
-            case BehaviorState::LOADING:
-                currentStatusMessage = "Loading...";
-                LEDManager::startLoadingAnimation();
-                break;
-            case BehaviorState::HOME:
-                currentStatusMessage = "Welcome Home!";
-                LEDManager::stopLoadingAnimation();
-                LEDManager::setEncodingMode(EncodingModes::FULL_MODE);
-                break;
-            case BehaviorState::MENU:
-                currentStatusMessage = "Menu";
-                LEDManager::setEncodingMode(EncodingModes::MENU_MODE);
-                break;
-            case BehaviorState::APP:
-                currentStatusMessage = "App Running";
-                break;
-            case BehaviorState::ERROR:
-                currentStatusMessage = "Error Occurred!";
-                LEDManager::stopLoadingAnimation();
-                break;
-            case BehaviorState::WARNING:
-                currentStatusMessage = "Warning!";
-                break;
-            case BehaviorState::FATAL_ERROR:
-                currentStatusMessage = "Fatal Error!";
-                LEDManager::stopLoadingAnimation();
-                break;
-        }
-    }
-
-    RoverBehaviorManager::LoadingPhase RoverBehaviorManager::getLoadingPhase() {
-        return loadingPhase;
-    }
-
-    void RoverBehaviorManager::setLoadingPhase(LoadingPhase phase) {
-        loadingPhase = phase;
-        switch (phase) {
-            case LoadingPhase::BOOTING:
-                currentStatusMessage = "Booting Up...";
-                Utilities::LOG_DEBUG("Booting Up...");
-                break;
-            case LoadingPhase::CONNECTING_WIFI:
-                currentStatusMessage = "Connecting to Wi-Fi...";
-                Utilities::LOG_DEBUG("Connecting to Wi-Fi...");
-                break;
-            case LoadingPhase::SYNCING_TIME:
-                currentStatusMessage = "Synchronizing Time...";
-                Utilities::LOG_DEBUG("Synchronizing Time...");
-                break;
-        }
-    }
-
-    const char* RoverBehaviorManager::getStatusMessage() {
-        return currentStatusMessage;
-    }
-
-    //----- Main State Handlers -----
 
     void RoverBehaviorManager::handleLoading() {
         LEDManager::updateLoadingAnimation();
@@ -287,28 +256,28 @@ namespace PrefrontalCortex
             try {
                 switch(step) {
                     case 0:
-                        currentStatusMessage = "Initializing hardware...";
+                        statusMessage = "Initializing hardware...";
                         // Core hardware already initialized in init()
                         break;
                         
                     case 1:
-                        currentStatusMessage = "Loading display...";
+                        statusMessage = "Loading display...";
                         RoverViewManager::init();
                         break;
                     case 2:
-                        currentStatusMessage = "Initializing Sound...";
+                        statusMessage = "Initializing Sound...";
                         SoundFxManager::init();
                         break;
                     case 3:
-                        currentStatusMessage = "Starting UI...";
+                        statusMessage = "Starting UI...";
                         UIManager::init();
                         break;
                     case 4:
-                        currentStatusMessage = "Preparing apps...";
+                        statusMessage = "Preparing apps...";
                         MenuManager::init();
                         break;
                     case 5:
-                        currentStatusMessage = "Registering apps...";
+                        statusMessage = "Registering apps...";
                         AppManager::init();
                         if (AppManager::isInitialized()) {
                             AppRegistration::registerDefaultApps();
@@ -320,7 +289,7 @@ namespace PrefrontalCortex
                 lastMsgChange = millis();
                 
                 // Draw loading screen before incrementing step
-                RoverViewManager::drawLoadingScreen(currentStatusMessage);
+                RoverViewManager::drawLoadingScreen(statusMessage);
                 
                 step++;
                 

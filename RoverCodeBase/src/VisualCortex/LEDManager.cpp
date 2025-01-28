@@ -1,20 +1,19 @@
-#define FASTLED_INTERNAL // Skip FastLED's version check
+#include "../VisualCortex/FastLEDConfig.h"
 #include "../CorpusCallosum/SynapticPathways.h"
-#include "LEDManager.h"
-#include <time.h>
-#include "VisualSynesthesia.h"
 #include "../PrefrontalCortex/Utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "LEDManager.h"
+#include "VisualSynesthesia.h"
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "../GameCortex/AppManager.h"
 #include "../AuditoryCortex/PitchPerception.h"
 #include "../PsychicCortex/NFCManager.h"
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
-#include "../MotorCortex/PinDefinitions.h"
 #include "../GameCortex/SlotsManager.h"
 #include "../PsychicCortex/IRManager.h"
 
-
 using namespace CorpusCallosum;
+using PC::Utilities;
 
 namespace VisualCortex 
 {
@@ -89,36 +88,38 @@ namespace VisualCortex
     void LEDManager::init() {
         Utilities::LOG_DEBUG("Starting LED Manager initialization...");
         
-        // Ensure power is enabled
-        pinMode(BOARD_PWR_EN, OUTPUT);
-        digitalWrite(BOARD_PWR_EN, HIGH);
-        delay(50);  // Give power time to stabilize
-        
         try {
             // Initialize FastLED with hardware SPI configuration
-            FastLED.addLeds<WS2812B, MotorCortex::PinDefinitions::WS2812_DATA_PIN, 
-                           MotorCortex::PinDefinitions::RGB_ORDER>(
+            FastLED.addLeds<VISUAL_CORTEX_LED_TYPE, 
+                           PinDefinitions::WS2812_DATA_PIN, 
+                           PinDefinitions::RGB_ORDER>(
                 leds, 
                 PinDefinitions::WS2812_NUM_LEDS
-            );
+            ).setCorrection(VISUAL_CORTEX_COLOR_CORRECTION);
             
-            FastLED.setBrightness(50);
-            FastLED.clear();
+            FastLED.setBrightness(VISUAL_CORTEX_MAX_BRIGHTNESS);
+            FastLED.setMaxRefreshRate(VISUAL_CORTEX_DEFAULT_FPS);
+            FastLED.clear(true);
+            
+            // Initialize boot sequence colors
+            fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
             FastLED.show();
             
-            // Test pattern
-            fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Blue);
-            FastLED.show();
-            delay(100);
-            FastLED.clear();
-            FastLED.show();
-            
-            Utilities::LOG_DEBUG("FastLED initialized successfully");
+            Utilities::LOG_DEBUG("LED Manager initialized successfully");
         } catch (const std::exception& e) {
-            Utilities::LOG_ERROR("FastLED init failed: %s", e.what());
+            Utilities::LOG_ERROR("LED Manager init failed: %s", e.what());
+            throw;
         }
         
         startLoadingAnimation();
+    }
+
+    void LEDManager::runInitializationTest()
+    {
+        fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
+        FastLED.show();
+        delay(100);
+        FastLED.clear(true);
     }
 
     void LEDManager::stopLoadingAnimation() {
@@ -404,34 +405,36 @@ namespace VisualCortex
         if (!isLoading) return;
         
         unsigned long currentTime = millis();
-        if (currentTime - lastStepTime < 100) return;
-        lastStepTime = currentTime;
+        if (currentTime - lastStepTime < VISUAL_CORTEX_LOADING_DELAY) return;
         
+        lastStepTime = currentTime;
         int bootStep = RoverBehaviorManager::getCurrentBootStep();
         static int lastBootStep = -1;
-        
+
         // Only initialize new LEDs when boot step changes
-        if (bootStep != lastBootStep) {
+        if (bootStep != lastBootStep) 
+        {
             lastBootStep = bootStep;
-            loadingPosition = bootStep * LEDS_PER_STEP;
+            loadingPosition = bootStep * VISUAL_CORTEX_LEDS_PER_STEP;
         }
-        
+
         // Select color based on current boot step
         CRGB currentColor;
-        switch(bootStep) {
+        switch(bootStep) 
+        {
             case 0: currentColor = HARDWARE_INIT_COLOR; break;
             case 1: currentColor = SYSTEM_START_COLOR; break;
             case 2: currentColor = NETWORK_PREP_COLOR; break;
             case 3: currentColor = FINAL_PREP_COLOR; break;
             default: currentColor = HARDWARE_INIT_COLOR;
         }
-        
+
         // Light up one LED at a time within current step's section
-        if (loadingPosition < (bootStep + 1) * LEDS_PER_STEP) {
+        if (loadingPosition < (bootStep + 1) * VISUAL_CORTEX_LEDS_PER_STEP) 
+        {
             leds[loadingPosition] = currentColor;
             loadingPosition++;
         }
-        
         FastLED.show();
     }
 
@@ -464,7 +467,7 @@ namespace VisualCortex
         // Flash green
         fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Green);
         FastLED.show();
-        delay(100);
+        delay(VISUAL_CORTEX_SUCCESS_FLASH_DURATION);
         
         // Restore previous state
         memcpy(leds, savedState, sizeof(CRGB) * PinDefinitions::WS2812_NUM_LEDS);
@@ -862,8 +865,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateNFCScanPattern() {
-        
-        if (millis() - lastUpdate < 30) return;
+        if (millis() - lastUpdate < VISUAL_CORTEX_ANIMATION_DELAY) return;
         lastUpdate = millis();
 
         if (transitioningColor) {
@@ -871,28 +873,27 @@ namespace VisualCortex
                 // Fade sequence from blue to green
                 uint8_t ledIndex = fadeSequence[currentFadeIndex];
                 leds[ledIndex] = blend(CRGB::Blue, CRGB::Green, fadeValue);
-                fadeValue += 5;
+                fadeValue += VISUAL_CORTEX_FADE_INCREMENT;
                 
-                if (fadeValue >= 255) {
+                if (fadeValue >= VISUAL_CORTEX_MAX_FADE) {
                     fadeValue = 0;
                     currentFadeIndex++;
                 }
             } else if (!readyForMelody) {
                 readyForMelody = true;
-                // Now ready for card melody and note display
-                SoundFxManager::playCardMelody(NFCManager::getLastCardId());  // This will trigger displayNote for each note
+                SoundFxManager::playCardMelody(NFCManager::getLastCardId());
             }
         } else {
             // Normal blue pulse
-            fadeValue += (fadeDirection ? 5 : -5);
-            if (fadeValue <= 50) fadeDirection = true;
-            if (fadeValue >= 250) fadeDirection = false;
+            fadeValue += (fadeDirection ? VISUAL_CORTEX_FADE_INCREMENT : -VISUAL_CORTEX_FADE_INCREMENT);
+            
+            if (fadeValue <= VISUAL_CORTEX_MIN_FADE) fadeDirection = true;
+            if (fadeValue >= VISUAL_CORTEX_MAX_FADE) fadeDirection = false;
             
             fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Blue);
             fadeToBlackBy(leds, PinDefinitions::WS2812_NUM_LEDS, 255 - fadeValue);
         }
-        
-        showLEDs();
+        FastLED.show();
     }
 
     void LEDManager::setPattern(Pattern pattern) {
@@ -1008,17 +1009,17 @@ namespace VisualCortex
         if (RoverViewManager::isFatalError) {
             // Update fade value
             if (fadeDirection) {
-                fadeValue = min(255, fadeValue + 5);
-                if (fadeValue >= 255) fadeDirection = false;
+                fadeValue = min(255, fadeValue + VISUAL_CORTEX_FADE_INCREMENT);
+                if (fadeValue >= VISUAL_CORTEX_MAX_FADE) fadeDirection = false;
             } else {
-                fadeValue = max(64, fadeValue - 5);
-                if (fadeValue <= 64) fadeDirection = true;
+                fadeValue = max(VISUAL_CORTEX_ERROR_MIN_FADE, fadeValue - VISUAL_CORTEX_FADE_INCREMENT);
+                if (fadeValue <= VISUAL_CORTEX_ERROR_MIN_FADE) fadeDirection = true;
             }
             
             // Apply fade to error LEDs
-            for (uint8_t i = 0; i < ERROR_LED_COUNT; i++) {
-                if (leds[ERROR_LED_INDEX + i].r > 0) { // Only fade red LEDs (fatal errors)
-                    leds[ERROR_LED_INDEX + i].fadeToBlackBy(255 - fadeValue);
+            for (uint8_t i = 0; i < VISUAL_CORTEX_ERROR_LED_COUNT; i++) {
+                if (leds[VISUAL_CORTEX_ERROR_LED_INDEX + i].r > 0) { // Only fade red LEDs (fatal errors)
+                    leds[VISUAL_CORTEX_ERROR_LED_INDEX + i].fadeToBlackBy(255 - fadeValue);
                 }
             }
             

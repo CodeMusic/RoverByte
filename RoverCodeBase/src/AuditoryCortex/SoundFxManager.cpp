@@ -10,9 +10,14 @@
 #include <vector>
 #include "../VisualCortex/VisualSynesthesia.h"
 #include "../PrefrontalCortex/Utilities.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 // Add after the existing using declarations
 using namespace VisualCortex;  // For RoverManager
+using namespace CorpusCallosum;
+using PC::Utilities;
+using MC::PinDefinitions;
 
 #define EXAMPLE_I2S_CH I2S_NUM_0
 #define EXAMPLE_SAMPLE_RATE 44100
@@ -35,25 +40,21 @@ namespace AuditoryCortex
 
     Tunes::TunesTypes SoundFxManager::selectedSong = Tunes::TunesTypes::ROVERBYTE_JINGLE;
 
+    Tune SoundFxManager::activeTune;
 
+    void SoundFxManager::playTone(int frequency, int duration, int volume) 
+    {
+        if (frequency <= 0) return;
 
-    void SoundFxManager::playTone(int frequency, int duration, int position) {
-        // ESP32 LEDC limitations: freq_hz * duty_resolution < 80MHz
-        // Using 8-bit resolution, so max frequency should be around 312.5KHz
-        
-        // Clamp frequency to safe range
-        if (frequency < 100) frequency = 100;  // Minimum frequency
-        if (frequency > 10000) frequency = 10000;  // Maximum frequency
-        
+        const int TONE_PWM_CHANNEL = 0;  // Define PWM channel
         ledcSetup(TONE_PWM_CHANNEL, frequency, 8);  // 8-bit resolution
-        ledcAttachPin(BOARD_VOICE_DIN, TONE_PWM_CHANNEL);
-        ledcWrite(TONE_PWM_CHANNEL, 127);  // 50% duty cycle
-        delay(duration);
-        ledcWrite(TONE_PWM_CHANNEL, 0);
-        ledcDetachPin(BOARD_VOICE_DIN);
-
-        //LEDManager::getNoteColor(PitchPerception::getNoteInfo(frequency));
-        VisualCortex::LEDManager::displayNote(frequency, position);
+        ledcWrite(TONE_PWM_CHANNEL, volume);
+        
+        if (duration > 0) 
+        {
+            delay(duration);
+            ledcWrite(TONE_PWM_CHANNEL, 0);
+        }
     }
 
     void SoundFxManager::startTune() {
@@ -159,43 +160,38 @@ namespace AuditoryCortex
         }
     }
 
-    void SoundFxManager::playTune(Tunes::TunesTypes type) {
-        selectedSong = type;
-        activeTune = Tunes::getTune(selectedSong);
-        activeTuneLength = activeTune.notes.size();
-        if (!isTunePlaying) {
+    void SoundFxManager::playTune(Tunes::TunesTypes type) 
+    {
+        try 
+        {
+            activeTune = Tunes::getTune(type);
             isTunePlaying = true;
-            currentNote = 0;
-            lastNoteTime = millis();
-        }
 
-        // Play the tune
-        for (int i = 0; i < activeTuneLength; i++) {
-            // Play the current note
-            SoundFxManager::playTone(activeTune.notes[i].pitch, activeTune.notes[i].duration);
-            
-            // Log the note being played
-            Utilities::LOG_DEBUG("Playing note: %d", activeTune.notes[i].pitch);
-            
-            // Update LEDs based on the current note's animation
-            for (int j = 0; j < WS2812_NUM_LEDS; j++) {
-                // Get the color for the current note
-                uint16_t frequency = PitchPerception::getNoteFrequency(activeTune.notes[i]);
-                CRGB color = CRGB(VisualSynesthesia::getNoteColorBlended(frequency));
-                
-                // Update the LED if the bit for this LED is set
-                if (activeTune.ledAnimation[i].bitRead(j) == 1) {
-                    VisualCortex::LEDManager::setLED(j, color);
-                } else {
-                    VisualCortex::LEDManager::setLED(j, CRGB::Black); // Turn off the LED if not set
+            // Play initial notes
+            for (size_t i = 0; i < activeTune.notes.size(); i++) 
+            {
+                const auto& note = activeTune.notes[i];
+                playTone(note.frequency, note.duration);
+                Utilities::LOG_DEBUG("Playing note: %d", note.frequency);
+
+                // Update LED visualization
+                for (int j = 0; j < PinDefinitions::WS2812_NUM_LEDS; j++) 
+                {
+                    uint16_t frequency = note.frequency;
+                    CRGB color = VisualSynesthesia::getNoteColorBlended(note);
+                    
+                    if (bitRead(activeTune.ledAnimation[i], j)) 
+                    {
+                        LEDManager::setLED(j, color);
+                    }
                 }
+                LEDManager::showLEDs();
+                delay(note.delay);
             }
-            
-            // Delay between notes if specified
-            int aDelay = Tunes::timeSignatureToDelay(activeTune.timeSignature);
-            if (aDelay > 0) {
-                delay(aDelay);
-            }
+        }
+        catch (const std::exception& e) 
+        {
+            Utilities::LOG_ERROR("Error playing tune: %s", e.what());
         }
     }
 

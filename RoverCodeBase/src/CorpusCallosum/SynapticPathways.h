@@ -1,40 +1,74 @@
 #ifndef SYNAPTIC_PATHWAYS_H
 #define SYNAPTIC_PATHWAYS_H
 
-// Core includes first
+// Core system includes
 #include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <SPIFFS.h>
-#include "driver/i2s.h"
+#include <FastLED.h>
+#include <vector>
 
-// Forward declarations of all cortex namespaces
-namespace VisualCortex {}
-namespace PrefrontalCortex {}
-namespace AuditoryCortex {}
-namespace PsychicCortex {}
-namespace MotorCortex {}
-namespace SomatosensoryCortex {}
-namespace GameCortex {}
+// Forward declare all cortex namespaces
+namespace PrefrontalCortex 
+{
+    class Utilities;
+    class SPIManager;
+    class RoverBehaviorManager;
+    class PowerManager;
+    class SDManager;
+    class WiFiManager;
+}
 
-// FastLED Configuration
-#include "../VisualCortex/FastLEDConfig.h"
+namespace VisualCortex 
+{
+    class DisplayConfig;
+    class LEDManager;
+    class RoverViewManager;
+    class RoverManager;
+    class VisualSynesthesia;
+    enum class VisualPattern;
+    enum class VisualMessage;
+}
 
-// Common Project Headers
-#include "../PrefrontalCortex/Utilities.h"
-#include "../VisualCortex/VisualSynesthesia.h"
-#include "../AuditoryCortex/PitchPerception.h"
+namespace SomatosensoryCortex 
+{
+    class UIManager;
+    class MenuManager;
+}
 
+namespace AuditoryCortex 
+{
+    class SoundFxManager;
+    struct NoteInfo;
+    class PitchPerception;
+}
+
+namespace PsychicCortex 
+{
+    class NFCManager;
+    class IRManager;
+    class WiFiManager;
+}
+
+namespace GameCortex 
+{
+    class SlotsManager;
+    class AppManager;
+}
+
+namespace MotorCortex 
+{
+    class PinDefinitions;
+}
+
+// Create namespace aliases
 namespace CorpusCallosum 
 {
-    // Cortex namespace aliases
-    namespace VC = VisualCortex;
     namespace PC = PrefrontalCortex;
+    namespace VC = VisualCortex;
+    namespace SC = SomatosensoryCortex;
     namespace AC = AuditoryCortex;
     namespace PSY = PsychicCortex;
-    namespace MC = MotorCortex;
-    namespace SC = SomatosensoryCortex;
     namespace GC = GameCortex;
+    namespace MC = MotorCortex;
 }
 
 #endif
