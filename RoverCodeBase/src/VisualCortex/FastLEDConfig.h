@@ -3,15 +3,11 @@
 
 // Core FastLED Configuration
 #define FASTLED_INTERNAL
-#define FASTLED_ESP32_I2S false
-#define FASTLED_ESP32_SPI_BUS FSPI
-#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 8
-#define FASTLED_ALL_PINS_HARDWARE_SPI
+#define FASTLED_ESP32_I2S 0
 #define FASTLED_ALLOW_INTERRUPTS 0
-
-// Hardware-specific configurations
-#define FASTLED_ESP32_I2S true
-#define FASTLED_RMT_MAX_CHANNELS 8
+#define FASTLED_ESP32_FLASH_LOCK 1
+#define FASTLED_RMT_MAX_CHANNELS 2
+#define FASTLED_ESP32_RMT 1
 
 // Visual Cortex specific LED configurations
 #define VISUAL_CORTEX_MAX_BRIGHTNESS 255
