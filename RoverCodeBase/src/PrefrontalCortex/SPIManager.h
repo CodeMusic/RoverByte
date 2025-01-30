@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include "../PrefrontalCortex/utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../MotorCortex/PinDefinitions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 
@@ -10,6 +11,7 @@ using namespace CorpusCallosum;
 
 namespace PrefrontalCortex 
 {
+    namespace PC = PrefrontalCortex;
 
     class SPIManager {
     public:

@@ -11,6 +11,10 @@
 
 namespace PrefrontalCortex 
 {
+    using PC::StorageTypes::StorageStats;
+    using PC::StorageTypes::StorageDevice;
+    using PC::StorageTypes::FileMetadata;
+
     bool SDManager::initialized = false;
     const char* SDManager::NFC_FOLDER = "/NFC";
     const char* SDManager::SCANNED_CARDS_FILE = "/NFC/scannedcards.inf";
@@ -19,7 +23,6 @@ namespace PrefrontalCortex
     uint64_t SDManager::cardSize = 0;
     uint64_t SDManager::totalSpace = 0;
     uint64_t SDManager::usedSpace = 0;
-
 
     uint64_t SDManager::getTotalSpace() {
         return SDManager::totalSpace;
@@ -67,86 +70,86 @@ namespace PrefrontalCortex
     }
 
     void SDManager::createDir(fs::FS &fs, const char * path){
-        Serial.printf("Creating Dir: %s\n", path);
+        Utilities::LOG_DEBUG("Creating Dir: %s\n", path);
         if(fs.mkdir(path)){
-            Serial.println("Dir created");
+            Utilities::LOG_DEBUG("Dir created");
         } else {
-            Serial.println("mkdir failed");
+            Utilities::LOG_DEBUG("mkdir failed");
         }
     }
 
     void SDManager::removeDir(fs::FS &fs, const char * path){
-        Serial.printf("Removing Dir: %s\n", path);
+        Utilities::LOG_DEBUG("Removing Dir: %s\n", path);
         if(fs.rmdir(path)){
-            Serial.println("Dir removed");
+            Utilities::LOG_DEBUG("Dir removed");
         } else {
-            Serial.println("rmdir failed");
+            Utilities::LOG_DEBUG("rmdir failed");
         }
     }
 
     void SDManager::readFile(fs::FS &fs, const char * path){
-        Serial.printf("Reading file: %s\n", path);
+        Utilities::LOG_DEBUG("Reading file: %s\n", path);
 
         File file = fs.open(path);
         if(!file){
-            Serial.println("Failed to open file for reading");
+            Utilities::LOG_ERROR("Failed to open file for reading");
             return;
         }
 
-        Serial.print("Read from file: ");
+        Utilities::LOG_DEBUG("Read from file: ");
         while(file.available()){
-            Serial.write(file.read());
+            Utilities::LOG_DEBUG("%c", file.read());
         }
         file.close();
     }
 
     void SDManager::writeFile(fs::FS &fs, const char * path, const char * message){
-        Serial.printf("Writing file: %s\n", path);
+        Utilities::LOG_DEBUG("Writing file: %s\n", path);
 
         File file = fs.open(path, FILE_WRITE);
         if(!file){
-            Serial.println("Failed to open file for writing");
+            Utilities::LOG_ERROR("Failed to open file for writing");
             return;
         }
         if(file.print(message)){
-            Serial.println("File written");
+            Utilities::LOG_DEBUG("File written");
         } else {
-            Serial.println("Write failed");
+            Utilities::LOG_ERROR("Write failed");
         }
         file.close();
     }
 
     void SDManager::appendFile(fs::FS &fs, const char * path, const char * message){
-        Serial.printf("Appending to file: %s\n", path);
+        Utilities::LOG_DEBUG("Appending to file: %s\n", path);
 
         File file = fs.open(path, FILE_APPEND);
         if(!file){
-            Serial.println("Failed to open file for appending");
+            Utilities::LOG_ERROR("Failed to open file for appending");
             return;
         }
         if(file.print(message)){
-            Serial.println("Message appended");
+            Utilities::LOG_DEBUG("Message appended");
         } else {
-            Serial.println("Append failed");
+            Utilities::LOG_ERROR("Append failed");
         }
         file.close();
     }
 
     void SDManager::renameFile(fs::FS &fs, const char * path1, const char * path2){
-        Serial.printf("Renaming file %s to %s\n", path1, path2);
+        Utilities::LOG_DEBUG("Renaming file %s to %s\n", path1, path2);
         if (fs.rename(path1, path2)) {
-            Serial.println("File renamed");
+            Utilities::LOG_DEBUG("File renamed");
         } else {
-            Serial.println("Rename failed");
+            Utilities::LOG_ERROR("Rename failed");
         }
     }
 
     void SDManager::deleteFile(fs::FS &fs, const char * path){
-        Serial.printf("Deleting file: %s\n", path);
+        Utilities::LOG_DEBUG("Deleting file: %s\n", path);
         if(fs.remove(path)){
-            Serial.println("File deleted");
+            Utilities::LOG_DEBUG("File deleted");
         } else {
-            Serial.println("Delete failed");
+            Utilities::LOG_ERROR("Delete failed");
         }
     }
 
@@ -169,16 +172,16 @@ namespace PrefrontalCortex
                 len -= toRead;
             }
             end = millis() - start;
-            Serial.printf("%u bytes read for %lu ms\n", flen, end);
+            Utilities::LOG_DEBUG("%u bytes read for %lu ms\n", flen, end);
             file.close();
         } else {
-            Serial.println("Failed to open file for reading");
+            Utilities::LOG_ERROR("Failed to open file for reading");
         }
 
 
         file = fs.open(path, FILE_WRITE);
         if(!file){
-            Serial.println("Failed to open file for writing");
+            Utilities::LOG_ERROR("Failed to open file for writing");
             return;
         }
 
@@ -188,7 +191,7 @@ namespace PrefrontalCortex
             file.write(buf, 512);
         }
         end = millis() - start;
-        Serial.printf("%u bytes written for %lu ms\n", 2048 * 512, end);
+        Utilities::LOG_DEBUG("%u bytes written for %lu ms\n", 2048 * 512, end);
         file.close();
         delete[] buf;
     }
@@ -226,8 +229,6 @@ namespace PrefrontalCortex
         
         initialized = true;
     }
-
-
 
     void SDManager::ensureNFCFolderExists() {
         if (!SD.exists(NFC_FOLDER)) {
@@ -276,5 +277,4 @@ namespace PrefrontalCortex
         file.close();
         */
     } 
-
 }

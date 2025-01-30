@@ -1,8 +1,10 @@
 #ifndef SOUND_FX_MANAGER_H
 #define SOUND_FX_MANAGER_H
 
+#include "../CorpusCallosum/SynapticPathways.h"
 #include "../AuditoryCortex/PitchPerception.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../VisualCortex/RoverManager.h"
 #include "../MotorCortex/PinDefinitions.h"
 #include "Tunes.h"
@@ -15,20 +17,23 @@
 
 namespace AuditoryCortex
 {
-    // Represents an error tone with frequency and duration
-    struct ErrorTone {
-        uint16_t frequency;
-        uint16_t duration;
-    };
+    using namespace CorpusCallosum;
+    using VC::RoverManager;
+    using VC::LEDManager;
+    using PC::Utilities;
+    using MC::PinDefinitions;
+    using PC::AudioTypes::ErrorTone;
+    using PC::AudioTypes::WavHeaderInfo;
+    using PC::AudioTypes::TunesTypes;
+    using PC::AudioTypes::Tune;
+    using PC::AudioTypes::NoteInfo;
+    using PC::AudioTypes::TimeSignature;
 
-    struct WavHeaderInfo 
-    {
-        uint32_t fileSize;
-        uint32_t byteRate;
-        uint32_t sampleRate;
-        uint16_t numChannels;
-        uint16_t bitsPerSample;
-    };
+    // I2S Configuration Constants
+    static const int EXAMPLE_I2S_CH = 0;  // I2S channel number
+    static const int EXAMPLE_SAMPLE_RATE = 44100;  // Sample rate in Hz
+    static const int WAVE_HEADER_SIZE = 44;  // WAV header size in bytes
+    static const int BYTE_RATE = (EXAMPLE_SAMPLE_RATE * 2);  // 16-bit mono = 2 bytes per sample
 
     class SoundFxManager {
     private:
@@ -36,6 +41,7 @@ namespace AuditoryCortex
         
         // Jingle-related state
         static const int JINGLE_LENGTH;
+        static bool m_isTunePlaying;
         static int currentNote;
         static unsigned long lastNoteTime;
         static bool jinglePlaying;
@@ -57,7 +63,7 @@ namespace AuditoryCortex
         static int volume;
 
         // Selected song state
-        static Tunes::TunesTypes selectedSong;
+        static TunesTypes selectedSong;
         static Tune activeTune;
         static int activeTuneLength;
 
@@ -73,12 +79,13 @@ namespace AuditoryCortex
 
         /* ========================== Playback Functions ========================== */
         static void playErrorSound(int type);
-        static void playTune(Tunes::TunesTypes type);
-        static void playTone(int frequency, int duration, int position = 0); // Custom tone playback
+        static void playToneFx(PC::AudioTypes::Tone type);  // New method for playing system tones
+        static void playTune(PC::AudioTypes::TunesTypes type);  // For playing musical pieces
+        static void playTone(int frequency, int duration, int volume = 42); // Raw tone playback
         static void playRotaryPressSound(int mode = 0);
         static void playRotaryTurnSound(bool clockwise);
         static void playSideButtonSound(bool start = false);
-        static void playStartupSound(){ playTune(Tunes::TunesTypes::ROVERBYTE_JINGLE); }
+        static void playStartupSound(){ playTune(TunesTypes::ROVERBYTE_JINGLE); }
         static void playSuccessSound();
         static void playTimerDropSound(CRGB color);
         static void playMenuCloseSound();
@@ -88,10 +95,10 @@ namespace AuditoryCortex
         static void playCardMelody(uint32_t cardId);
 
         /* ========================== Jingle Control ========================== */
-        static void startTune(Tunes::TunesTypes type);
+        static void startTune();
         static void updateTune();
-        static bool isTunePlaying();
-        static void stopJingle();
+        static bool isTunePlaying() { return m_isTunePlaying; }
+        static void stopTune() { m_isTunePlaying = false; }
 
         /* ========================== Volume Control ========================== */
         static void adjustVolume(int amount);
@@ -109,7 +116,7 @@ namespace AuditoryCortex
 
         /* ========================== Update Function ========================== */
         static void update() {
-            if (isTunePlaying) {
+            if (m_isTunePlaying) {
                 updateTune();
             }
             if (isPlayingSound) {

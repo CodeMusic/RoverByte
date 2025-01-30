@@ -1,16 +1,20 @@
-#include "../PrefrontalCortex/PowerManager.h"
+#include "PowerManager.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/RoverManager.h"
 
 namespace PrefrontalCortex 
 {
+    namespace PC = PrefrontalCortex;  // Add namespace alias
+    using VC::LEDManager;
+    using VC::RoverViewManager;
+    using VC::RoverManager;
 
     // Initialize static members
     XPowersPPM PowerManager::PPM;
     bool PowerManager::batteryInitialized = false;
     unsigned long PowerManager::lastActivityTime = 0;
-    PowerManager::SleepState PowerManager::currentSleepState = PowerManager::AWAKE;
+    PowerState PowerManager::currentPowerState = PowerState::AWAKE;
     unsigned long PowerManager::startUpTime = 0;
     void PowerManager::init() {
         startUpTime = millis();
@@ -47,11 +51,11 @@ namespace PrefrontalCortex
         }
         
         lastActivityTime = millis();
-        currentSleepState = AWAKE;
+        currentPowerState = PowerState::AWAKE;
     }
 
     unsigned long PowerManager::getUpTime() {
-        return millis() - startUpTime;
+        return (millis() - startUpTime) / 1000;  // Return uptime in seconds
     }
 
     void PowerManager::initializeBattery() {
@@ -76,52 +80,54 @@ namespace PrefrontalCortex
             batteryInitialized = true;
             
             // Detailed logging
-            Utilities::LOG_SCOPE("Battery configuration complete:");
-            Utilities::LOG_SCOPE("- System power down voltage: %d", PPM.getSysPowerDownVoltage());
-            Utilities::LOG_SCOPE("- Input current limit: %d", PPM.getInputCurrentLimit());
-            Utilities::LOG_SCOPE("- Charge target voltage: %d", PPM.getChargeTargetVoltage());
-            Utilities::LOG_SCOPE("- Precharge current: %d", PPM.getPrechargeCurr());
-            Utilities::LOG_SCOPE("- Constant current: %d", PPM.getChargerConstantCurr());
+            Utilities::LOG_DEBUG("Battery configuration complete:");
+            Utilities::LOG_DEBUG("- System power down voltage: %d", PPM.getSysPowerDownVoltage());
+            Utilities::LOG_DEBUG("- Input current limit: %d", PPM.getInputCurrentLimit());
+            Utilities::LOG_DEBUG("- Charge target voltage: %d", PPM.getChargeTargetVoltage());
+            Utilities::LOG_DEBUG("- Precharge current: %d", PPM.getPrechargeCurr());
+            Utilities::LOG_DEBUG("- Constant current: %d", PPM.getChargerConstantCurr());
             
             Utilities::LOG_PROD("Battery management initialized successfully");
         }
     }
 
     int PowerManager::calculateBatteryPercentage(int voltage) {
-        const int maxVoltage = 4200; // 4.2V fully charged
-        const int minVoltage = 3300; // 3.3V empty
+        const int MIN_VOLTAGE = 3300; // 3.3V
+        const int MAX_VOLTAGE = 4200; // 4.2V
         
-        int percentage = map(voltage, minVoltage, maxVoltage, 0, 100);
-        return constrain(percentage, 0, 100);
+        if (voltage <= MIN_VOLTAGE) return 0;
+        if (voltage >= MAX_VOLTAGE) return 100;
+        
+        return ((voltage - MIN_VOLTAGE) * 100) / (MAX_VOLTAGE - MIN_VOLTAGE);
     }
 
-    void PowerManager::checkSleepState() {
+    void PowerManager::checkPowerState() {
         unsigned long idleTime = millis() - lastActivityTime;
-        SleepState newState = currentSleepState;
+        PowerState newState = currentPowerState;
 
         // State transitions
         if (idleTime < IDLE_TIMEOUT) {
-            newState = AWAKE;
+            newState = PowerState::AWAKE;
         } else if (idleTime < IDLE_TIMEOUT * 2) {
-            newState = DIM_DISPLAY;
+            newState = PowerState::DIM_DISPLAY;
         } else if (idleTime < IDLE_TIMEOUT * 3) {
-            newState = DISPLAY_OFF;
+            newState = PowerState::DISPLAY_OFF;
         } else {
-            newState = DEEP_SLEEP;
+            newState = PowerState::DEEP_SLEEP;
         }
 
         // Only handle state change if needed
-        if (newState != currentSleepState) {
+        if (newState != currentPowerState) {
             // Production level logging for state changes
-            Utilities::LOG_PROD("Sleep state changing from %d to %d", currentSleepState, newState);
-            currentSleepState = newState;
+            Utilities::LOG_PROD("Sleep state changing from %d to %d", currentPowerState, newState);
+            currentPowerState = newState;
         }
     }
 
     void PowerManager::wakeFromSleep() {
         Utilities::LOG_PROD("Waking from sleep mode");
         lastActivityTime = millis();
-        currentSleepState = AWAKE;
+        currentPowerState = PowerState::AWAKE;
         RoverManager::setShowTime(false);
         
         // Initialize display first
@@ -143,8 +149,8 @@ namespace PrefrontalCortex
         drawSprite();
     }
 
-    PowerManager::SleepState PowerManager::getCurrentSleepState() {
-        return currentSleepState;
+    PowerState PowerManager::getCurrentPowerState() {
+        return currentPowerState;
     }
 
     int PowerManager::getBatteryPercentage() {
@@ -203,50 +209,49 @@ namespace PrefrontalCortex
         drawSprite();
     }
 
-
     void PowerManager::update() {
         unsigned long currentTime = millis();
-        SleepState newState = currentSleepState;
+        PowerState newState = currentPowerState;  // Changed from SleepState to PowerState
         
         // Debug level logging for idle time
         unsigned long idleTime = currentTime - lastActivityTime;
-        Utilities::LOG_DEBUG("Idle time: %lu ms, Current state: %d", idleTime, currentSleepState);
+        Utilities::LOG_DEBUG("Idle time: %lu ms, Current state: %d", idleTime, currentPowerState);
         
         // State transitions
         if (idleTime < IDLE_TIMEOUT) {
-            newState = AWAKE;
+            newState = PowerState::AWAKE;
         } else if (idleTime < DIM_TIMEOUT) {
-            newState = DIM_DISPLAY;
+            newState = PowerState::DIM_DISPLAY;
         } else if (idleTime < SLEEP_TIMEOUT) {
-            newState = DISPLAY_OFF;
+            newState = PowerState::DISPLAY_OFF;
         } else {
-            newState = DEEP_SLEEP;
+            newState = PowerState::DEEP_SLEEP;
         }
         
         // Only handle state change if needed
-        if (newState != currentSleepState) {
-            Utilities::LOG_PROD("Sleep state changing from %d to %d", currentSleepState, newState);
+        if (newState != currentPowerState) {
+            Utilities::LOG_PROD("Power state changing from %d to %d", currentPowerState, newState);
             
             // Handle state-specific actions
             switch (newState) {
-                case DIM_DISPLAY:
+                case PowerState::DIM_DISPLAY:
                     setBacklight(DIM_BRIGHTNESS);
                     break;
                     
-                case DISPLAY_OFF:
+                case PowerState::DISPLAY_OFF:
                     setBacklight(0);
                     break;
                     
-                case DEEP_SLEEP:
+                case PowerState::DEEP_SLEEP:
                     enterDeepSleep();
                     break;
                     
-                case AWAKE:
+                case PowerState::AWAKE:
                     setBacklight(255);
                     break;
             }
             
-            currentSleepState = newState;
+            currentPowerState = newState;
         }
     }
 

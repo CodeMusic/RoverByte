@@ -1,4 +1,5 @@
-#include "../AuditoryCortex/PitchPerception.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 #include "SoundFxManager.h"
 #include "Arduino.h"
 #include <time.h>
@@ -10,26 +11,25 @@
 #include <vector>
 #include "../VisualCortex/VisualSynesthesia.h"
 #include "../PrefrontalCortex/Utilities.h"
-#include "../CorpusCallosum/SynapticPathways.h"
 #include "../MotorCortex/PinDefinitions.h"
-
-// Add after the existing using declarations
-using namespace VisualCortex;  // For RoverManager
-using namespace CorpusCallosum;
-using PC::Utilities;
-using MC::PinDefinitions;
-
-#define EXAMPLE_I2S_CH I2S_NUM_0
-#define EXAMPLE_SAMPLE_RATE 44100
-#define WAVE_HEADER_SIZE 44
-#define BYTE_RATE (EXAMPLE_SAMPLE_RATE * 2)
 
 namespace AuditoryCortex
 {
+    using namespace CorpusCallosum;
+    using VC::RoverManager;
+    using VC::LEDManager;
+    using VC::VisualSynesthesia;
+    using PC::Utilities;
+    using MC::PinDefinitions;
+    using PC::AudioTypes::TunesTypes;
+    using PC::AudioTypes::Tune;
+    using PC::AudioTypes::NoteInfo;
+    using PC::AudioTypes::TimeSignature;
+
     // Initialize static members
     int SoundFxManager::currentNote = 0;
     unsigned long SoundFxManager::lastNoteTime = 0;
-    bool SoundFxManager::isTunePlaying = false;
+    bool SoundFxManager::m_isTunePlaying = false;
     Audio SoundFxManager::audio;
     bool SoundFxManager::isPlayingSound = false;
     const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
@@ -38,9 +38,8 @@ namespace AuditoryCortex
     bool SoundFxManager::_isInitialized = false;
     int SoundFxManager::volume = 42;
 
-    Tunes::TunesTypes SoundFxManager::selectedSong = Tunes::TunesTypes::ROVERBYTE_JINGLE;
-
-    Tune SoundFxManager::activeTune;
+    PC::AudioTypes::TunesTypes SoundFxManager::selectedSong = PC::AudioTypes::TunesTypes::ROVERBYTE_JINGLE;
+    PC::AudioTypes::Tune SoundFxManager::activeTune;
 
     void SoundFxManager::playTone(int frequency, int duration, int volume) 
     {
@@ -57,29 +56,85 @@ namespace AuditoryCortex
         }
     }
 
-    void SoundFxManager::startTune() {
-        currentNote = 0;
-        isTunePlaying = true;
-        lastNoteTime = 0;
+    void SoundFxManager::playTune(PC::AudioTypes::TunesTypes type) 
+    {
+        selectedSong = type;
+        switch (type) 
+        {
+            case PC::AudioTypes::TunesTypes::ROVERBYTE_JINGLE:
+            case PC::AudioTypes::TunesTypes::JINGLE_BELLS:
+            case PC::AudioTypes::TunesTypes::AULD_LANG_SYNE:
+            case PC::AudioTypes::TunesTypes::LOVE_SONG:
+            case PC::AudioTypes::TunesTypes::HAPPY_BIRTHDAY:
+            case PC::AudioTypes::TunesTypes::EASTER_SONG:
+            case PC::AudioTypes::TunesTypes::MOTHERS_SONG:
+            case PC::AudioTypes::TunesTypes::FATHERS_SONG:
+            case PC::AudioTypes::TunesTypes::CANADA_SONG:
+            case PC::AudioTypes::TunesTypes::USA_SONG:
+            case PC::AudioTypes::TunesTypes::CIVIC_SONG:
+            case PC::AudioTypes::TunesTypes::WAKE_ME_UP_WHEN_SEPTEMBER_ENDS:
+            case PC::AudioTypes::TunesTypes::HALLOWEEN_SONG:
+            case PC::AudioTypes::TunesTypes::THANKSGIVING_SONG:
+            case PC::AudioTypes::TunesTypes::CHRISTMAS_SONG:
+                startTune();  // This will load and play the selected tune
+                break;
+
+            default:
+                Utilities::LOG_WARNING("Unknown tune type requested");
+                break;
+        }
     }
 
-    void SoundFxManager::updateTune() {
-        if (!isTunePlaying || currentNote >= TUNE_LENGTH) return;
+    void SoundFxManager::startTune() 
+    {
+        currentNote = 0;
+        m_isTunePlaying = true;
+        lastNoteTime = 0;
+        activeTune = Tunes::getTune(selectedSong);
+    }
+
+    void SoundFxManager::updateTune() 
+    {
+        if (!m_isTunePlaying || currentNote >= activeTune.notes.size()) 
+        {
+            m_isTunePlaying = false;
+            return;
+        }
         
         unsigned long currentTime = millis();
-        if (currentTime - lastNoteTime >= TUNE[currentNote].duration + TUNE[currentNote].delay) {
-            if (currentNote < TUNE_LENGTH) {
-                SoundFxManager::playTone(SoundFxManager::TUNE[currentNote].pitch, SoundFxManager::TUNE[currentNote].duration);
+        const PC::AudioTypes::NoteInfo& note = activeTune.notes[currentNote];
+        int noteDuration = PitchPerception::getNoteDuration(note.type, activeTune.timeSignature);
+        
+        if (currentTime - lastNoteTime >= noteDuration) 
+        {
+            if (currentNote < activeTune.notes.size()) 
+            {
+                uint16_t frequency = PitchPerception::getNoteFrequency(note);
+                playTone(frequency, noteDuration, volume);
+                
+                // Update LED visualization
+                for (int j = 0; j < PinDefinitions::WS2812_NUM_LEDS; j++) 
+                {
+                    if (bitRead(activeTune.ledAnimation[currentNote], j)) 
+                    {
+                        CRGB color = VisualSynesthesia::getNoteColorBlended(note);
+                        LEDManager::setLED(j, color);
+                    }
+                }
+                LEDManager::showLEDs();
+                
                 lastNoteTime = currentTime;
                 currentNote++;
-            } else {
-                SoundFxManager::stopTune();
+            } 
+            else 
+            {
+                m_isTunePlaying = false;
             }
         }
     }
 
     bool SoundFxManager::isTunePlaying() {
-        return isTunePlaying;
+        return m_isTunePlaying;
     }
 
     void SoundFxManager::playSuccessSound() {
@@ -90,23 +145,23 @@ namespace AuditoryCortex
         playTone(PitchPerception::NOTE_G5, 200);
     }
 
-    void SoundFxManager::playRotaryPressSound(int mode) {  // 0=Full, 1=Week, 2=Timer
+    void SoundFxManager::playRotaryPressSound(int mode)  // 0=Full, 1=Week, 2=Timer
+    {
         time_t now = time(nullptr);
         struct tm* timeInfo = localtime(&now);
         int dayOfWeek = timeInfo->tm_wday;  // 0-6 (Sunday-Saturday)
-        uint16_t baseNote = PitchPerception::getDayBaseNote(mode == 1); // Full mode - base octave // Week mode - octave up
+        uint16_t baseNote = PitchPerception::getDayBaseNote(mode == 1);
 
-        
-        // Adjust octave based on mode
-        switch(mode) {
+        switch(mode) 
+        {
             case 0: 
-                SoundFxManager::playTone(baseNote, 100);
+                playTone(baseNote, 100);
                 break;
             case 1:  
-                SoundFxManager::playTone(baseNote, 100);  
+                playTone(baseNote, 100);  
                 break;
             case 2:  // Timer mode - octave up + fifth
-                SoundFxManager::playTone(baseNote * 2, 100);  // Multiply by 3 for octave 
+                playTone(baseNote * 2, 100);
                 break;
         }
     }
@@ -160,41 +215,6 @@ namespace AuditoryCortex
         }
     }
 
-    void SoundFxManager::playTune(Tunes::TunesTypes type) 
-    {
-        try 
-        {
-            activeTune = Tunes::getTune(type);
-            isTunePlaying = true;
-
-            // Play initial notes
-            for (size_t i = 0; i < activeTune.notes.size(); i++) 
-            {
-                const auto& note = activeTune.notes[i];
-                playTone(note.frequency, note.duration);
-                Utilities::LOG_DEBUG("Playing note: %d", note.frequency);
-
-                // Update LED visualization
-                for (int j = 0; j < PinDefinitions::WS2812_NUM_LEDS; j++) 
-                {
-                    uint16_t frequency = note.frequency;
-                    CRGB color = VisualSynesthesia::getNoteColorBlended(note);
-                    
-                    if (bitRead(activeTune.ledAnimation[i], j)) 
-                    {
-                        LEDManager::setLED(j, color);
-                    }
-                }
-                LEDManager::showLEDs();
-                delay(note.delay);
-            }
-        }
-        catch (const std::exception& e) 
-        {
-            Utilities::LOG_ERROR("Error playing tune: %s", e.what());
-        }
-    }
-
     // Add audio callback
     void SoundFxManager::audio_eof_mp3(const char *info) {
         Serial.printf("Audio playback finished: %s\n", info);
@@ -208,7 +228,7 @@ namespace AuditoryCortex
 
 
     void SoundFxManager::startRecording() {
-        if (!SDManager::isInitialized()) return;
+        if (!PC::SDManager::isInitialized()) return;
         if (isRecording) return;
         
         Serial.println("=== Starting Recording ===");
@@ -457,12 +477,7 @@ namespace AuditoryCortex
         audio.setVolume(volume);
     }
 
-    void SoundFxManager::stopJingle() 
-    {
-        isTunePlaying = false;  // Use the existing class member instead of jinglePlaying
-        currentNote = 0;
-        lastNoteTime = 0;
-    }
+  
 
     void SoundFxManager::playVoiceLine(const char* line, uint32_t cardId) {
         if (strcmp(line, "card_detected") == 0 && cardId != 0) {
@@ -661,6 +676,52 @@ namespace AuditoryCortex
             playTone(220, 500); // Low A3 for fatal
         } else {
             playTone(1760, 200); // High A6 for warning
+        }
+    }
+
+    void SoundFxManager::playToneFx(PC::AudioTypes::Tone type) 
+    {
+        switch (type) 
+        {
+            case PC::AudioTypes::Tone::SUCCESS:
+                playSuccessSound();
+                break;
+
+            case PC::AudioTypes::Tone::ERROR:
+                playErrorSound(1);  // Generic error
+                break;
+
+            case PC::AudioTypes::Tone::WARNING:
+                playErrorSound(2);  // Warning variant
+                break;
+
+            case PC::AudioTypes::Tone::NOTIFICATION:
+                playTone(PitchPerception::NOTE_C5, 100);
+                break;
+
+            case PC::AudioTypes::Tone::TIMER_DROP:
+                playTimerDropSound(CRGB::Blue);
+                break;
+
+            case PC::AudioTypes::Tone::LEVEL_UP:
+                playSuccessSound();  // Could be customized for level up
+                break;
+
+            case PC::AudioTypes::Tone::GAME_OVER:
+                playErrorSound(3);  // Game over variant
+                break;
+
+            case PC::AudioTypes::Tone::MENU_SELECT:
+                playMenuSelectSound();
+                break;
+
+            case PC::AudioTypes::Tone::MENU_CHANGE:
+                playRotaryTurnSound(true);
+                break;
+
+            case PC::AudioTypes::Tone::NONE:
+            default:
+                break;
         }
     }
 }

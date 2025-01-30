@@ -8,10 +8,12 @@
 #include "../VisualCortex/RoverManager.h"
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../MotorCortex/PinDefinitions.h"
 
 namespace PrefrontalCortex 
 {
+    using PC::StorageTypes::StorageStats;
 
     class SDManager {
     public:

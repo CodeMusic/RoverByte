@@ -1,5 +1,3 @@
-
-/*WIP
 #ifndef PROTO_PERCEPTIONS_H
 #define PROTO_PERCEPTIONS_H
 
@@ -7,6 +5,7 @@
 #include <FastLED.h>
 #include <vector>
 #include <string>
+#include <functional>
 
 namespace PrefrontalCortex 
 {
@@ -115,15 +114,6 @@ namespace PrefrontalCortex
     // System State Types
     namespace SystemTypes 
     {
-        enum class PowerState 
-        {
-            FULL_POWER,
-            LOW_POWER,
-            CRITICAL,
-            CHARGING,
-            SLEEP
-        };
-
         enum class BehaviorState 
         {
             STARTUP,
@@ -132,6 +122,25 @@ namespace PrefrontalCortex
             ERROR,
             MAINTENANCE,
             SHUTDOWN
+        };
+
+        enum class LogLevel
+        {
+            PRODUCTION,
+            ERROR,
+            DEBUG,
+            INFO,
+            WARNING
+        };
+
+        // Add this array of strings
+        static const char* LOG_LEVEL_STRINGS[] = 
+        {
+            "PROD",
+            "ERROR", 
+            "DEBUG",
+            "INFO",
+            "WARNING"
         };
 
         struct SystemStatus 
@@ -232,6 +241,12 @@ namespace PrefrontalCortex
             LOSE,
             BONUS_ROUND
         };
+        
+        enum class AppState {
+            IDLE,       // No app is active
+            SHOW_INFO,  // Displaying a quick info screen
+            RUNNING     // The app is currently running
+        };
 
         struct SlotSymbol 
         {
@@ -250,10 +265,12 @@ namespace PrefrontalCortex
 
         struct AppInfo 
         {
-            const char* name;
-            const char* description;
-            void (*launch)();
-            bool isEnabled;
+            std::string name;
+            std::string description;
+            void (*onRun)();
+            void (*onUpdate)();
+            void (*onExit)();
+            bool isEnabled = true;
         };
     }
 
@@ -305,21 +322,28 @@ namespace PrefrontalCortex
     {
         enum class TimeSignature 
         {
+            TIME_2_2,
             TIME_4_4,
             TIME_3_4,
-            TIME_6_8
+            TIME_6_8,
+            TIME_12_16
         };
 
         enum class NoteIndex 
         {
-            REST,
-            NOTE_C,
-            NOTE_D,
-            NOTE_E,
-            NOTE_F,
-            NOTE_G,
-            NOTE_A,
-            NOTE_B
+            NOTE_C = 0,
+            NOTE_CS = 1,
+            NOTE_D = 2,
+            NOTE_DS = 3,
+            NOTE_E = 4,
+            NOTE_F = 5,
+            NOTE_FS = 6,
+            NOTE_G = 7,
+            NOTE_GS = 8,
+            NOTE_A = 9,
+            NOTE_AS = 10,
+            NOTE_B = 11,
+            REST = 12
         };
 
         enum class NoteType 
@@ -327,7 +351,11 @@ namespace PrefrontalCortex
             WHOLE,
             HALF,
             QUARTER,
-            EIGHTH
+            EIGHTH,
+            SIXTEENTH,
+            THIRTY_SECOND,
+            SIXTY_FOURTH,
+            HUNDRED_TWENTY_EIGHTH
         };
 
         struct NoteInfo 
@@ -335,6 +363,25 @@ namespace PrefrontalCortex
             NoteIndex note;
             uint8_t octave;
             NoteType type;
+            bool isSharp;
+
+            NoteInfo(NoteIndex n, uint8_t o, NoteType t) 
+                : note(n), octave(o), type(t), isSharp(false) {}
+        };
+
+        struct ErrorTone 
+        {
+            uint16_t frequency;
+            uint16_t duration;
+        };
+
+        struct WavHeaderInfo 
+        {
+            uint32_t fileSize;
+            uint32_t byteRate;
+            uint32_t sampleRate;
+            uint16_t numChannels;
+            uint16_t bitsPerSample;
         };
 
         struct Tune 
@@ -363,6 +410,20 @@ namespace PrefrontalCortex
             THANKSGIVING_SONG,
             CHRISTMAS_SONG
         };
+
+        enum class Tone
+        {
+            NONE,
+            SUCCESS,
+            ERROR,
+            WARNING,
+            NOTIFICATION,
+            TIMER_DROP,  // Add this for timer mode
+            LEVEL_UP,
+            GAME_OVER,
+            MENU_SELECT,
+            MENU_CHANGE
+        };
     }
 
     // Core Types
@@ -376,10 +437,10 @@ namespace PrefrontalCortex
     // Visual Types
     namespace VisualTypes 
     {
-        enum class Mode 
+        enum class VisualMode 
         {
             OFF_MODE,
-            ENCODING_MODE,
+            ENCODING_MODE,      // Main mode for encoding
             FESTIVE_MODE,
             ROVER_EMOTION_MODE
         };
@@ -420,41 +481,54 @@ namespace PrefrontalCortex
             NUM_VIEWS
         };
 
+        enum class FestiveTheme
+        {
+            NONE,
+            NEW_YEAR,
+            VALENTINES,
+            ST_PATRICK,
+            EASTER,
+            CANADA_DAY,
+            HALLOWEEN,
+            CHRISTMAS,
+            THANKSGIVING,
+            INDEPENDENCE_DAY,
+            FLAG_DAY,
+            MEMORIAL_DAY,
+            LABOR_DAY,
+            DIWALI,
+            MARDI_GRAS,
+            RAMADAN,
+            CHINESE_NEW_YEAR
+        };
+
+        enum class VisualMessage
+        {
+            NONE,
+            SUCCESS,
+            ERROR,
+            WARNING,
+            INFO,
+            SLOTS_WIN,      // Used in handleMessage for slots game
+            IR_SUCCESS,     // Used for IR blast success
+            NFC_DETECTED,   // Used when NFC card is detected
+            NFC_ERROR,     // Used when NFC operation fails
+            LEVEL_UP,      // Used for level up animations
+            BOOT_COMPLETE,  // Used when boot sequence completes
+            CARD_SCANNED,   // Used when a card is successfully scanned
+            POWER_LOW,      // Used for low power warnings
+            NETWORK_STATUS, // Used for network connectivity updates
+            SYSTEM_ERROR   // Used for system-level errors
+        };
+
         struct NoteState 
         {
             CRGB color1;
-            CRGB color2;
+            CRGB color2;  // For sharps/flats
             bool isSharp;
             uint8_t position;
-        };
-
-        enum class FestiveTheme 
-        {
-            NEW_YEAR,        // January 1
-            VALENTINES,      // February 14
-            ST_PATRICK,      // March 17
-            EASTER,          // March/April (variable)
-            CANADA_DAY,      // July 1
-            HALLOWEEN,       // October 31
-            CHRISTMAS,       // December 25
-            THANKSGIVING,    // Fourth Thursday in November (USA)
-            INDEPENDENCE_DAY,// July 4 (USA)
-            DIWALI,         // Date varies (Hindu festival of lights)
-            RAMADAN,        // Date varies (Islamic holy month)
-            CHINESE_NEW_YEAR,// Date varies (Lunar New Year)
-            MARDI_GRAS,     // Date varies (Fat Tuesday)
-            LABOR_DAY,      // First Monday in September (USA)
-            MEMORIAL_DAY,   // Last Monday in May (USA)
-            FLAG_DAY        // June 14 (USA)
-        };
-
-        enum class VisualMessage 
-        {
-            NONE,
-            SLOTS_WIN,
-            IR_SUCCESS,
-            NFC_DETECTED,
-            NFC_ERROR
+            
+            NoteState() : color1(CRGB::Black), color2(CRGB::Black), isSharp(false), position(0) {}
         };
 
         // Color Arrays
@@ -516,14 +590,16 @@ namespace PrefrontalCortex
 
         enum class BehaviorState 
         {
-            LOADING,
-            HOME,
-            MENU,
-            APP,
-            WARNING,
-            ERROR,
-            FATAL_ERROR,
-            IDLE
+            LOADING,        // Initial boot/loading state
+            HOME,          // Main home screen
+            MENU,          // Menu navigation
+            APP,           // Running an application
+            ERROR,         // Error state
+            WARNING,       // Warning state
+            FATAL_ERROR,   // Fatal error state
+            IDLE,          // Idle state
+            MENU_MODE,     // Menu display mode (for LED encoding)
+            FULL_DISPLAY   // Full display mode (for LED encoding)
         };
 
         enum class LoadingPhase 
@@ -533,19 +609,15 @@ namespace PrefrontalCortex
             SYNCING_TIME
         };
 
-        enum class StartupErrorCode : uint32_t 
+        enum class StartupErrorCode 
         {
-            CORE_INIT_FAILED = 0x01,
-            POWER_INIT_FAILED = 0x02,
-            LED_INIT_FAILED = 0x03,
-            DISPLAY_INIT_FAILED = 0x04,
-            UI_INIT_FAILED = 0x05,
-            MENU_INIT_FAILED = 0x06,
-            AUDIO_INIT_FAILED = 0x07,
-            STORAGE_INIT_FAILED = 0x08,
-            WIFI_INIT_FAILED = 0x09,
-            TIME_SYNC_FAILED = 0x0A,
-            APP_INIT_FAILED = 0x0B
+            NONE,
+            WIFI_INIT_FAILED,
+            TIME_SYNC_FAILED,
+            SD_INIT_FAILED,
+            DISPLAY_INIT_FAILED,
+            UI_INIT_FAILED,
+            APP_INIT_FAILED
         };
 
         struct ErrorInfo 
@@ -623,12 +695,6 @@ namespace PrefrontalCortex
     // Auditory Types
     namespace AuditoryTypes 
     {
-        struct NoteInfo 
-        {
-            uint16_t frequency;
-            uint16_t duration;
-            uint8_t volume;
-        };
 
         enum class SoundEffect 
         {
@@ -664,7 +730,56 @@ namespace PrefrontalCortex
             bool isEnterprise;
         };
     }
+
+    // App Types
+    namespace AppTypes 
+    {
+        enum class AppState 
+        {
+            DORMANT,    // No app is active
+            ORIENTING,  // Displaying initial info screen
+            ENGAGED     // App is actively running
+        };
+
+        struct AppNeuralNetwork 
+        {
+            std::string name;
+            std::string description;
+            std::function<void()> onActivate;    // Called when app starts
+            std::function<void()> onProcess;     // Called during runtime
+            std::function<void()> onDeactivate;  // Called during shutdown
+        };
+    }
+
+    // Power Management Types
+    namespace PowerTypes 
+    {
+        enum class PowerState 
+        {
+            AWAKE,          // Full power, display at max brightness
+            DIM_DISPLAY,    // Display dimmed to save power
+            DISPLAY_OFF,    // Display off but system still running
+            DEEP_SLEEP     // System in deep sleep mode
+        };
+
+        struct BatteryStatus 
+        {
+            float voltageLevel;      // Current voltage
+            int percentageCharge;    // 0-100%
+            bool isCharging;         // Charging state
+            float temperature;       // Battery temperature
+            uint32_t lastUpdateTime; // Last time status was updated
+        };
+
+        struct PowerConfig 
+        {
+            uint32_t idleTimeout;     // Time before entering idle state
+            uint32_t dimTimeout;      // Time before dimming display
+            uint32_t sleepTimeout;    // Time before entering sleep
+            uint8_t dimBrightness;    // Brightness level when dimmed
+            bool enableDeepSleep;     // Whether deep sleep is allowed
+        };
+    }
 }
 
 #endif // PROTO_PERCEPTIONS_H 
-*/

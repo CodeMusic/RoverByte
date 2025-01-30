@@ -1,7 +1,9 @@
 #include "../VisualCortex/FastLEDConfig.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
-#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/utilities.h"
 #include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/PowerManager.h"  // Add PowerManager include
 #include "LEDManager.h"
 #include "VisualSynesthesia.h"
 #include "../AuditoryCortex/SoundFxManager.h"
@@ -11,12 +13,37 @@
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../GameCortex/SlotsManager.h"
 #include "../PsychicCortex/IRManager.h"
-
-using namespace CorpusCallosum;
-using PC::Utilities;
+#include "../SomatosensoryCortex/MenuManager.h"
+#include "RoverViewManager.h"  // Add direct include instead of forward declaration
 
 namespace VisualCortex 
 {
+    // Add namespace aliases
+    namespace VC = VisualCortex;
+    using namespace CorpusCallosum;
+    
+    // Namespace aliases for other cortices
+    namespace PC = PrefrontalCortex;
+    namespace AC = AuditoryCortex;
+    namespace GC = GameCortex;
+    
+    // Manager-specific using declarations
+    using AC::SoundFxManager;
+    using PSY::NFCManager;
+    using SC::MenuManager;
+    using PM = PC::PowerManager;
+    
+    // Visual types from PrefrontalCortex
+    using PC::VisualTypes::VisualPattern;
+    using PC::VisualTypes::VisualMode;
+    using PC::VisualTypes::VisualMessage;
+    using PC::VisualTypes::FestiveTheme;
+    using PC::VisualTypes::NoteState;
+    using PC::VisualTypes::EncodingModes;
+    
+    // Other PrefrontalCortex types
+    using PC::Utilities;
+    using PC::AudioTypes::Tone;
 
     // Boot stage colors
     const CRGB LEDManager::HARDWARE_INIT_COLOR = CRGB::Blue;    // Hardware initialization
@@ -26,8 +53,8 @@ namespace VisualCortex
 
     // Static member initialization
     CRGB LEDManager::leds[PinDefinitions::WS2812_NUM_LEDS];
-    Mode LEDManager::currentMode = Mode::ENCODING_MODE;
-    Mode LEDManager::previousMode = Mode::ENCODING_MODE;
+    VisualMode LEDManager::currentMode = VisualMode::ENCODING_MODE;
+    VisualMode LEDManager::previousMode = VisualMode::ENCODING_MODE;
     EncodingModes LEDManager::currentEncodingMode = EncodingModes::FULL_MODE;
     uint8_t LEDManager::currentPosition = 0;
     uint8_t LEDManager::currentColorIndex = 0;
@@ -44,8 +71,7 @@ namespace VisualCortex
 
     NoteState LEDManager::currentNotes[PinDefinitions::WS2812_NUM_LEDS];
     CRGB LEDManager::previousColors[PinDefinitions::WS2812_NUM_LEDS];
-    Pattern LEDManager::currentPattern = Pattern::NONE;
-
+    PC::VisualTypes::VisualPattern LEDManager::currentPattern = PC::VisualTypes::VisualPattern::NONE;
 
     //resolve this clutter
     CRGB LEDManager::winningColor = CRGB::Green;
@@ -92,7 +118,7 @@ namespace VisualCortex
             // Initialize FastLED with hardware SPI configuration
             FastLED.addLeds<VISUAL_CORTEX_LED_TYPE, 
                            PinDefinitions::WS2812_DATA_PIN, 
-                           PinDefinitions::RGB_ORDER>(
+                           PinDefinitions::WS2812_COLOR_ORDER>(
                 leds, 
                 PinDefinitions::WS2812_NUM_LEDS
             ).setCorrection(VISUAL_CORTEX_COLOR_CORRECTION);
@@ -126,7 +152,7 @@ namespace VisualCortex
         if (!isLoading) return;
         
         isLoading = false;
-        currentMode = Mode::ENCODING_MODE;
+        currentMode = VisualMode::ENCODING_MODE;
         currentEncodingMode = EncodingModes::FULL_MODE;
         // Initialize FULL_MODE pattern
         for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
@@ -140,17 +166,19 @@ namespace VisualCortex
     }
 
     void LEDManager::updateLEDs() {
-        
-        if (AppManager::isAppActive()) {
-            switch (currentPattern) {
-                case Pattern::SLOTS_GAME:
+        if (GC::AppManager::isAppActive()) {
+            switch (currentPattern) {  // Using class member variable
+                case PC::VisualTypes::VisualPattern::SLOTS_GAME:
                     updateSlotsPattern();
                     break;
-                case Pattern::IR_BLAST:
+                case PC::VisualTypes::VisualPattern::IR_BLAST:
                     updateIRBlastPattern();
                     break;
-                case Pattern::NFC_SCAN:
+                case PC::VisualTypes::VisualPattern::NFC_SCAN:
                     updateNFCScanPattern();
+                    break;
+                case PC::VisualTypes::VisualPattern::NONE:
+                    // Do nothing for NONE pattern
                     break;
                 default:
                     break;
@@ -167,7 +195,7 @@ namespace VisualCortex
         }
 
         switch (currentMode) {
-            case Mode::ENCODING_MODE:
+            case VisualMode::ENCODING_MODE:
                 switch(currentEncodingMode) {
                     case EncodingModes::FULL_MODE:
                         updateFullMode();
@@ -180,24 +208,24 @@ namespace VisualCortex
                         break;
                 }
                 break;
-            case Mode::OFF_MODE:
+            case VisualMode::OFF_MODE:
                 FastLED.clear();
                 FastLED.show();
                 break;
-            case Mode::FESTIVE_MODE:
+            case VisualMode::FESTIVE_MODE:
                 updateFestiveMode();
                 break;
         }
     }
 
-    void LEDManager::setMode(Mode newMode) {
+    void LEDManager::setMode(VisualMode newMode) {
         currentMode = newMode;
         FastLED.clear();
         updateLEDs();
     }
 
     void LEDManager::nextMode() {
-        currentMode = static_cast<Mode>((static_cast<int>(currentMode) + 1) % LED_NUM_MODES);
+        currentMode = static_cast<VisualMode>((static_cast<int>(currentMode) + 1) % LED_NUM_MODES);
         FastLED.clear();
         updateLEDs();
     }
@@ -326,47 +354,60 @@ namespace VisualCortex
         static bool isMoving = false;
         
         unsigned long currentTime = millis();
-        if (currentTime - lastStepTime >= 125) {  // 125ms between moves
+        if (currentTime - lastStepTime >= 125)  // 125ms between moves
+        {
             lastStepTime = currentTime;
             
-            if (!isMoving) {
+            if (!isMoving) 
+            {
                 // Start new drop at position 0
                 leds[0] = timerColors[currentColorIndex];
                 currentPosition = 0;
                 isMoving = true;
-            } else {
+            } 
+            else 
+            {
                 // Clear current position
                 leds[currentPosition] = backgroundColors[currentPosition];
                 
                 // Move to next position if possible
                 if (currentPosition < PinDefinitions::WS2812_NUM_LEDS - 1 && 
-                    leds[currentPosition + 1] == backgroundColors[currentPosition + 1]) {
+                    leds[currentPosition + 1] == backgroundColors[currentPosition + 1]) 
+                {
                     currentPosition++;
                     leds[currentPosition] = timerColors[currentColorIndex];
-                } else {
+                } 
+                else 
+                {
                     // Drop has reached its final position
                     leds[currentPosition] = timerColors[currentColorIndex];
-                    SoundFxManager::playTimerDropSound(timerColors[currentColorIndex]);
+                    AC::SoundFxManager::playToneFx(PC::AudioTypes::Tone::TIMER_DROP);
                     isMoving = false;
                     
                     // Check if we completed this color's cycle
                     bool allFilled = true;
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
-                        if (leds[i] == backgroundColors[i]) {
+                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                    {
+                        if (leds[i] == backgroundColors[i]) 
+                        {
                             allFilled = false;
                             break;
                         }
                     }
                     
-                    if (allFilled) {
+                    if (allFilled) 
+                    {
                         // Update background for next color
-                        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                        {
                             backgroundColors[i] = timerColors[currentColorIndex];
                         }
                         currentColorIndex = (currentColorIndex + 1) % NUM_TIMER_COLORS;
-                        if (currentColorIndex == 0) {
+                        if (currentColorIndex == 0) 
+                        {
                             // Reset background when starting over
-                            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                            {
                                 backgroundColors[i] = CRGB::Black;
                             }
                         }
@@ -408,7 +449,7 @@ namespace VisualCortex
         if (currentTime - lastStepTime < VISUAL_CORTEX_LOADING_DELAY) return;
         
         lastStepTime = currentTime;
-        int bootStep = RoverBehaviorManager::getCurrentBootStep();
+        int bootStep = PC::RoverBehaviorManager::getCurrentBootStep();
         static int lastBootStep = -1;
 
         // Only initialize new LEDs when boot step changes
@@ -562,7 +603,7 @@ namespace VisualCortex
         }
 
         switch (currentMode) {
-            case Mode::ENCODING_MODE:
+            case VisualMode::ENCODING_MODE:
                 switch(currentEncodingMode) {
                     case EncodingModes::FULL_MODE:
                         LEDManager::updateFullMode();
@@ -581,14 +622,14 @@ namespace VisualCortex
                         break;
                 }
                 break;
-            case Mode::OFF_MODE:
+            case VisualMode::OFF_MODE:
                 FastLED.clear();
                 FastLED.show();
                 break;
-            case Mode::FESTIVE_MODE:
+            case VisualMode::FESTIVE_MODE:
                 LEDManager::updateFestiveMode();
                 break;
-            case Mode::ROVER_EMOTION_MODE:
+            case VisualMode::ROVER_EMOTION_MODE:
                 LEDManager::updateRoverEmotionMode();
                 break;
         }
@@ -596,7 +637,7 @@ namespace VisualCortex
 
     void LEDManager::updateMenuMode() {
         
-        int selectedIndex = MenuManager::getSelectedIndex();
+        int selectedIndex = SC::MenuManager::getSelectedIndex();
         for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
             if (i <= selectedIndex) {
                 setLED(i, VisualSynesthesia::getBase8Color(i));
@@ -615,9 +656,9 @@ namespace VisualCortex
     }
 
 
+
     unsigned long tickTalkTime = 0;
     void LEDManager::updateCustomMode() {
-
         unsigned long currentTime = millis();
 
         if (currentTime - tickTalkTime >= 10000) {
@@ -626,8 +667,8 @@ namespace VisualCortex
         }
 
         if (tickTock) {
-            int batteryLevel8 = PowerManager::getBatteryPercentage() % 8;
-            int uptime8 = PowerManager::getUpTime() % 8;
+            int batteryLevel8 = PM::getBatteryPercentage() % 8;
+            int uptime8 = PM::getUpTime() % 8;
 
             CRGB color = VisualSynesthesia::getBase8Color(batteryLevel8);
 
@@ -640,15 +681,13 @@ namespace VisualCortex
                     setLED(i, CRGB::Black);
                 }
             }
-        } else
-        {
+        } else {
             for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
                 leds[i] = CHSV(((i * 256 / PinDefinitions::WS2812_NUM_LEDS) + currentTime/10) % 256, 255, 255);
             }
         }
 
         showLEDs();
-
     }
 
     void LEDManager::updateFestiveMode() {
@@ -817,7 +856,7 @@ namespace VisualCortex
 
     void LEDManager::setFestiveTheme(FestiveTheme theme) {
         currentTheme = theme;
-        currentMode = Mode::FESTIVE_MODE;
+        currentMode = VisualMode::FESTIVE_MODE;
         FastLED.clear();
         LEDManager::updateLEDs();
     }
@@ -881,7 +920,7 @@ namespace VisualCortex
                 }
             } else if (!readyForMelody) {
                 readyForMelody = true;
-                SoundFxManager::playCardMelody(NFCManager::getLastCardId());
+                AC::SoundFxManager::playCardMelody(PSY::NFCManager::getLastCardId());
             }
         } else {
             // Normal blue pulse
@@ -896,39 +935,93 @@ namespace VisualCortex
         FastLED.show();
     }
 
-    void LEDManager::setPattern(Pattern pattern) {
+    void LEDManager::setPattern(PC::VisualPattern pattern) {
         currentPattern = pattern;
     }
 
-    void LEDManager::handleMessage(LEDMessage message) {
-        switch(message) {
-            case LEDMessage::SLOTS_WIN:
-                // Store winning color and start victory flash
-                LEDManager::currentPattern = Pattern::SLOTS_GAME;
-                // Store color for use in updateSlotsPattern
+    void LEDManager::handleMessage(PC::VisualMessage message) 
+    {
+        switch(message) 
+        {
+            case PC::VisualMessage::SLOTS_WIN:
+                LEDManager::currentPattern = PC::VisualPattern::SLOTS_GAME;
                 winningColor = CRGB::Green;
                 break;
                 
-            case LEDMessage::IR_SUCCESS:
+            case PC::VisualMessage::IR_SUCCESS:
                 flashSuccess();
                 break;
                 
-            case LEDMessage::NFC_DETECTED:
-                LEDManager::currentPattern = Pattern::NFC_SCAN;
+            case PC::VisualMessage::NFC_DETECTED:
+                LEDManager::currentPattern = PC::VisualPattern::NFC_SCAN;
                 LEDManager::transitioningColor = true;
                 LEDManager::fadeValue = 0;
                 LEDManager::currentFadeIndex = 0;
                 LEDManager::readyForMelody = false;
                 break;
                 
-            case LEDMessage::NFC_ERROR:
-                LEDManager::currentPattern = Pattern::NFC_SCAN;
+            case PC::VisualMessage::NFC_ERROR:
+                LEDManager::currentPattern = PC::VisualPattern::NFC_SCAN;
                 LEDManager::targetColor = CRGB::Red;
                 LEDManager::fadeValue = 0;
                 LEDManager::transitioningColor = true;
                 break;
-                
+
+            case PC::VisualMessage::SUCCESS:
+                LEDManager::currentPattern = PC::VisualPattern::RAINBOW;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                break;
+
+            case PC::VisualMessage::ERROR:
+                LEDManager::currentPattern = PC::VisualPattern::PULSE;
+                LEDManager::targetColor = CRGB::Red;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                break;
+
+            case PC::VisualMessage::WARNING:
+                LEDManager::currentPattern = PC::VisualPattern::CHASE;
+                LEDManager::targetColor = CRGB::Yellow;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                break;
+
+            case PC::VisualMessage::SYSTEM_ERROR:
+                LEDManager::currentPattern = PC::VisualPattern::SOLID;
+                LEDManager::targetColor = CRGB::Red;
+                LEDManager::fadeValue = 255; // Full brightness
+                LEDManager::transitioningColor = false;
+                break;
+
+            case PC::VisualMessage::POWER_LOW:
+                LEDManager::currentPattern = PC::VisualPattern::TIMER;
+                LEDManager::targetColor = CRGB::Orange;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                break;
+
+            case PC::VisualMessage::LEVEL_UP:
+                LEDManager::currentPattern = PC::VisualPattern::CUSTOM;
+                LEDManager::targetColor = CRGB::Gold;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                LEDManager::readyForMelody = false;
+                break;
+
+            case PC::VisualMessage::BOOT_COMPLETE:
+                LEDManager::currentPattern = PC::VisualPattern::MENU;
+                LEDManager::targetColor = CRGB::Blue;
+                LEDManager::fadeValue = 0;
+                LEDManager::transitioningColor = true;
+                break;
+
+            case PC::VisualMessage::NONE:
+            case PC::VisualMessage::INFO:
+            case PC::VisualMessage::CARD_SCANNED: // Handled by NFC_DETECTED
+            case PC::VisualMessage::NETWORK_STATUS:
             default:
+                LEDManager::currentPattern = PC::VisualPattern::NONE;
                 break;
         }
     }
@@ -942,14 +1035,14 @@ namespace VisualCortex
     void LEDManager::displayNote(uint16_t frequency, uint8_t position) {
         position = position % PinDefinitions::WS2812_NUM_LEDS;
         
-        NoteInfo info = PitchPerception::getNoteInfo(frequency);
+        NoteInfo info = AC::PitchPerception::getNoteInfo(frequency);
         LEDManager::currentNotes[position].isSharp = info.isSharp;
         LEDManager::currentNotes[position].position = position;
         
         if (info.isSharp) {
             // For sharp/flat notes, get colors of adjacent natural notes
-            uint16_t lowerFreq = PitchPerception::getStandardFrequency(frequency - 10);
-            uint16_t upperFreq = PitchPerception::getStandardFrequency(frequency + 10);
+            uint16_t lowerFreq = AC::PitchPerception::getStandardFrequency(frequency - 10);
+            uint16_t upperFreq = AC::PitchPerception::getStandardFrequency(frequency + 10);
             currentNotes[position].color1 = LEDManager::getNoteColor(lowerFreq);
             currentNotes[position].color2 = LEDManager::getNoteColor(upperFreq);
         } else {
@@ -1044,11 +1137,11 @@ namespace VisualCortex
         }
 
         // Reset to default mode if no festive day
-        setMode(Mode::ENCODING_MODE);
+        setMode(VisualMode::ENCODING_MODE);
     }
 
     void LEDManager::setEncodingMode(EncodingModes mode) {
-        currentMode = Mode::ENCODING_MODE; // Set the main mode to ENCODING_MODE
+        currentMode = VisualMode::ENCODING_MODE; // Set the main mode to ENCODING_MODE
         currentEncodingMode = mode; // Set the specific encoding mode
         // Additional logic to handle the encoding mode can be added here
     }

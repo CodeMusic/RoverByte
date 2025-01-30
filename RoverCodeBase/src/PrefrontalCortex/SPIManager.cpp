@@ -2,6 +2,7 @@
 
 namespace PrefrontalCortex 
 {
+    namespace PC = PrefrontalCortex;  // Add namespace alias
 
     // Initialize the static member
     bool SPIManager::initialized = false;
@@ -32,9 +33,7 @@ namespace PrefrontalCortex
 
     void SPIManager::selectDevice(uint8_t deviceCS) {
         // Deselect all devices first
-        digitalWrite(TFT_CS, HIGH);
-        digitalWrite(BOARD_SD_CS, HIGH);
-        digitalWrite(BOARD_LORA_CS, HIGH);
+        deselectAll();
         
         // Select the requested device
         digitalWrite(deviceCS, LOW);

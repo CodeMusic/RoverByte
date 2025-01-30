@@ -1,67 +1,90 @@
 #include "IRManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 #include "../VisualCortex/LEDManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
-#include "../SomatosensoryCortex/MenuManager.h"
 #include "../VisualCortex/RoverViewManager.h"
+#include "../SomatosensoryCortex/MenuManager.h"
 
-using namespace VisualCortex;
-using namespace PrefrontalCortex;
+// Forward declarations
+
 
 namespace PsychicCortex 
 {
+    namespace PSY = PsychicCortex;  // Add namespace alias
+    using namespace CorpusCallosum;
+    
+    // Import specific types we need
+    using VC::LEDManager;
+    using VC::RoverViewManager;
+    using SC::MenuManager;
+    using AC::SoundFxManager;
+    using PC::VisualTypes::VisualPattern;
 
-        bool IRManager::blasting = false;
-        unsigned long IRManager::lastSendTime = 0;
-        uint16_t IRManager::currentCode = 0;
-        uint8_t IRManager::currentRegion = 0;
-        IRsend IRManager::irsend(BOARD_IR_RX);  // Initialize with IR pin
+    // Initialize static members
+    bool IRManager::blasting = false;
+    unsigned long IRManager::lastSendTime = 0;
+    unsigned long IRManager::lastLEDUpdate = 0;
+    uint16_t IRManager::currentCode = 0;
+    uint8_t IRManager::currentRegion = 0;
+    uint8_t IRManager::currentLEDPosition = 0;
+    bool IRManager::animationDirection = true;
+    IRsend IRManager::irsend(BOARD_IR_RX);  // Initialize with IR pin
 
-    void IRManager::init() {
+    void IRManager::init() 
+    {
         pinMode(BOARD_IR_EN, OUTPUT);
         pinMode(BOARD_IR_RX, OUTPUT);
         digitalWrite(BOARD_IR_EN, LOW); // Initially disabled
         irsend.begin();
     }
 
-    void IRManager::handleRotaryTurn(int direction) {
-        if (direction == 1) {
+    void IRManager::handleRotaryTurn(int direction) 
+    {
+        if (direction == 1) 
+        {
             currentRegion = (currentRegion + 1) % 4;
-        } else if (direction == -1) {
+        } 
+        else if (direction == -1) 
+        {
             currentRegion = (currentRegion + 3) % 4;
         }
-        LEDManager::setPattern(Pattern::NONE);
+        LEDManager::setPattern(PC::VisualTypes::VisualPattern::NONE);
     }
 
-    void IRManager::handleRotaryPress() {
+    void IRManager::handleRotaryPress() 
+    {
         startBlast();
     }
 
-
-    void IRManager::startBlast() {
+    void IRManager::startBlast() 
+    {
         blasting = true;
-        LEDManager::setPattern(Pattern::IR_BLAST);
+        LEDManager::setPattern(PC::VisualTypes::VisualPattern::IR_BLAST);
     }
 
-    void IRManager::stopBlast() {
+    void IRManager::stopBlast() 
+    {
         blasting = false;
-        LEDManager::setPattern(Pattern::NONE);
+        LEDManager::setPattern(PC::VisualTypes::VisualPattern::NONE);
     }
 
-
-    void IRManager::update() {
+    void IRManager::update() 
+    {
         if (!blasting) return;
         
         // Update IR codes
-        if (millis() - lastSendTime >= SEND_DELAY_MS) {
+        if (millis() - lastSendTime >= SEND_DELAY_MS) 
+        {
             sendCode(currentCode++);
             lastSendTime = millis();
             
-            if (currentCode >= 100) {
+            if (currentCode >= 100) 
+            {
                 currentCode = 0;
                 currentRegion++;
-                if (currentRegion >= 4) {
+                if (currentRegion >= 4) 
+                {
                     stopBlast();
-                    MenuManager::show();
+                    SC::MenuManager::show();
                     return;
                 }
             }
@@ -75,25 +98,34 @@ namespace PsychicCortex
             snprintf(progressStr, sizeof(progressStr), "                %d%% [%d:%d]", 
                     progressPercent, currentRegion, currentCode);
             
-            RoverViewManager::showNotification("IR", progressStr, "BLAST", 500);
+            VC::RoverViewManager::showNotification("IR", progressStr, "BLAST", 500);
         }
     }
 
-    void IRManager::sendCode(uint16_t code) {
+    void IRManager::sendCode(uint16_t code) 
+    {
         // Send different protocols based on region, following TV-B-Gone approach
-        switch(currentRegion) {
+        switch(currentRegion) 
+        {
             case 0:  // Sony (SIRC) - Most common for Bravia
                 digitalWrite(BOARD_IR_EN, HIGH);
                 // Power codes: 21/0x15, 0xA90, 0x290
                 // Input codes: 25/0x19, 0xA50, 0x250
                 // Vol codes: 18/0x12 (up), 19/0x13 (down), 20/0x14 (mute)
-                if (code < 20) {
+                if (code < 20) 
+                {
                     irsend.sendSony(code + 0x10, 12);  // Basic commands (0x10-0x20)
-                } else if (code < 40) {
+                } 
+                else if (code < 40) 
+                {
                     irsend.sendSony(code + 0xA80, 12); // Extended set A
-                } else if (code < 60) {
+                } 
+                else if (code < 60) 
+                {
                     irsend.sendSony(code + 0x240, 12); // Extended set B
-                } else {
+                } 
+                else 
+                {
                     irsend.sendSony(code, 15);         // 15-bit codes
                 }
                 digitalWrite(BOARD_IR_EN, LOW);
@@ -101,9 +133,12 @@ namespace PsychicCortex
                 
             case 1:  // NEC - Common for many TVs
                 digitalWrite(BOARD_IR_EN, HIGH);
-                if (code < 50) {
+                if (code < 50) 
+                {
                     irsend.sendNEC(0x04FB0000UL + code); // Sony TV NEC variants
-                } else {
+                } 
+                else 
+                {
                     irsend.sendNEC(0x10000000UL + code); // Other NEC codes
                 }
                 digitalWrite(BOARD_IR_EN, LOW);
@@ -111,9 +146,12 @@ namespace PsychicCortex
                 
             case 2:  // RC5/RC6 - Common for European TVs
                 digitalWrite(BOARD_IR_EN, HIGH);
-                if (code % 2) {
+                if (code % 2) 
+                {
                     irsend.sendRC5(code, 12);
-                } else {
+                } 
+                else 
+                {
                     irsend.sendRC6(code, 20);
                 }
                 digitalWrite(BOARD_IR_EN, LOW);
@@ -125,5 +163,5 @@ namespace PsychicCortex
                 digitalWrite(BOARD_IR_EN, LOW);
                 break;
         }
-    } 
+    }
 }
