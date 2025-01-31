@@ -14,73 +14,104 @@ namespace VisualCortex
     namespace VC = VisualCortex;  // Add namespace alias
     using PC::VisualTypes::VisualPattern;  // Use ProtoPerceptions type
     using PC::VisualTypes::VisualMode;     // Use ProtoPerceptions type
-    using PC::VisualTypes::VisualMessage;     // Use ProtoPerceptions type
+    using PC::VisualTypes::VisualMessage;  // Use ProtoPerceptions type
     using PC::VisualTypes::FestiveTheme;   // Use ProtoPerceptions type
     using PC::VisualTypes::NoteState;      // Use ProtoPerceptions type
     using PC::VisualTypes::EncodingModes;  // Use ProtoPerceptions type
 
-    static const int LED_NUM_MODES = 5;
-    static const int NUM_RAINBOW_COLORS = 7;
-    static const int STEP_DELAY = 100;
-    static const int MONTH_DIM = 128;
+    // Visual perception constants
+    namespace VisualConstants
+    {
+        constexpr int LED_NUM_MODES = 5;
+        constexpr int NUM_RAINBOW_COLORS = 7;
+        constexpr int STEP_DELAY = 100;
+        constexpr int MONTH_DIM = 128;
+    }
 
-    
-
-    class LEDManager {
+    class LEDManager 
+    {
     public:
+        // Core perception methods
         static void init();
-        static void updateLEDs();
-        static void startLoadingAnimation();
-        static void stopLoadingAnimation();
-        static void runInitializationTest();
-        static void nextMode();
-        static void setMode(VisualMode mode);
-        static void setFestiveTheme(FestiveTheme theme);
-        static void setLED(int index, CRGB color);
-        static void syncLEDsForDay();
-        static void showLEDs();
-        static void scaleLED(int index, uint8_t scale);
-        static VisualMode getMode() { return currentMode; }
-        static void updateLoadingAnimation();
-        static bool isLoadingComplete();
-        static void flashSuccess();
-        static void flashLevelUp();
-        static VisualMode currentMode;
-        static FestiveTheme currentTheme;
-        static void displayCardPattern(const uint8_t* uid, uint8_t uidLength);
         static void update();
+        static void showLEDs();
+
+        // Mode management
+        static void setMode(VisualMode mode);
+        static void nextMode();
+        static VisualMode getMode() { return currentMode; }
         static void setPattern(PC::VisualPattern pattern);
         static PC::VisualTypes::VisualPattern getPattern() { return currentPattern; }
-        static void handleMessage(PC::VisualMessage message);
-        static void displayNote(uint16_t frequency, uint8_t position = 0);
-        static void clearNoteDisplay();
+
+        // Animation control
+        static void startLoadingAnimation();
+        static void stopLoadingAnimation();
+        static void updateLoadingAnimation();
+        static bool isLoadingComplete();
+        static void updateLEDs();
+
+        // Visual feedback
+        static void flashSuccess();
+        static void flashLevelUp();
         static void setErrorLED(bool state);
         static void setErrorPattern(uint32_t errorCode, bool isFatal);
         static void clearErrorPattern();
         static void updateErrorPattern();
+
+        // LED manipulation
+        static void setLED(int index, CRGB color);
+        static void scaleLED(int index, uint8_t scale);
+        static void syncLEDsForDay();
+
+        // Special effects
+        static void runInitializationTest();
+        static void displayCardPattern(const uint8_t* uid, uint8_t uidLength);
+        static void displayNote(uint16_t frequency, uint8_t position = 0);
+        static void clearNoteDisplay();
+
+        // State management
+        static void handleMessage(PC::VisualMessage message);
+        static void setFestiveTheme(FestiveTheme theme);
         static void checkAndSetFestiveMode();
         static void setEncodingMode(EncodingModes mode);
+
+        // Public state tracking
+        static VisualMode currentMode;
+        static FestiveTheme currentTheme;
         static EncodingModes currentEncodingMode;
-        
 
     private:
+        // LED state management
         static CRGB leds[PinDefinitions::WS2812_NUM_LEDS];
+        static CRGB previousColors[PinDefinitions::WS2812_NUM_LEDS];
+        static NoteState currentNotes[PinDefinitions::WS2812_NUM_LEDS];
+        static PC::VisualTypes::VisualPattern currentPattern;
+
+        // Mode tracking
         static VisualMode previousMode;
+        static CRGB winningColor;
+        static CRGB targetColor;
+        static bool transitioningColor;
+
+        // Animation state
         static uint8_t currentPosition;
         static uint8_t currentColorIndex;
         static uint8_t completedCycles;
         static uint8_t filledPositions;
         static uint8_t activeTrails;
-        static unsigned long lastStepTime;
-        static bool isLoading;
-        static bool tickTock;
-        
-        // New animation variables
         static uint8_t animationStep;
         static uint8_t fadeValue;
+        static uint8_t currentFadeIndex;
         static bool fadeDirection;
-        static CRGB previousColors[PinDefinitions::WS2812_NUM_LEDS];
-        
+        static bool isLoading;
+        static bool tickTock;
+        static bool readyForMelody;
+
+        // Timing
+        static unsigned long lastStepTime;
+        static unsigned long lastUpdate;
+
+        // Mode update methods
         static void updateFullMode();
         static void updateWeekMode();
         static void updateTimerMode();
@@ -88,35 +119,26 @@ namespace VisualCortex
         static void updateCustomMode();
         static void updateMenuMode();
         static void updateRoverEmotionMode();
-
-        static CRGB getRainbowColor(uint8_t index);
-        static PC::VisualTypes::VisualPattern currentPattern;
-    
         static void updateIRBlastPattern();
         static void updateSlotsPattern();
         static void updateNFCScanPattern();
-        static NoteState currentNotes[PinDefinitions::WS2812_NUM_LEDS];
+
+        // Utility methods
+        static CRGB getRainbowColor(uint8_t index);
         static CRGB getNoteColor(uint16_t frequency);
         static bool isSharpNote(uint16_t frequency);
-        static CRGB winningColor;
-        static bool transitioningColor;
-        static uint8_t currentFadeIndex;
-        static unsigned long lastUpdate;
-        static CRGB targetColor;
-        static const uint8_t fadeSequence[];
-        static bool readyForMelody;
-        static constexpr uint8_t ERROR_LED_INDEX = 0;
-        static constexpr uint8_t ERROR_LED_COUNT = 8;
 
-        // Boot stage colors
+        // Boot sequence colors
         static const CRGB HARDWARE_INIT_COLOR;
         static const CRGB SYSTEM_START_COLOR;
         static const CRGB NETWORK_PREP_COLOR;
         static const CRGB FINAL_PREP_COLOR;
+        static const uint8_t fadeSequence[];
 
+        // Constants
+        static constexpr uint8_t ERROR_LED_INDEX = 0;
+        static constexpr uint8_t ERROR_LED_COUNT = 8;
+        static constexpr uint8_t LEDS_PER_STEP = 3;
         static uint8_t loadingPosition;
-        static const uint8_t LEDS_PER_STEP = 3;
-
-
     }; 
 }

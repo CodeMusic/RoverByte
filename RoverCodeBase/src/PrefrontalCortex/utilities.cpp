@@ -2,24 +2,16 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <Arduino.h>
+#include "../../RoverConfig.h"
 
 namespace PrefrontalCortex 
 {
     namespace PC = PrefrontalCortex;  // Add namespace alias
     using PC::SystemTypes::LogLevel;  // More specific using statement
 
-    // Initialize static members
-    LogLevel Utilities::CURRENT_LOG_LEVEL = LogLevel::DEBUG;
+    // Initialize with config value
+    LogLevel Utilities::CURRENT_LOG_LEVEL = RoverConfig::DEFAULT_LOG_LEVEL;
     
-    const char* Utilities::LOG_LEVEL_STRINGS[] = 
-    {
-        "PROD",
-        "ERROR", 
-        "DEBUG",
-        "INFO",
-        "WARNING"
-    };
-
     // Private helper function implementation
     void Utilities::debugLog(LogLevel level, const char* format, va_list args) 
     {
@@ -27,7 +19,7 @@ namespace PrefrontalCortex
         {
             char buffer[256];
             vsnprintf(buffer, sizeof(buffer), format, args);
-            Serial.printf("[%s] %s\n", LOG_LEVEL_STRINGS[static_cast<int>(level)], buffer);
+            Serial.printf("[%s] %s\n", PC::SystemTypes::LOG_LEVEL_STRINGS[static_cast<int>(level)], buffer);
         }
     }
 
@@ -53,6 +45,14 @@ namespace PrefrontalCortex
         va_list args;
         va_start(args, format);
         debugLog(LogLevel::DEBUG, format, args);
+        va_end(args);
+    }
+
+    void Utilities::LOG_SCOPE(const char* format, ...) 
+    {
+        va_list args;
+        va_start(args, format);
+        debugLog(LogLevel::SCOPE, format, args);
         va_end(args);
     }
 

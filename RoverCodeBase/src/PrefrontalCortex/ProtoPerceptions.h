@@ -1,3 +1,20 @@
+/*
+ * ProtoPerceptions.h
+ * 
+ * Core type definitions and data structures used across the robot's cortices.
+ * Organized in cognitive hierarchy from low-level to high-level processing:
+ * 
+ * 1. Basic Types - Fundamental type definitions (byte, etc.)
+ * 2. Storage Types - Memory and persistence (SPIFFS, SD, etc.)
+ * 3. Sensor Types - Hardware interfaces and readings
+ * 4. Config Types - System configuration structures
+ * 5. System Types - Core system state and logging
+ * 6. Input/Output Types - UI, Menu, Display interactions
+ * 7. Behavior Types - Robot personality and emotions
+ * 8. Rover Types - High-level robot states and expressions
+ * 9. Chakra/Virtue Types - Metaphysical/philosophical states
+ */
+
 #ifndef PROTO_PERCEPTIONS_H
 #define PROTO_PERCEPTIONS_H
 
@@ -9,13 +26,13 @@
 
 namespace PrefrontalCortex 
 {
-    // Basic type definitions
+    // 1. Basic Types
     #ifdef byte
     #undef byte
     #endif
     typedef uint8_t byte;
 
-    // Memory and Storage Types
+    // 2. Storage Types
     namespace StorageTypes 
     {
         enum class StorageDevice 
@@ -43,7 +60,7 @@ namespace PrefrontalCortex
         };
     }
 
-    // Sensor Types
+    // 3. Sensor Types
     namespace SensorTypes 
     {
         enum class SensorState 
@@ -72,7 +89,7 @@ namespace PrefrontalCortex
         };
     }
 
-    // Configuration Types
+    // 4. Config Types
     namespace ConfigTypes 
     {
         struct NetworkConfig 
@@ -111,12 +128,14 @@ namespace PrefrontalCortex
         };
     }
 
-    // System State Types
+    // 5. System Types
     namespace SystemTypes 
     {
-        enum class BehaviorState 
+        // Renamed from BehaviorState to SystemState for clarity
+        // Represents overall system states rather than specific behaviors
+        enum class SystemState 
         {
-            STARTUP,
+            STARTUP,    // Keep existing values
             IDLE,
             ACTIVE,
             ERROR,
@@ -130,7 +149,8 @@ namespace PrefrontalCortex
             ERROR,
             DEBUG,
             INFO,
-            WARNING
+            WARNING,
+            SCOPE
         };
 
         // Add this array of strings
@@ -161,7 +181,49 @@ namespace PrefrontalCortex
         };
     }
 
-    // Rover Behavior Types
+    // 6. Input/Output Types
+    namespace InputTypes 
+    {
+        enum class InputState 
+        {
+            NOT_STARTED,
+            INITIALIZING,
+            READY,
+            ERROR
+        };
+    }
+
+    namespace UITypes 
+    {
+        enum class MenuState 
+        {
+            MAIN_MENU,
+            SUB_MENU,
+            SETTINGS,
+            GAME_SELECT,
+            APP_RUNNING
+        };
+
+        enum class ScrollDirection 
+        {
+            UP,
+            DOWN,
+            LEFT,
+            RIGHT,
+            NONE
+        };
+
+        struct MenuItem 
+        {
+            String label;
+            uint8_t id;
+            std::vector<MenuItem> subItems;
+            bool isSelectable;
+            bool hasSubMenu;
+        };
+    }
+
+    // 7. Behavior Types
     namespace BehaviorTypes 
     {
         enum class EmotionalState 
@@ -199,123 +261,133 @@ namespace PrefrontalCortex
         };
     }
 
-    // Menu and UI Types
-    namespace UITypes 
+    // 8. Rover Types
+    namespace RoverTypes 
     {
-        enum class MenuState 
+        enum class Expression 
         {
-            MAIN_MENU,
-            SUB_MENU,
-            SETTINGS,
-            GAME_SELECT,
-            APP_RUNNING
+            HAPPY,
+            LOOKING_LEFT,
+            LOOKING_RIGHT,
+            INTENSE,
+            LOOKING_UP,
+            LOOKING_DOWN,
+            BIG_SMILE,
+            EXCITED,
+            NUM_EXPRESSIONS
         };
 
-        enum class ScrollDirection 
+        enum class BehaviorState 
         {
-            UP,
-            DOWN,
-            LEFT,
-            RIGHT,
-            NONE
+            LOADING,        // Initial boot/loading state
+            HOME,          // Main home screen
+            MENU,          // Menu navigation
+            APP,           // Running an application
+            ERROR,         // Error state
+            WARNING,       // Warning state
+            FATAL_ERROR,   // Fatal error state
+            IDLE,          // Idle state
+            MENU_MODE,     // Menu display mode (for LED encoding)
+            FULL_DISPLAY   // Full display mode (for LED encoding)
         };
 
-        struct MenuItem 
+        enum class LoadingPhase 
         {
-            String label;
-            uint8_t id;
-            std::vector<MenuItem> subItems;
-            bool isSelectable;
-            bool hasSubMenu;
-        };
-    }
-
-    // Game Types
-    namespace GameTypes 
-    {
-        enum class GameState 
-        {
-            IDLE,
-            SPINNING,
-            WIN,
-            LOSE,
-            BONUS_ROUND
-        };
-        
-        enum class AppState {
-            IDLE,       // No app is active
-            SHOW_INFO,  // Displaying a quick info screen
-            RUNNING     // The app is currently running
+            BOOTING,
+            CONNECTING_WIFI,
+            SYNCING_TIME
         };
 
-        struct SlotSymbol 
-        {
-            uint8_t id;
-            String symbol;
-            uint16_t color;
-            uint8_t probability;
-        };
-
-        struct GameScore 
-        {
-            uint32_t points;
-            uint16_t level;
-            uint8_t multiplier;
-        };
-
-        struct AppInfo 
-        {
-            std::string name;
-            std::string description;
-            void (*onRun)();
-            void (*onUpdate)();
-            void (*onExit)();
-            bool isEnabled = true;
-        };
-    }
-
-    // Communication Types
-    namespace CommTypes 
-    {
-        enum class NFCState 
-        {
-            READY,
-            SCANNING,
-            TAG_FOUND,
-            ERROR,
-            WRITING
-        };
-
-        enum class IRCommand 
+        enum class StartupErrorCode 
         {
             NONE,
-            POWER,
-            VOLUME_UP,
-            VOLUME_DOWN,
-            CHANNEL_UP,
-            CHANNEL_DOWN,
-            MENU,
-            SELECT
+            WIFI_INIT_FAILED,
+            TIME_SYNC_FAILED,
+            SD_INIT_FAILED,
+            DISPLAY_INIT_FAILED,
+            UI_INIT_FAILED,
+            APP_INIT_FAILED
         };
 
-        struct NFCTag 
+        struct ErrorInfo 
         {
-            uint32_t id;
-            String data;
-            uint8_t type;
-            bool isWriteable;
-        };
-
-        enum class InitState 
-        {
-            NOT_STARTED,
-            HARDWARE_INIT,
-            FIRMWARE_CHECK,
-            SAM_CONFIG,
-            COMPLETE,
-            ERROR
+            uint32_t code;
+            const char* message;
+            ErrorType type;
         };
     }
+
+    // 9. Metaphysical Types
+    namespace ChakraTypes 
+    {
+        enum class ChakraState 
+        {
+            ROOT,
+            SACRAL,
+            SOLAR_PLEXUS,
+            HEART,
+            THROAT,
+            THIRD_EYE,
+            CROWN
+        };
+
+        struct ChakraInfo 
+        {
+            const char* name;
+            const char* description;
+            uint16_t color;
+            void (*drawFunction)(int, int, int);
+        };
+    }
+
+    namespace VirtueTypes 
+    {
+        enum class VirtueState 
+        {
+            CHASTITY,
+            TEMPERANCE,
+            CHARITY,
+            DILIGENCE,
+            FORGIVENESS,
+            KINDNESS,
+            HUMILITY
+        };
+
+        struct VirtueInfo 
+        {
+            const char* name;
+            const char* description;
+            void (*drawSymbol)(int, int, int);
+        };
+    }
+
+    // Common data structures
+    struct SensoryInput 
+    {
+        uint32_t timestamp;
+        byte sensorId;
+        float value;
+    };
+
+    struct NeuralResponse 
+    {
+        bool isProcessed;
+        std::string message;
+        byte priority;
+    };
+
+    // Enums for system states
+    enum class CognitionState 
+    {
+        IDLE,
+        PROCESSING,
+        ERROR,
+        LEARNING
+    };
+
+    // Type aliases for common data structures
+    using SensoryBuffer = std::vector<SensoryInput>;
+    using ResponseQueue = std::vector<NeuralResponse>;
 
     // Auditory Perception Types
     namespace AudioTypes 
@@ -544,151 +616,174 @@ namespace PrefrontalCortex
         static const CRGB FINAL_PREP_COLOR;
     }
 
-    // Common data structures
-    struct SensoryInput 
+    // Power Management Types
+    namespace PowerTypes 
     {
-        uint32_t timestamp;
-        byte sensorId;
-        float value;
-    };
-
-    struct NeuralResponse 
-    {
-        bool isProcessed;
-        std::string message;
-        byte priority;
-    };
-
-    // Enums for system states
-    enum class CognitionState 
-    {
-        IDLE,
-        PROCESSING,
-        ERROR,
-        LEARNING
-    };
-
-    // Type aliases for common data structures
-    using SensoryBuffer = std::vector<SensoryInput>;
-    using ResponseQueue = std::vector<NeuralResponse>;
-
-    // Rover Types
-    namespace RoverTypes 
-    {
-        enum class Expression 
+        enum class PowerState 
         {
-            HAPPY,
-            LOOKING_LEFT,
-            LOOKING_RIGHT,
-            INTENSE,
-            LOOKING_UP,
-            LOOKING_DOWN,
-            BIG_SMILE,
-            EXCITED,
-            NUM_EXPRESSIONS
+            AWAKE,          // Full power, display at max brightness
+            DIM_DISPLAY,    // Display dimmed to save power
+            DISPLAY_OFF,    // Display off but system still running
+            DEEP_SLEEP     // System in deep sleep mode
         };
 
-        enum class BehaviorState 
+        struct BatteryStatus 
         {
-            LOADING,        // Initial boot/loading state
-            HOME,          // Main home screen
-            MENU,          // Menu navigation
-            APP,           // Running an application
-            ERROR,         // Error state
-            WARNING,       // Warning state
-            FATAL_ERROR,   // Fatal error state
-            IDLE,          // Idle state
-            MENU_MODE,     // Menu display mode (for LED encoding)
-            FULL_DISPLAY   // Full display mode (for LED encoding)
+            float voltageLevel;      // Current voltage
+            int percentageCharge;    // 0-100%
+            bool isCharging;         // Charging state
+            float temperature;       // Battery temperature
+            uint32_t lastUpdateTime; // Last time status was updated
         };
 
-        enum class LoadingPhase 
+        struct PowerConfig 
         {
-            BOOTING,
-            CONNECTING_WIFI,
-            SYNCING_TIME
-        };
-
-        enum class StartupErrorCode 
-        {
-            NONE,
-            WIFI_INIT_FAILED,
-            TIME_SYNC_FAILED,
-            SD_INIT_FAILED,
-            DISPLAY_INIT_FAILED,
-            UI_INIT_FAILED,
-            APP_INIT_FAILED
-        };
-
-        struct ErrorInfo 
-        {
-            uint32_t code;
-            const char* message;
-            ErrorType type;
+            uint32_t idleTimeout;     // Time before entering idle state
+            uint32_t dimTimeout;      // Time before dimming display
+            uint32_t sleepTimeout;    // Time before entering sleep
+            uint8_t dimBrightness;    // Brightness level when dimmed
+            bool enableDeepSleep;     // Whether deep sleep is allowed
         };
     }
 
-    // Add ChakraTypes namespace after RoverTypes (around line 537)
-    namespace ChakraTypes 
+    namespace NFCTypes 
     {
-        enum class ChakraState 
+        enum class InitState 
         {
-            ROOT,
-            SACRAL,
-            SOLAR_PLEXUS,
-            HEART,
-            THROAT,
-            THIRD_EYE,
-            CROWN
+            NOT_STARTED,
+            HARDWARE_INIT,
+            FIRMWARE_CHECK,
+            SAM_CONFIG,
+            COMPLETE,
+            ERROR
+        };
+    }
+
+    // Network Types
+    namespace NetworkTypes 
+    {
+        struct NetworkCredentials 
+        {
+            const char* ssid;
+            const char* password;
+        };
+    }
+
+    // Menu Types
+    namespace MenuTypes 
+    {
+        struct MenuItem 
+        {
+            std::string name;
+            std::function<void()> action;
+            std::vector<MenuItem> subItems;
+
+            MenuItem(const std::string& n, const std::vector<MenuItem>& items) 
+                : name(n), 
+                  action(nullptr),
+                  subItems(items)
+            {
+            }
+
+            MenuItem(const std::string& n, std::function<void()> act) 
+                : name(n), 
+                  action(act),
+                  subItems()
+            {
+            }
+
+            bool operator==(const MenuItem& other) const 
+            {
+                return (name == other.name && 
+                        subItems == other.subItems);
+            }
+        };
+    }
+
+    // Game Types
+    namespace GameTypes 
+    {
+        enum class GameState 
+        {
+            IDLE,
+            SPINNING,
+            WIN,
+            LOSE,
+            BONUS_ROUND
+        };
+        
+        enum class AppState {
+            IDLE,       // No app is active
+            SHOW_INFO,  // Displaying a quick info screen
+            RUNNING     // The app is currently running
         };
 
-        struct ChakraInfo 
+        struct SlotSymbol 
         {
-            const char* name;
-            const char* description;
+            uint8_t id;
+            String symbol;
             uint16_t color;
-            void (*drawFunction)(int, int, int);
+            uint8_t probability;
+        };
+
+        struct GameScore 
+        {
+            uint32_t points;
+            uint16_t level;
+            uint8_t multiplier;
+        };
+
+        struct AppInfo 
+        {
+            std::string name;
+            std::string description;
+            void (*onRun)();
+            void (*onUpdate)();
+            void (*onExit)();
+            bool isEnabled = true;
         };
     }
 
-    // Add VirtueTypes namespace
-    namespace VirtueTypes 
+    // Communication Types
+    namespace CommTypes 
     {
-        enum class VirtueState 
+        enum class NFCState 
         {
-            CHASTITY,
-            TEMPERANCE,
-            CHARITY,
-            DILIGENCE,
-            FORGIVENESS,
-            KINDNESS,
-            HUMILITY
+            READY,
+            SCANNING,
+            TAG_FOUND,
+            ERROR,
+            WRITING
         };
 
-        struct VirtueInfo 
-        {
-            const char* name;
-            const char* description;
-            void (*drawSymbol)(int, int, int);
-        };
-    }
-
-    // Somatosensory Types
-    namespace SomatosensoryTypes 
-    {
-        enum class TouchState 
+        enum class IRCommand 
         {
             NONE,
-            PRESSED,
-            HELD,
-            RELEASED
+            POWER,
+            VOLUME_UP,
+            VOLUME_DOWN,
+            CHANNEL_UP,
+            CHANNEL_DOWN,
+            MENU,
+            SELECT
         };
 
-        struct MenuOption 
+        struct NFCTag 
         {
-            const char* label;
-            void (*callback)();
-            bool isEnabled;
+            uint32_t id;
+            String data;
+            uint8_t type;
+            bool isWriteable;
+        };
+
+        enum class InitState 
+        {
+            NOT_STARTED,
+            HARDWARE_INIT,
+            FIRMWARE_CHECK,
+            SAM_CONFIG,
+            COMPLETE,
+            ERROR
         };
     }
 
@@ -751,34 +846,19 @@ namespace PrefrontalCortex
         };
     }
 
-    // Power Management Types
-    namespace PowerTypes 
+    namespace ColorPerceptionTypes 
     {
-        enum class PowerState 
-        {
-            AWAKE,          // Full power, display at max brightness
-            DIM_DISPLAY,    // Display dimmed to save power
-            DISPLAY_OFF,    // Display off but system still running
-            DEEP_SLEEP     // System in deep sleep mode
-        };
-
-        struct BatteryStatus 
-        {
-            float voltageLevel;      // Current voltage
-            int percentageCharge;    // 0-100%
-            bool isCharging;         // Charging state
-            float temperature;       // Battery temperature
-            uint32_t lastUpdateTime; // Last time status was updated
-        };
-
-        struct PowerConfig 
-        {
-            uint32_t idleTimeout;     // Time before entering idle state
-            uint32_t dimTimeout;      // Time before dimming display
-            uint32_t sleepTimeout;    // Time before entering sleep
-            uint8_t dimBrightness;    // Brightness level when dimmed
-            bool enableDeepSleep;     // Whether deep sleep is allowed
-        };
+        // Fundamental color perceptions
+        extern const CRGB BASE_8_COLORS[8];
+        
+        // Temporal-chromatic associations
+        extern const CRGB MONTH_COLORS[12][2];
+        
+        // Circadian color mappings
+        extern const CRGB DAY_COLORS[7];
+        
+        // Musical-visual correlations
+        extern const CRGB CHROMATIC_COLORS[12][2];
     }
 }
 

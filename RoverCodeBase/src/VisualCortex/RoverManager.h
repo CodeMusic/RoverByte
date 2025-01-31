@@ -1,41 +1,35 @@
 #pragma once
 #include <FastLED.h>
 #include "TFT_eSPI.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+
+namespace SomatosensoryCortex { class MenuManager; }  // Forward declaration
 
 namespace VisualCortex 
 {
         // Forward declare the sprite
         extern TFT_eSprite spr;
 
+    // Use the Expression type from ProtoPerceptions
+    namespace PC = PrefrontalCortex;  // Add namespace alias
+    using PC::RoverTypes::Expression;  // Changed from VisualTypes to RoverTypes
+
     class RoverManager 
     {
 
         public:
 
-            enum Expression {
-                HAPPY,
-                LOOKING_LEFT,
-                LOOKING_RIGHT,
-                INTENSE,
-                LOOKING_UP,      // New - not idle
-                LOOKING_DOWN,    // New - not idle
-                BIG_SMILE,      // New - not idle
-                EXCITED,         // New expression with star eyes
-                NUM_EXPRESSIONS
-            };
-
-
             static const char* expressionToMood(Expression exp);
             static bool showTime;  // Added here as it's related to rover display state
 
             static bool isIdleExpression(Expression exp) {
-                return exp <= INTENSE;  // Only first 4 are idle expressions
+                return exp <= Expression::INTENSE;  // Only first 4 are idle expressions
             }
 
-            static void setTemporaryExpression(Expression exp, int duration = 1000, uint16_t starColor = TFT_WHITE);
-            static void showThinking() { setTemporaryExpression(LOOKING_UP); }
-            static void showError() { setTemporaryExpression(LOOKING_DOWN, 1000); }
-            static void showSuccess() { setTemporaryExpression(BIG_SMILE, 1000); }
+            static void setTemporaryExpression(PC::RoverTypes::Expression exp, int duration = 1000, uint16_t starColor = TFT_WHITE);
+            static void showThinking() { setTemporaryExpression(PC::RoverTypes::Expression::LOOKING_UP); }
+            static void showError() { setTemporaryExpression(PC::RoverTypes::Expression::LOOKING_DOWN, 1000); }
+            static void showSuccess() { setTemporaryExpression(PC::RoverTypes::Expression::BIG_SMILE, 1000); }
             static void setShowTime(bool show);
 
             static bool earsPerked;
@@ -68,7 +62,7 @@ namespace VisualCortex
             static unsigned long expressionStartTime;
             static int expressionDuration;
             static uint16_t starColor;
-            static void drawExpression(Expression exp);
+            static void drawExpression(PC::RoverTypes::Expression exp);
         };
 
         // Define the static const arrays outside the class

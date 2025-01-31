@@ -12,13 +12,17 @@
 
 namespace VisualCortex 
 {
+    // Add namespace aliases for cleaner code
+    namespace PC = PrefrontalCortex;
+    namespace SC = SomatosensoryCortex;
+    
     extern TFT_eSPI tft;
     extern TFT_eSprite spr;
 
     class RoverViewManager {
         
     public:
-        enum ViewType { 
+        enum class ViewType { 
             TODO_LIST,
             CHAKRAS,
             VIRTUES,
@@ -64,7 +68,7 @@ namespace VisualCortex
         };
         static void handleInput(InputType input);
 
-        static void drawFullScreenMenu(const char* title, const std::vector<SomatosensoryCortex::MenuItem>& items, int selectedIndex);
+        static void drawFullScreenMenu(const char* title, const std::vector<SC::MenuItem>& items, int selectedIndex);
 
         static void drawMenuBackground();
         static String formatUptime(unsigned long uptimeMillis);

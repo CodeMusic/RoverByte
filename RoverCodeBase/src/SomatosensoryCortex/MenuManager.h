@@ -4,63 +4,55 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace SomatosensoryCortex 
 {
-    struct MenuItem 
-    {
-        std::string name;
-        std::function<void()> action;
-        std::vector<MenuItem> subItems;
-
-        MenuItem(const std::string& n, const std::vector<MenuItem>& items) 
-            : name(n), 
-              action(nullptr),
-              subItems(items)
-        {
-        }
-
-        MenuItem(const std::string& n, std::function<void()> act) 
-            : name(n), 
-              action(act),
-              subItems()
-        {
-        }
-
-        bool operator==(const MenuItem& other) const 
-        {
-            return (name == other.name && 
-                    subItems == other.subItems);
-        }
-    };
+    using namespace CorpusCallosum;
+    using PC::MenuTypes::MenuItem;  // Add this after creating it in ProtoPerceptions
 
     class MenuManager 
     {
     public:
+        // Core menu perception methods
         static void init();
         static void show();
         static void hide();
         static bool isVisible() { return isMenuVisible; }
+        
+        // Input handling methods
         static void handleRotaryTurn(int direction);
         static void handleMenuSelect();
-        static void drawMenu();
+        
+        // Menu navigation methods
         static void enterSubmenu(const std::vector<MenuItem>& submenu);
+        static void goBack();
+        static int getSelectedIndex();
+
+        // Menu rendering methods
+        static void drawMenu();
+        
+        // Specialized menu handlers
         static void handleIRBlastMenu();
         static void selectMenuItem();
-        static void goBack();
+
+        // Menu structure definitions
         static std::vector<MenuItem> appSettingsMenu;
         static std::vector<MenuItem> ledModesMenu;
         static std::vector<MenuItem> encodingModesMenu;
         static std::vector<MenuItem> festiveModesMenu;
-        static int getSelectedIndex();
 
     private:
+        // Menu state tracking
         static std::vector<MenuItem> currentMenu;
         static std::vector<MenuItem> mainMenu;
         static std::vector<std::vector<MenuItem>*> menuStack;
         static int selectedIndex;
         static bool isMenuVisible;
-        static const unsigned long DEBOUNCE_DELAY = 50;
+        
+        // Timing constants
+        static constexpr unsigned long DEBOUNCE_DELAY = 50;
     }; 
 }
 

@@ -13,15 +13,27 @@
 #include "../PsychicCortex/WiFiManager.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 
-using namespace CorpusCallosum;
-
 namespace VisualCortex 
 {
+    // Add namespace aliases for cleaner code
+    namespace PC = PrefrontalCortex;
+    namespace SC = SomatosensoryCortex;
+    namespace AC = AuditoryCortex;
+    namespace PSY = PsychicCortex;
+    
+    using namespace CorpusCallosum;
+    using PC::Utilities;
+    using PC::PowerManager;
+    using SC::MenuManager;
+    using PC::SDManager;
+    using PSY::WiFiManager;
+    using PC::RoverTypes::Expression;
+
     TFT_eSPI tft = TFT_eSPI();
     TFT_eSprite spr = TFT_eSprite(&tft);
 
     // Initialize static members
-    RoverViewManager::ViewType RoverViewManager::currentView = RoverViewManager::VIRTUES;
+    RoverViewManager::ViewType RoverViewManager::currentView = ViewType::VIRTUES;
     unsigned long RoverViewManager::lastStatusUpdate = 0;
     int RoverViewManager::statusRotation = 0;
     int RoverViewManager::currentFrameX = 0;
@@ -37,15 +49,14 @@ namespace VisualCortex
     int RoverViewManager::animationStep = 0;
     unsigned long RoverViewManager::lastExpressionChange = 0;
     unsigned long RoverViewManager::nextExpressionInterval = DEFAULT_EXPRESSION_INTERVAL;
-
     uint32_t RoverViewManager::roverExperience = 0;
     uint32_t RoverViewManager::roverExperienceToNextLevel = 327;
     uint8_t RoverViewManager::roverLevel = 1;
-
-    bool RoverViewManager::isError = false;
-    bool RoverViewManager::isFatalError = false;
     uint32_t RoverViewManager::errorCode = 0;
     const char* RoverViewManager::errorMessage = nullptr;
+    bool RoverViewManager::isError = false;
+    bool RoverViewManager::isFatalError = false;
+    unsigned long RoverViewManager::warningStartTime = 0;
 
     // Forward declare all drawing functions
     void drawRootChakra(int x, int y, int size);
@@ -94,49 +105,32 @@ namespace VisualCortex
     }
 
     void RoverViewManager::init() {
-        tft.init();
-        tft.setRotation(0);
-        tft.writecommand(TFT_SLPOUT);
-        delay(120);
-        tft.writecommand(TFT_DISPON);
-        
-        if (!spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT)) 
-        {
-            throw std::runtime_error("Sprite creation failed");
-        }
-        spr.setTextDatum(MC_DATUM);
-        
-        // Create sprite with screen dimensions
-        spr.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
-        spr.fillSprite(TFT_BLACK);
-        spr.pushSprite(0, 0);
-        
-        // Draw initial frame
-        RoverViewManager::drawFrame();
-        RoverViewManager::drawCurrentView();
+        Utilities::LOG_SCOPE("Initializing RoverViewManager");
+        drawFrame();
+        drawCurrentView();
     }
 
     void RoverViewManager::setCurrentView(ViewType view) {
-        Utilities::LOG_DEBUG("Changing view to: %d", view);
+        Utilities::LOG_DEBUG("Changing view to: %d", static_cast<int>(view));
         currentView = view;
     }
 
     void RoverViewManager::nextView() {
-        Utilities::LOG_DEBUG("Changing from view %d to next view", currentView);
-        currentView = static_cast<ViewType>((currentView + 1) % ViewType::NUM_VIEWS);
-        Utilities::LOG_DEBUG("New view is %d", currentView);
+        Utilities::LOG_DEBUG("Changing from view %d to next view", static_cast<int>(currentView));
+        currentView = static_cast<ViewType>((static_cast<int>(currentView) + 1) % static_cast<int>(ViewType::NUM_VIEWS));
+        Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
         drawCurrentView();
     }
 
     void RoverViewManager::previousView() {
-        Utilities::LOG_DEBUG("Changing from view %d to previous view", currentView);
-        currentView = static_cast<ViewType>((currentView - 1 + ViewType::NUM_VIEWS) % ViewType::NUM_VIEWS);
-        Utilities::LOG_DEBUG("New view is %d", currentView);
+        Utilities::LOG_DEBUG("Changing from view %d to previous view", static_cast<int>(currentView));
+        currentView = static_cast<ViewType>((static_cast<int>(currentView) - 1 + static_cast<int>(ViewType::NUM_VIEWS)) % static_cast<int>(ViewType::NUM_VIEWS));
+        Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
         drawCurrentView();
     }
 
     void RoverViewManager::drawCurrentView() {
-        LOG_SCOPE("Drawing current view");
+        Utilities::LOG_SCOPE("Drawing current view");
         if (MenuManager::isVisible()) {
             return;
         }
@@ -156,8 +150,6 @@ namespace VisualCortex
             
             spr.fillSprite(TFT_BLACK);
             
-
-            
             RoverViewManager::drawFrame();
             RoverViewManager::drawStatusBar();
             
@@ -165,25 +157,25 @@ namespace VisualCortex
             spr.setTextDatum(MC_DATUM);
             
             switch(currentView) {
-                case TODO_LIST:
+                case ViewType::TODO_LIST:
                     RoverViewManager::drawTodoList();
                     break;
-                case CHAKRAS:
+                case ViewType::CHAKRAS:
                     RoverViewManager::drawChakras();
                     break;
-                case VIRTUES:
+                case ViewType::VIRTUES:
                     RoverViewManager::drawVirtues();
                     break;
-                case QUOTES:
+                case ViewType::QUOTES:
                     RoverViewManager::drawQuotes();
                     break;
-                case WEATHER:
+                case ViewType::WEATHER:
                     RoverViewManager::drawWeather();
                     break;
-                case STATS:
+                case ViewType::STATS:
                     RoverViewManager::drawStats();
                     break;
-                case NEXTMEAL:
+                case ViewType::NEXTMEAL:
                     RoverViewManager::drawNextMeal();
                     break;
                 default:
@@ -249,7 +241,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawFrame() {
-        LOG_SCOPE("Drawing frame");
+        Utilities::LOG_SCOPE("Drawing frame");
         int frameX = (TFT_WIDTH - FRAME_WIDTH) / 2;
         int frameY = FRAME_Y;
         
@@ -263,7 +255,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawTodoList() {
-        LOG_SCOPE("Drawing TODO list view");
+        Utilities::LOG_SCOPE("Drawing TODO list view");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -280,7 +272,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawQuotes() {
-        LOG_SCOPE("Drawing quotes view");
+        Utilities::LOG_SCOPE("Drawing quotes view");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -297,7 +289,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawWeather() {
-        LOG_SCOPE("Drawing weather view");
+        Utilities::LOG_SCOPE("Drawing weather view");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -314,7 +306,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawStats() {
-        LOG_SCOPE("Drawing stats view");
+        Utilities::LOG_SCOPE("Drawing stats view");
         
         spr.setTextFont(3);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -433,7 +425,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawChakras() {
-        LOG_SCOPE("Drawing chakras view");
+        Utilities::LOG_SCOPE("Drawing chakras view");
 
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for chakras header
@@ -459,7 +451,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawVirtues() {
-        LOG_SCOPE("Drawing virtues view");
+        Utilities::LOG_SCOPE("Drawing virtues view");
 
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for virtues header
@@ -481,7 +473,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawNextMeal() {
-        LOG_SCOPE("Drawing recipe view");
+        Utilities::LOG_SCOPE("Drawing recipe view");
         
         spr.setTextFont(4);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -557,17 +549,17 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawStatusBar() {
-        LOG_SCOPE("Drawing status bar");
+        Utilities::LOG_SCOPE("Drawing status bar");
         try {
             time_t now = time(nullptr);
             if (now == -1) {
-                LOG_PROD("Error getting time in drawStatusBar");
+                Utilities::LOG_PROD("Error getting time in drawStatusBar");
                 return;
             }
             
             struct tm* timeInfo = localtime(&now);
             if (!timeInfo) {
-                LOG_PROD("Error converting time in drawStatusBar");
+                Utilities::LOG_PROD("Error converting time in drawStatusBar");
                 return;
             }
             
@@ -639,7 +631,7 @@ namespace VisualCortex
             }
             
         } catch (const std::exception& e) {
-            LOG_PROD("Error in drawStatusBar: %s", e.what());
+            Utilities::LOG_PROD("Error in drawStatusBar: %s", e.what());
         }
     }   
 
@@ -695,18 +687,18 @@ namespace VisualCortex
         
         // If this is an NFC notification, try to read card data
         if (strcmp(currentNotification.symbol, "NFC") == 0) {
-            uint32_t cardId = NFCManager::getLastCardId();
+            uint32_t cardId =PSY::NFCManager::getLastCardId();
             char idStr[32];
             sprintf(idStr, "Card ID: %08X", cardId);
             spr.drawCentreString(idStr, boxX + boxWidth/2, boxY + 40, 2);
             
             // Try to read card data
-            if (NFCManager::isCardEncrypted()) {
+            if (PSY::NFCManager::isCardEncrypted()) {
                 drawSymbol("PADLOCK", boxX + boxWidth/2, boxY + boxHeight/2, 40);
                 spr.drawCentreString("Encrypted Card", boxX + boxWidth/2, boxY + boxHeight - 60, 2);
             } else {
                 // Show card data if available
-                const char* cardData = NFCManager::getCardData();
+                const char* cardData = PSY::NFCManager::getCardData();
                 if (cardData) {
                     RoverViewManager::drawWordWrappedText(cardData, boxX + 10, boxY + 80, boxWidth - 20);
                 }
@@ -957,10 +949,10 @@ namespace VisualCortex
         spr.drawCentreString(errorMessage, SCREEN_CENTER_X - 40, 160, 2);
         
         // For warnings, show countdown on separate line in white
-        if (!isFatal && RoverBehaviorManager::isWarningCountdownActive()) {
+        if (!isFatal && PC::RoverBehaviorManager::isWarningCountdownActive()) {
             spr.setTextColor(TFT_WHITE);
             char countdownStr[32];
-            int remainingSeconds = RoverBehaviorManager::getRemainingWarningSeconds();
+            int remainingSeconds = PC::RoverBehaviorManager::getRemainingWarningSeconds();
             sprintf(countdownStr, "Clearing in %d...", remainingSeconds);
             spr.drawCentreString(countdownStr, SCREEN_CENTER_X - 40, 180, 2);
         }

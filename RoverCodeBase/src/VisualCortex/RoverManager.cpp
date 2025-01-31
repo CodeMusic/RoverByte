@@ -7,11 +7,28 @@
 #include "../PrefrontalCortex/utilities.h"
 #include "DisplayConfig.h"
 #include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../SomatosensoryCortex/MenuManager.h"
 
 namespace VisualCortex 
 {
-    // Forward declarations
-    extern TFT_eSprite spr;
+    // Add namespace aliases and using declarations
+    namespace VC = VisualCortex;
+
+    namespace PC = PrefrontalCortex;
+    namespace AC = AuditoryCortex;
+    namespace GC = GameCortex;
+    namespace PSY = PsychicCortex;
+    namespace SC = SomatosensoryCortex;
+
+    using namespace CorpusCallosum;
+    using PC::RoverTypes::Expression;
+    using PC::Utilities;
+    using PC::PowerManager;
+    using SC::MenuManager;
+
+  extern TFT_eSprite spr;
 
     // Initialize static members
     bool RoverManager::earsPerked = false;
@@ -27,8 +44,8 @@ namespace VisualCortex
 
     extern bool isLowBrightness;
 
-    RoverManager::Expression RoverManager::currentExpression = RoverManager::HAPPY;
-    RoverManager::Expression RoverManager::previousExpression = RoverManager::HAPPY;
+    Expression RoverManager::currentExpression = Expression::HAPPY;
+    Expression RoverManager::previousExpression = Expression::HAPPY;
 
     void RoverManager::setShowTime(bool show) {
         showTime = show;
@@ -36,8 +53,8 @@ namespace VisualCortex
 
 
     void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
-        LOG_SCOPE("Drawing rover");
-        if (MenuManager::isVisible()) {
+        Utilities::LOG_SCOPE("Drawing rover");
+        if (SC::MenuManager::isVisible()) {
             return;
         }
         // Use currentExpression instead of mood parameter if it's set
@@ -203,7 +220,7 @@ namespace VisualCortex
 
     void RoverManager::updateHoverAnimation() {
         // Only update hover animation when device is awake
-        if (PowerManager::getCurrentSleepState() != PowerManager::AWAKE) return;
+        if (PC::PowerManager::getCurrentPowerState() != PC::PowerState::AWAKE) return;
         
         if (millis() - lastHoverUpdate >= 100) {  // Update every 100ms
             if (movingDown) {
@@ -235,30 +252,29 @@ namespace VisualCortex
 
     void RoverManager::setRandomMood() {
         currentMood = random(0, NUM_MOODS);
-        drawSprite();  // Now we can call it directly
+        drawRover(moods[currentMood], earsPerked);
     }
 
     // New function to handle temporary expressions
     void RoverManager::setTemporaryExpression(Expression exp, int duration, uint16_t color) {
+        previousExpression = currentExpression;
         currentExpression = exp;
-        starColor = color;  // Store the star color
         expressionStartTime = millis();
         expressionDuration = duration;
-        
-        // Update display with new expression
-        drawExpression(currentExpression);
+        starColor = color;
+        drawExpression(exp);
     }
 
     const char* RoverManager::expressionToMood(Expression exp) {
         switch(exp) {
-            case HAPPY: return "happy";
-            case LOOKING_UP: return "looking_up";
-            case LOOKING_DOWN: return "looking_down";
-            case LOOKING_LEFT: return "looking_left";
-            case LOOKING_RIGHT: return "looking_right";
-            case INTENSE: return "intense";
-            case BIG_SMILE: return "big_smile";
-            case EXCITED: return "excited";
+            case Expression::HAPPY: return "happy";
+            case Expression::LOOKING_UP: return "looking_up";
+            case Expression::LOOKING_DOWN: return "looking_down";
+            case Expression::LOOKING_LEFT: return "looking_left";
+            case Expression::LOOKING_RIGHT: return "looking_right";
+            case Expression::INTENSE: return "intense";
+            case Expression::BIG_SMILE: return "big_smile";
+            case Expression::EXCITED: return "excited";
             default: return "happy";
         }
     }
@@ -271,7 +287,7 @@ namespace VisualCortex
 
     void RoverManager::setEarsPerked(bool up) {
         earsPerked = up;
-        setTemporaryExpression(HAPPY);
+        setTemporaryExpression(Expression::HAPPY);
         drawRover(moods[currentMood], up);
     }
 }

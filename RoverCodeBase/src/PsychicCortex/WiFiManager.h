@@ -3,16 +3,17 @@
 
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../PrefrontalCortex/utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../MotorCortex/PinDefinitions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace PsychicCortex 
 {
+    using namespace CorpusCallosum;
+    using PC::NetworkTypes::NetworkCredentials;
 
-    #define GMT_OFFSET_SEC (-5 * 3600)  // EST (DST)
-    #define DAY_LIGHT_OFFSET_SEC 3600   // 1 hour of daylight saving
-    #define NTP_SERVER "pool.ntp.org"
-
-    class WiFiManager {
+    class WiFiManager 
+    {
     public:
         static bool init();
         static void checkConnection();
@@ -22,18 +23,30 @@ namespace PsychicCortex
         static bool syncTime();
 
     private:
-        static bool isRecording;
+        static constexpr unsigned long WIFI_RETRY_INTERVAL = 60000;
+        static constexpr unsigned long TIME_CHECK_INTERVAL = 500;
+        static constexpr unsigned long RESYNC_TIME_INTERVAL = 86400000;
+        static constexpr const char* NTP_SERVER = "pool.ntp.org";
+        static constexpr int32_t GMT_OFFSET_SEC = -5 * 3600;
+        static constexpr int32_t DAY_LIGHT_OFFSET_SEC = 3600;
+
         static bool isWiFiConnected;
         static unsigned long lastWiFiAttempt;
         static bool timeInitialized;
         static unsigned long lastTimeCheck;
-        // WiFi credentials    ( MOVE TO SECRETS )
-        static constexpr const char* PRIMARY_SSID = "RevivalNetwork ";
-        static constexpr const char* PRIMARY_PASSWORD = "xunjmq84";
-        static constexpr const char* BACKUP_SSID = "CodeMusicai";
-        static constexpr const char* BACKUP_PASSWORD = "cnatural";
-    };
 
+        static constexpr NetworkCredentials PRIMARY_NETWORK = 
+        {
+            "RevivalNetwork",
+            "xunjmq84"
+        };
+        
+        static constexpr NetworkCredentials BACKUP_NETWORK = 
+        {
+            "CodeMusicai",
+            "cnatural"
+        };
+    };
 }
 
 #endif 

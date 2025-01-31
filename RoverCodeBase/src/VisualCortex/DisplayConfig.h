@@ -1,4 +1,13 @@
-#pragma once
+/*
+ * DisplayConfig.h
+ * 
+ * Display configuration constants for the visual cortex.
+ * Defines screen dimensions, center points, and frame offsets
+ * used across the display rendering system.
+ */
+
+#ifndef DISPLAY_CONFIG_H
+#define DISPLAY_CONFIG_H
 
 namespace VisualCortex 
 {
@@ -12,3 +21,5 @@ namespace VisualCortex
     #define FRAME_OFFSET_X 40
 
 }
+
+#endif // DISPLAY_CONFIG_H

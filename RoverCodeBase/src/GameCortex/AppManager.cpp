@@ -3,7 +3,7 @@
 #include "../SomatosensoryCortex/MenuManager.h"
 #include "../GameCortex/AppRegistration.h"
 #include "../GameCortex/SlotsManager.h"
-#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/utilities.h"
 #include "../PsychicCortex/IRManager.h"
 #include "../PsychicCortex/NFCManager.h"
 

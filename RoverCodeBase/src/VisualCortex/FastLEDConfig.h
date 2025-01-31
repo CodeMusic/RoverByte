@@ -1,38 +1,82 @@
+/*
+ * FastLEDConfig.h
+ * 
+ * Core LED configuration for the visual cortex's nervous system.
+ * Defines hardware settings, timing constants, and animation parameters
+ * used across the LED control system.
+ * 
+ * Note: This must be included before FastLED.h in the main sketch
+ * to properly configure the ESP32 hardware settings.
+ */
+
 #ifndef FASTLED_CONFIG_H
 #define FASTLED_CONFIG_H
 
-// Core FastLED Configuration
-#define FASTLED_INTERNAL
-#define FASTLED_ESP32_I2S 0
-#define FASTLED_ALLOW_INTERRUPTS 0
-#define FASTLED_ESP32_FLASH_LOCK 1
-#define FASTLED_RMT_MAX_CHANNELS 2
-#define FASTLED_ESP32_RMT 1
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
-// Visual Cortex specific LED configurations
-#define VISUAL_CORTEX_MAX_BRIGHTNESS 255
-#define VISUAL_CORTEX_DEFAULT_FPS 60
-#define VISUAL_CORTEX_COLOR_CORRECTION TypicalLEDStrip
-#define VISUAL_CORTEX_LED_TYPE WS2812B
+namespace VisualCortex 
+{
+    using namespace CorpusCallosum;
+    using PC::ConfigTypes:: LEDConfig;
+    using PC::VisualTypes::VisualPattern;
 
-// Animation timing constants
-#define VISUAL_CORTEX_LOADING_DELAY 100
-#define VISUAL_CORTEX_FLASH_DURATION 100
-#define VISUAL_CORTEX_FADE_STEP 5
-#define VISUAL_CORTEX_MIN_FADE 50
-#define VISUAL_CORTEX_MAX_FADE 250
-#define VISUAL_CORTEX_ERROR_MIN_FADE 64
+    // Core FastLED ESP32 Hardware Configuration
+    namespace FastLEDHardware 
+    {
+        constexpr bool INTERNAL = true;
+        constexpr uint8_t ESP32_I2S = 0;
+        constexpr bool ALLOW_INTERRUPTS = false;
+        constexpr bool ESP32_FLASH_LOCK = true;
+        constexpr uint8_t RMT_MAX_CHANNELS = 2;
+        constexpr bool ESP32_RMT = true;
+    }
 
-// Pattern-specific configurations
-#define VISUAL_CORTEX_LEDS_PER_STEP 3
-#define VISUAL_CORTEX_ERROR_LED_INDEX 0
-#define VISUAL_CORTEX_ERROR_LED_COUNT 8
-#define VISUAL_CORTEX_FADE_INCREMENT 5
-#define VISUAL_CORTEX_ANIMATION_DELAY 50
+    // LED Strip Configuration
+    namespace FastLEDConfig 
+    {
+        constexpr uint8_t MAX_BRIGHTNESS = 255;
+        constexpr uint8_t DEFAULT_FPS = 60;
+        constexpr auto COLOR_CORRECTION = TypicalLEDStrip;
+        #define LED_TYPE WS2812B
+    }
 
-// Boot sequence timing
-#define VISUAL_CORTEX_BOOT_STEP_DELAY 100
-#define VISUAL_CORTEX_SUCCESS_FLASH_DURATION 100
-#define VISUAL_CORTEX_ERROR_FLASH_DURATION 200
+    // Animation Timing Constants
+    namespace AnimationTiming 
+    {
+        constexpr uint16_t LOADING_DELAY = 100;
+        constexpr uint16_t FLASH_DURATION = 100;
+        constexpr uint8_t FADE_STEP = 5;
+        constexpr uint8_t MIN_FADE = 50;
+        constexpr uint8_t MAX_FADE = 250;
+        constexpr uint8_t ERROR_MIN_FADE = 64;
+    }
 
-#endif 
+    // Pattern Configuration
+    namespace PatternConfig 
+    {
+        constexpr uint8_t LEDS_PER_STEP = 3;
+        constexpr uint8_t ERROR_LED_INDEX = 0;
+        constexpr uint8_t ERROR_LED_COUNT = 8;
+        constexpr uint8_t FADE_INCREMENT = 5;
+        constexpr uint16_t ANIMATION_DELAY = 50;
+    }
+
+    // Boot Sequence Configuration
+    namespace BootConfig 
+    {
+        constexpr uint16_t STEP_DELAY = 100;
+        constexpr uint16_t SUCCESS_FLASH_DURATION = 100;
+        constexpr uint16_t ERROR_FLASH_DURATION = 200;
+    }
+}
+
+// Required FastLED configuration defines
+#define FASTLED_INTERNAL               VisualCortex::FastLEDHardware::INTERNAL
+#define FASTLED_ESP32_I2S             VisualCortex::FastLEDHardware::ESP32_I2S
+#define FASTLED_ALLOW_INTERRUPTS      VisualCortex::FastLEDHardware::ALLOW_INTERRUPTS
+#define FASTLED_ESP32_FLASH_LOCK      VisualCortex::FastLEDHardware::ESP32_FLASH_LOCK
+#define FASTLED_RMT_MAX_CHANNELS      VisualCortex::FastLEDHardware::RMT_MAX_CHANNELS
+#define FASTLED_ESP32_RMT             VisualCortex::FastLEDHardware::ESP32_RMT
+
+#endif // FASTLED_CONFIG_H 

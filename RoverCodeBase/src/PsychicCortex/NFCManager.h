@@ -5,12 +5,14 @@
 #include "../PrefrontalCortex/utilities.h"
 #include "../VisualCortex/LEDManager.h"
 #include "../CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 
 namespace PsychicCortex 
 {
     using namespace CorpusCallosum;
-    using VC::Pattern;
-    using VC::LEDMessage;
+    using VC::VisualPattern;
+    using VC::VisualMessage;
+    using PC::NFCTypes::InitState;
 
     class NFCManager {
     public:
@@ -18,16 +20,6 @@ namespace PsychicCortex
         static constexpr uint8_t MAX_INIT_RETRIES = 3;
         static constexpr unsigned long INIT_TIMEOUT_MS = 5000;
         
-        enum class InitState 
-        {
-            NOT_STARTED,
-            HARDWARE_INIT,
-            FIRMWARE_CHECK,
-            SAM_CONFIG,
-            COMPLETE,
-            ERROR
-        };
-
         static void init();
         static void update();
         static void checkForCard();

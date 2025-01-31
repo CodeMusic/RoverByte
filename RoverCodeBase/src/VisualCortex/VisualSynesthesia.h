@@ -1,42 +1,46 @@
-#ifndef VISUAL_SYNESIA_H
-#define VISUAL_SYNESIA_H
+#ifndef VISUAL_SYNESTHESIA_H
+#define VISUAL_SYNESTHESIA_H
 
 #include <FastLED.h>
 #include "../PrefrontalCortex/ProtoPerceptions.h"
-
-namespace AuditoryCortex 
-{
-    struct NoteInfo;  // Forward declaration
-}
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {
+    // Add namespace aliases for cleaner code
+    namespace PC = PrefrontalCortex;
+    using PC::NoteInfo;
+    using namespace CorpusCallosum;
 
-    class VisualSynesthesia {
+    class VisualSynesthesia 
+    {
     public:
-        // Static color arrays - moved to public and made extern
-        static const CRGB BASE_8_COLORS[8];
-        static const CRGB MONTH_COLORS[12][2];
-        static const CRGB DAY_COLORS[7];
-        static const CRGB CHROMATIC_COLORS[12][2];
+        // Color perception arrays for different sensory mappings
+        static const CRGB BASE_8_COLORS[8];  // Fundamental color perceptions
+        static const CRGB MONTH_COLORS[12][2];  // Temporal-chromatic associations
+        static const CRGB DAY_COLORS[7];  // Circadian color mappings
+        static const CRGB CHROMATIC_COLORS[12][2];  // Musical-visual correlations
 
-        // Static methods
-        static CRGB getBase8Color(uint8_t value);
-        static CRGB getDayColor(uint8_t day);
-        static void getMonthColors(uint8_t month, CRGB& color1, CRGB& color2);
-        static void getHourColors(uint8_t hour, CRGB& color1, CRGB& color2);
-        static CRGB getBatteryColor(uint8_t percentage);
-        static CRGB getColorForFrequency(uint16_t freq);
-        static CRGB getNoteColorBlended(const PrefrontalCortex::ProtoPerceptions::NoteInfo& info);
-        static uint16_t convertToRGB565(CRGB color);
+        // Sensory translation methods
+        static CRGB getBase8Color(uint8_t cognitiveValue);
+        static CRGB getDayColor(uint8_t circadianIndex);
+        static void getMonthColors(uint8_t temporalIndex, CRGB& primaryPerception, CRGB& secondaryPerception);
+        static void getHourColors(uint8_t circadianHour, CRGB& primaryPerception, CRGB& secondaryPerception);
+        static CRGB getBatteryColor(uint8_t energyLevel);
         
-
-        // New synesthesia-specific methods
-        static CRGB blendNoteColors(const PrefrontalCortex::ProtoPerceptions::NoteInfo& info);
-        static void playNFCCardData(const char* cardData);
+        // Audio-visual synesthesia methods
+        static CRGB getColorForFrequency(uint16_t frequency);
+        static CRGB getNoteColorBlended(const NoteInfo& musicalPerception);
+        static CRGB blendNoteColors(const NoteInfo& musicalPerception);
         
-        static void playVisualChord(uint16_t baseFreq, CRGB& root, CRGB& third, CRGB& fifth);
-    }; 
+        // Cross-modal integration methods
+        static uint16_t convertToRGB565(CRGB neuralColor);
+        static void playNFCCardData(const char* sensoryStimulusData);
+        static void playVisualChord(uint16_t fundamentalFreq, 
+                                  CRGB& rootPerception, 
+                                  CRGB& thirdPerception, 
+                                  CRGB& fifthPerception);
+    };
 }
 
-#endif // VISUAL_SYNESIA_H
+#endif // VISUAL_SYNESTHESIA_H

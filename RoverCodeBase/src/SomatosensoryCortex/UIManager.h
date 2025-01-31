@@ -3,9 +3,13 @@
 
 #include <RotaryEncoder.h>
 #include <Arduino.h>
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace SomatosensoryCortex 
 {
+    using namespace CorpusCallosum;
+    using PC::InputTypes::InputState;  // Add this to ProtoPerceptions
 
     class UIManager {
     public:
@@ -16,12 +20,13 @@ namespace SomatosensoryCortex
         static bool isRotaryPressed() { return rotaryPressed; }
         static bool isSideButtonPressed() { return sideButtonPressed; }
         static int getEncoderPosition() { return lastEncoderPosition; }
-        static bool isInitialized() { return _isInitialized; }
+        static bool isInitialized() { return initState == InputState::READY; }
     private:
         static RotaryEncoder* encoder;
         static int lastEncoderPosition;
         static bool rotaryPressed;
         static bool sideButtonPressed;
+        static InputState initState;
         static unsigned long lastDebounceTime;
         static const unsigned long DEBOUNCE_DELAY = 50;
         
@@ -29,7 +34,6 @@ namespace SomatosensoryCortex
         static void handleRotaryPress();
         static void updateEncoder();
         static void updateSideButton();
-        static bool _isInitialized;
     };
 
 }

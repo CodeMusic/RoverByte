@@ -1,9 +1,8 @@
-#include "../VisualCortex/FastLEDConfig.h"
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "../PrefrontalCortex/utilities.h"
 #include "../MotorCortex/PinDefinitions.h"
-#include "../PrefrontalCortex/PowerManager.h"  // Add PowerManager include
+#include "../PrefrontalCortex/PowerManager.h"  
 #include "LEDManager.h"
 #include "VisualSynesthesia.h"
 #include "../AuditoryCortex/SoundFxManager.h"
@@ -14,18 +13,21 @@
 #include "../GameCortex/SlotsManager.h"
 #include "../PsychicCortex/IRManager.h"
 #include "../SomatosensoryCortex/MenuManager.h"
-#include "RoverViewManager.h"  // Add direct include instead of forward declaration
+#include "RoverViewManager.h"  
+#include "FastLEDConfig.h"
 
 namespace VisualCortex 
 {
-    // Add namespace aliases
+    // Namespace aliases for better readability
     namespace VC = VisualCortex;
     using namespace CorpusCallosum;
     
-    // Namespace aliases for other cortices
+    // Cortex-specific namespace aliases
     namespace PC = PrefrontalCortex;
     namespace AC = AuditoryCortex;
     namespace GC = GameCortex;
+    namespace PSY = PsychicCortex;
+    namespace SC = SomatosensoryCortex;
     
     // Manager-specific using declarations
     using AC::SoundFxManager;
@@ -45,70 +47,83 @@ namespace VisualCortex
     using PC::Utilities;
     using PC::AudioTypes::Tone;
 
-    // Boot stage colors
-    const CRGB LEDManager::HARDWARE_INIT_COLOR = CRGB::Blue;    // Hardware initialization
-    const CRGB LEDManager::SYSTEM_START_COLOR = CRGB::Green;    // System startup
-    const CRGB LEDManager::NETWORK_PREP_COLOR = CRGB::Purple;   // Network preparation
-    const CRGB LEDManager::FINAL_PREP_COLOR = CRGB::Orange;     // Final preparation
+    // Visual constants from FastLEDConfig
+    using namespace VC::FastLEDConfig;  // Changed from VC::FastLEDConfig::LEDConfig
+    using namespace VC::AnimationTiming;  // Changed from VC::FastLEDConfig::AnimationTiming
+    using namespace VC::PatternConfig;  // Changed from VC::FastLEDConfig::PatternConfig
+    using namespace VC::BootConfig;  // Changed from VC::FastLEDConfig::BootConfig
 
-    // Static member initialization
+    // Boot sequence color constants
+    const CRGB LEDManager::HARDWARE_INIT_COLOR = CRGB::Blue;
+    const CRGB LEDManager::SYSTEM_START_COLOR = CRGB::Green;
+    const CRGB LEDManager::NETWORK_PREP_COLOR = CRGB::Purple;
+    const CRGB LEDManager::FINAL_PREP_COLOR = CRGB::Gold;
+
+    // Static member initialization - LED Arrays
     CRGB LEDManager::leds[PinDefinitions::WS2812_NUM_LEDS];
+    CRGB LEDManager::previousColors[PinDefinitions::WS2812_NUM_LEDS];
+    NoteState LEDManager::currentNotes[PinDefinitions::WS2812_NUM_LEDS];
+
+    // Visual state tracking
+    PC::VisualTypes::VisualPattern LEDManager::currentPattern = PC::VisualTypes::VisualPattern::NONE;
     VisualMode LEDManager::currentMode = VisualMode::ENCODING_MODE;
     VisualMode LEDManager::previousMode = VisualMode::ENCODING_MODE;
+    FestiveTheme LEDManager::currentTheme = FestiveTheme::NONE;
     EncodingModes LEDManager::currentEncodingMode = EncodingModes::FULL_MODE;
+
+    // Animation state tracking
     uint8_t LEDManager::currentPosition = 0;
     uint8_t LEDManager::currentColorIndex = 0;
     uint8_t LEDManager::completedCycles = 0;
     uint8_t LEDManager::filledPositions = 0;
     uint8_t LEDManager::activeTrails = 0;
-    unsigned long LEDManager::lastStepTime = 0;
-    bool LEDManager::isLoading = false;
-    FestiveTheme LEDManager::currentTheme = FestiveTheme::CHRISTMAS;
     uint8_t LEDManager::animationStep = 0;
     uint8_t LEDManager::fadeValue = 128;
-    bool LEDManager::fadeDirection = true;
-    bool LEDManager::tickTock = false;
-
-    NoteState LEDManager::currentNotes[PinDefinitions::WS2812_NUM_LEDS];
-    CRGB LEDManager::previousColors[PinDefinitions::WS2812_NUM_LEDS];
-    PC::VisualTypes::VisualPattern LEDManager::currentPattern = PC::VisualTypes::VisualPattern::NONE;
-
-    //resolve this clutter
-    CRGB LEDManager::winningColor = CRGB::Green;
-    bool LEDManager::transitioningColor = false;
     uint8_t LEDManager::currentFadeIndex = 0;
-    unsigned long LEDManager::lastUpdate = 0;
-    CRGB LEDManager::targetColor = CRGB::Blue;
-    const uint8_t LEDManager::fadeSequence[] = {6, 5, 7, 4, 0, 3, 1, 2};
-    bool LEDManager::readyForMelody = false;
-
-    //--
-
     uint8_t LEDManager::loadingPosition = 0;
 
-    struct FestiveDay {
+    // Color state tracking
+    CRGB LEDManager::winningColor = CRGB::Green;
+    CRGB LEDManager::targetColor = CRGB::Blue;
+    bool LEDManager::transitioningColor = false;
+
+    // Timing and state flags
+    unsigned long LEDManager::lastStepTime = 0;
+    unsigned long LEDManager::lastUpdate = 0;
+    bool LEDManager::isLoading = false;
+    bool LEDManager::fadeDirection = true;
+    bool LEDManager::tickTock = false;
+    bool LEDManager::readyForMelody = false;
+
+    // Animation sequences
+    const uint8_t LEDManager::fadeSequence[] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+    // Festive calendar structure
+    struct FestiveDay 
+    {
         int month;
         int day;
         FestiveTheme theme;
     };
 
+    // Festive days configuration
     static const FestiveDay festiveDays[] = {
         {1, 1, FestiveTheme::NEW_YEAR},        // January 1
         {2, 14, FestiveTheme::VALENTINES},     // February 14
         {3, 17, FestiveTheme::ST_PATRICK},     // March 17
-        {4, 1, FestiveTheme::EASTER},          // Easter date varies (calculate based on the year)
+        {4, 1, FestiveTheme::EASTER},          // Easter (approximate)
         {7, 1, FestiveTheme::CANADA_DAY},      // July 1
         {10, 31, FestiveTheme::HALLOWEEN},     // October 31
         {12, 25, FestiveTheme::CHRISTMAS},     // December 25
-        {11, 26, FestiveTheme::THANKSGIVING},   // Fourth Thursday in November (USA, varies)
+        {11, 26, FestiveTheme::THANKSGIVING},  // Fourth Thursday in November (USA)
         {7, 4, FestiveTheme::INDEPENDENCE_DAY},// July 4 (USA)
-        {10, 14, FestiveTheme::FLAG_DAY},      // June 14 (USA)
-        {5, 31, FestiveTheme::MEMORIAL_DAY},   // Last Monday in May (USA, varies)
-        {9, 1, FestiveTheme::LABOR_DAY},       // First Monday in September (USA, varies)
-        {2, 1, FestiveTheme::DIWALI},          // Date varies (Hindu festival of lights)
-        {9, 1, FestiveTheme::MARDI_GRAS},      // Date varies (Fat Tuesday)
-        {4, 1, FestiveTheme::RAMADAN},         // Date varies (Islamic holy month)
-        {1, 29, FestiveTheme::CHINESE_NEW_YEAR} // Date varies (Lunar New Year)
+        {6, 14, FestiveTheme::FLAG_DAY},       // June 14 (USA)
+        {5, 31, FestiveTheme::MEMORIAL_DAY},   // Last Monday in May (USA)
+        {9, 1, FestiveTheme::LABOR_DAY},       // First Monday in September (USA)
+        {2, 1, FestiveTheme::DIWALI},          // Date varies
+        {9, 1, FestiveTheme::MARDI_GRAS},      // Date varies
+        {4, 1, FestiveTheme::RAMADAN},         // Date varies
+        {1, 29, FestiveTheme::CHINESE_NEW_YEAR}// Date varies
     };
 
     void LEDManager::init() {
@@ -116,15 +131,15 @@ namespace VisualCortex
         
         try {
             // Initialize FastLED with hardware SPI configuration
-            FastLED.addLeds<VISUAL_CORTEX_LED_TYPE, 
+            FastLED.addLeds<LED_TYPE,  // Changed from LEDConfig::LED_TYPE
                            PinDefinitions::WS2812_DATA_PIN, 
                            PinDefinitions::WS2812_COLOR_ORDER>(
                 leds, 
                 PinDefinitions::WS2812_NUM_LEDS
-            ).setCorrection(VISUAL_CORTEX_COLOR_CORRECTION);
+            ).setCorrection(FastLEDConfig::COLOR_CORRECTION);  // Changed from LEDConfig::COLOR_CORRECTION
             
-            FastLED.setBrightness(VISUAL_CORTEX_MAX_BRIGHTNESS);
-            FastLED.setMaxRefreshRate(VISUAL_CORTEX_DEFAULT_FPS);
+            FastLED.setBrightness(FastLEDConfig::MAX_BRIGHTNESS);  // Changed from LEDConfig::MAX_BRIGHTNESS
+            FastLED.setMaxRefreshRate(FastLEDConfig::DEFAULT_FPS);  // Changed from LEDConfig::DEFAULT_FPS
             FastLED.clear(true);
             
             // Initialize boot sequence colors
@@ -225,7 +240,7 @@ namespace VisualCortex
     }
 
     void LEDManager::nextMode() {
-        currentMode = static_cast<VisualMode>((static_cast<int>(currentMode) + 1) % LED_NUM_MODES);
+        currentMode = static_cast<VisualMode>((static_cast<int>(currentMode) + 1) % VisualConstants::LED_NUM_MODES);
         FastLED.clear();
         updateLEDs();
     }
@@ -316,7 +331,7 @@ namespace VisualCortex
         
         // Month LED should always blink
         if (shouldBlink) {
-            monthColor1.nscale8(MONTH_DIM);
+            monthColor1.nscale8(VisualConstants::MONTH_DIM);
             leds[0] = monthColor1;
         } else {
             leds[0] = CRGB::Black;
@@ -428,7 +443,7 @@ namespace VisualCortex
             CRGB(75, 0, 130),   // Indigo
             CRGB(148, 0, 211)   // Violet
         };
-        return rainbowColors[index % NUM_RAINBOW_COLORS];
+        return rainbowColors[index % VisualConstants::NUM_RAINBOW_COLORS];
     }
 
     void LEDManager::startLoadingAnimation() {
@@ -446,7 +461,7 @@ namespace VisualCortex
         if (!isLoading) return;
         
         unsigned long currentTime = millis();
-        if (currentTime - lastStepTime < VISUAL_CORTEX_LOADING_DELAY) return;
+        if (currentTime - lastStepTime < AnimationTiming::LOADING_DELAY) return;
         
         lastStepTime = currentTime;
         int bootStep = PC::RoverBehaviorManager::getCurrentBootStep();
@@ -456,7 +471,7 @@ namespace VisualCortex
         if (bootStep != lastBootStep) 
         {
             lastBootStep = bootStep;
-            loadingPosition = bootStep * VISUAL_CORTEX_LEDS_PER_STEP;
+            loadingPosition = bootStep * LEDS_PER_STEP;
         }
 
         // Select color based on current boot step
@@ -471,7 +486,7 @@ namespace VisualCortex
         }
 
         // Light up one LED at a time within current step's section
-        if (loadingPosition < (bootStep + 1) * VISUAL_CORTEX_LEDS_PER_STEP) 
+        if (loadingPosition < (bootStep + 1) * LEDS_PER_STEP) 
         {
             leds[loadingPosition] = currentColor;
             loadingPosition++;
@@ -508,7 +523,7 @@ namespace VisualCortex
         // Flash green
         fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Green);
         FastLED.show();
-        delay(VISUAL_CORTEX_SUCCESS_FLASH_DURATION);
+        delay(BootConfig::SUCCESS_FLASH_DURATION);
         
         // Restore previous state
         memcpy(leds, savedState, sizeof(CRGB) * PinDefinitions::WS2812_NUM_LEDS);
@@ -904,7 +919,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateNFCScanPattern() {
-        if (millis() - lastUpdate < VISUAL_CORTEX_ANIMATION_DELAY) return;
+        if (millis() - lastUpdate < AnimationTiming::LOADING_DELAY) return;
         lastUpdate = millis();
 
         if (transitioningColor) {
@@ -912,9 +927,9 @@ namespace VisualCortex
                 // Fade sequence from blue to green
                 uint8_t ledIndex = fadeSequence[currentFadeIndex];
                 leds[ledIndex] = blend(CRGB::Blue, CRGB::Green, fadeValue);
-                fadeValue += VISUAL_CORTEX_FADE_INCREMENT;
+                fadeValue += PatternConfig::FADE_INCREMENT;
                 
-                if (fadeValue >= VISUAL_CORTEX_MAX_FADE) {
+                if (fadeValue >= AnimationTiming::MAX_FADE) {
                     fadeValue = 0;
                     currentFadeIndex++;
                 }
@@ -924,10 +939,10 @@ namespace VisualCortex
             }
         } else {
             // Normal blue pulse
-            fadeValue += (fadeDirection ? VISUAL_CORTEX_FADE_INCREMENT : -VISUAL_CORTEX_FADE_INCREMENT);
+            fadeValue += (fadeDirection ? PatternConfig::FADE_INCREMENT : -PatternConfig::FADE_INCREMENT);
             
-            if (fadeValue <= VISUAL_CORTEX_MIN_FADE) fadeDirection = true;
-            if (fadeValue >= VISUAL_CORTEX_MAX_FADE) fadeDirection = false;
+            if (fadeValue <= AnimationTiming::MIN_FADE) fadeDirection = true;
+            if (fadeValue >= AnimationTiming::MAX_FADE) fadeDirection = false;
             
             fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Blue);
             fadeToBlackBy(leds, PinDefinitions::WS2812_NUM_LEDS, 255 - fadeValue);
@@ -1102,17 +1117,19 @@ namespace VisualCortex
         if (RoverViewManager::isFatalError) {
             // Update fade value
             if (fadeDirection) {
-                fadeValue = min(255, fadeValue + VISUAL_CORTEX_FADE_INCREMENT);
-                if (fadeValue >= VISUAL_CORTEX_MAX_FADE) fadeDirection = false;
+                fadeValue = std::min<uint8_t>(255, fadeValue + PatternConfig::FADE_INCREMENT);
+                if (fadeValue >= AnimationTiming::MAX_FADE) fadeDirection = false;
             } else {
-                fadeValue = max(VISUAL_CORTEX_ERROR_MIN_FADE, fadeValue - VISUAL_CORTEX_FADE_INCREMENT);
-                if (fadeValue <= VISUAL_CORTEX_ERROR_MIN_FADE) fadeDirection = true;
+                fadeValue = std::max<uint8_t>(AnimationTiming::ERROR_MIN_FADE, 
+                                            fadeValue - PatternConfig::FADE_INCREMENT);
+                if (fadeValue <= AnimationTiming::ERROR_MIN_FADE) fadeDirection = true;
             }
             
             // Apply fade to error LEDs
-            for (uint8_t i = 0; i < VISUAL_CORTEX_ERROR_LED_COUNT; i++) {
-                if (leds[VISUAL_CORTEX_ERROR_LED_INDEX + i].r > 0) { // Only fade red LEDs (fatal errors)
-                    leds[VISUAL_CORTEX_ERROR_LED_INDEX + i].fadeToBlackBy(255 - fadeValue);
+            for (uint8_t i = 0; i < PatternConfig::ERROR_LED_COUNT; i++) {
+                if (leds[PatternConfig::ERROR_LED_INDEX + i].r > 0) // Only fade red LEDs (fatal errors)
+                { 
+                    leds[PatternConfig::ERROR_LED_INDEX + i].fadeToBlackBy(255 - fadeValue);
                 }
             }
             

@@ -5,6 +5,7 @@
 #include "../VisualCortex/VisualSynesthesia.h"
 #include "../PrefrontalCortex/SDManager.h"
 #include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include <string.h> // For strcmp
@@ -25,6 +26,10 @@ namespace PsychicCortex
     uint8_t NFCManager::initStage = 0;
     bool NFCManager::isProcessingScan = false;
     char NFCManager::cardData[256] = {0};
+    bool NFCManager::isReadingData = false;
+    InitState NFCManager::initState = InitState::NOT_STARTED;
+    uint8_t NFCManager::initRetries = 0;
+    unsigned long NFCManager::initStartTime = 0;
 
     // Example valid card IDs
     const char* validCardIDs[] = {
@@ -57,12 +62,12 @@ namespace PsychicCortex
 
     void NFCManager::handleRotaryTurn(int direction) {
     update();
-    SoundFxManager::playVoiceLine("waiting_for_card");
+    AC::SoundFxManager::playVoiceLine("waiting_for_card");
     }
 
     void NFCManager::handleRotaryPress() {
         checkForCard();
-        SoundFxManager::playVoiceLine("card_detected");
+        AC::SoundFxManager::playVoiceLine("card_detected");
     }
 
     void NFCManager::startBackgroundInit() {
@@ -72,7 +77,7 @@ namespace PsychicCortex
     }
 
     void NFCManager::update() {
-        if (initInProgress && !SoundFxManager::isPlaying()) {
+        if (initInProgress && !AC::SoundFxManager::isPlaying()) {
             if (millis() - lastInitAttempt < 1000) return; // Don't try too frequently
             
             switch (initStage) {
@@ -85,9 +90,9 @@ namespace PsychicCortex
                     if (nfc.getFirmwareVersion()) {
                         nfc.SAMConfig();
                         initInProgress = false;
-                        Utilities::LOG_PROD("NFC initialization complete");
+                        PC::Utilities::LOG_PROD("NFC initialization complete");
                     } else {
-                        Utilities::LOG_DEBUG("NFC init retry...");
+                        PC::Utilities::LOG_DEBUG("NFC init retry...");
                     }
                     break;
             }
@@ -95,7 +100,7 @@ namespace PsychicCortex
             return;
         }
         
-        if (isProcessingScan || SoundFxManager::isPlaying()) return;
+        if (isProcessingScan || AC::SoundFxManager::isPlaying()) return;
         
         static unsigned long lastScanTime = 0;
         const unsigned long SCAN_COOLDOWN = 5000;
@@ -109,28 +114,28 @@ namespace PsychicCortex
         if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
             if (!cardPresent) {
                 cardPresent = true;
-                LEDManager::setPattern(VisualPattern::NFC_SCAN);
+                VC::LEDManager::setPattern(PC::VisualPattern::NFC_SCAN);
                 
                 if (isCardValid()) {
-                    LEDManager::handleMessage(VisualMessage::NFC_DETECTED);
+                    VC::LEDManager::handleMessage(PC::VisualMessage::NFC_DETECTED);
                     
                     // Calculate experience based on card data
                     uint16_t expGain = (uid[0] + uid[1] + uid[2] + uid[3]) % 50 + 10;
-                    RoverViewManager::incrementExperience(expGain);
+                    VC::RoverViewManager::incrementExperience(expGain);
                     
                     // Start entertainment pattern using card data
-                    LEDManager::displayCardPattern(uid, uidLength);
+                    VC::LEDManager::displayCardPattern(uid, uidLength);
                     
                     // Read card data and generate song
                     readCardData();
-                    VisualSynesthesia::playNFCCardData(cardData);
+                    VC::VisualSynesthesia::playNFCCardData(cardData);
                 } else { 
-                    LEDManager::handleMessage(VisualMessage::NFC_ERROR);
+                    VC::LEDManager::handleMessage(PC::VisualMessage::NFC_ERROR);
                 }
             }
         } else {
             cardPresent = false;
-            LEDManager::setPattern(VisualPattern::NONE);
+            VC::LEDManager::setPattern(PC::VisualPattern::NONE);
         }
     }
 
@@ -165,7 +170,7 @@ namespace PsychicCortex
     void NFCManager::handleNFCScan() {
         if (isCardPresent()) {
             // Card present - start NFC scan flow
-            SoundFxManager::playVoiceLine("card_detected");
+            AC::SoundFxManager::playVoiceLine("card_detected");
             checkForCard();  // Process the card
         } else {
             Serial.println("No card present");
@@ -196,7 +201,7 @@ namespace PsychicCortex
         if (success) {
             lastCardId = (uid[0] << 24) | (uid[1] << 16) | (uid[2] << 8) | uid[3];
             cardPresent = true;
-            LEDManager::displayCardPattern(uid, uidLength);
+            VC::LEDManager::displayCardPattern(uid, uidLength);
             readCardData();
         } else {
             cardPresent = false;
@@ -213,7 +218,7 @@ namespace PsychicCortex
     {
         if (strlen(cardData) == 0) 
         {
-            Utilities::LOG_DEBUG("Card data is empty");
+            PC::Utilities::LOG_DEBUG("Card data is empty");
             return false;
         }
 
@@ -223,14 +228,14 @@ namespace PsychicCortex
             {
                 char logBuffer[64];
                 snprintf(logBuffer, sizeof(logBuffer), "Valid card detected: %s", cardData);
-                Utilities::LOG_PROD(logBuffer);
+                PC::Utilities::LOG_PROD(logBuffer);
                 return true;
             }
         }
         
         char logBuffer[64];
         snprintf(logBuffer, sizeof(logBuffer), "Invalid card detected: %s", cardData);
-        Utilities::LOG_DEBUG(logBuffer);
+        PC::Utilities::LOG_DEBUG(logBuffer);
         #ifdef DEBUG_MODE
             return true; // In debug mode, accept all cards
         #else
