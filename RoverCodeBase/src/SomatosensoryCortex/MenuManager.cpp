@@ -1,3 +1,14 @@
+/**
+ * @brief MenuManager implementation
+ * 
+ * Handles:
+ * - Menu system initialization
+ * - Navigation processing
+ * - Selection management
+ * - Visual feedback coordination
+ * - Application state transitions
+ */
+
 #include "MenuManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/LEDManager.h"
@@ -33,9 +44,6 @@ namespace SomatosensoryCortex
     // Used elsewhere, so keep it
     bool isRoverRadio = true;
 
-    int MenuManager::getSelectedIndex() {
-        return selectedIndex;
-    }
 
     // Define LED Modes submenu with explicit constructors
     std::vector<MenuItem> MenuManager::ledModesMenu = 
@@ -199,7 +207,7 @@ namespace SomatosensoryCortex
         MenuItem("Set Time", []() 
         {
             RoverManager::setTemporaryExpression(
-                RoverManager::LOOKING_DOWN, 
+                PC::Expression::LOOKING_DOWN, 
                 1000
             );
         }),
@@ -209,6 +217,10 @@ namespace SomatosensoryCortex
         })
     };
 
+    /**
+     * @brief Initialize menu system and default items
+     * Sets up main menu structure and initial state
+     */
     void MenuManager::init() 
     {
         mainMenu = 
@@ -237,6 +249,10 @@ namespace SomatosensoryCortex
         currentMenu = mainMenu;
     }
 
+    /**
+     * @brief Update menu display and state
+     * Handles visual updates and state maintenance
+     */
     void MenuManager::show() 
     {
         isMenuVisible = true;
@@ -259,6 +275,11 @@ namespace SomatosensoryCortex
         RoverViewManager::drawFullScreenMenu(title, currentMenu, selectedIndex);
     }
 
+    /**
+     * @brief Process menu navigation input
+     * @param direction Rotation direction (+/-)
+     * Updates selection and provides feedback
+     */
     void MenuManager::handleRotaryTurn(int direction) 
     {
         if (!isMenuVisible) return;
@@ -277,6 +298,10 @@ namespace SomatosensoryCortex
         drawMenu();
     }
 
+    /**
+     * @brief Handle menu item selection
+     * Processes selection and triggers appropriate actions
+     */
     void MenuManager::handleMenuSelect() 
     {
         if (!isMenuVisible || selectedIndex >= static_cast<int>(currentMenu.size())) 
@@ -299,6 +324,11 @@ namespace SomatosensoryCortex
         // or handle advanced IR menus here.
     }
 
+    /**
+     * @brief Push new menu onto navigation stack
+     * @param menu Pointer to menu item vector
+     * Manages menu hierarchy for navigation
+     */
     void MenuManager::enterSubmenu(const std::vector<MenuItem>& submenu) 
     {
         menuStack.push_back(&currentMenu);
@@ -307,6 +337,11 @@ namespace SomatosensoryCortex
         drawMenu();
     }
 
+    /**
+     * @brief Pop current menu from navigation stack
+     * Returns to previous menu level
+     * @return True if menu was popped successfully
+     */
     void MenuManager::goBack() 
     {
         if (!menuStack.empty()) 
@@ -327,5 +362,28 @@ namespace SomatosensoryCortex
 
         // Execute the action associated with the selected menu item
         currentMenu[selectedIndex].action();
+    }
+
+    /**
+     * @brief Get currently selected menu item
+     * @return Reference to current MenuItem
+     */
+    const MenuItem& MenuManager::getCurrentItem() 
+    {
+        return currentMenu[selectedIndex];
+    }
+
+        int MenuManager::getSelectedIndex() {
+        return selectedIndex;
+    }
+
+
+    /**
+     * @brief Check if menu system is currently visible
+     * @return True if menu is being displayed
+     */
+    bool MenuManager::isVisible() 
+    {
+        return isMenuVisible;
     }
 }

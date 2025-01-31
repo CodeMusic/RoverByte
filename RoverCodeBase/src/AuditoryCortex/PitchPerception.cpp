@@ -1,3 +1,8 @@
+/**
+ * @file PitchPerception.cpp
+ * @brief Implementation of the PitchPerception class for auditory-cognitive processing
+ */
+
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "PitchPerception.h"

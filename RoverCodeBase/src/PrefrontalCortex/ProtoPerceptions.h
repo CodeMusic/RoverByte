@@ -165,7 +165,7 @@ namespace PrefrontalCortex
 
         struct SystemStatus 
         {
-            PowerState powerState;
+            PowerTypes::PowerState powerState;
             float batteryLevel;
             float temperature;
             uint32_t uptime;
@@ -174,10 +174,19 @@ namespace PrefrontalCortex
 
         struct ErrorLog 
         {
-            uint32_t timestamp;
-            String message;
-            uint8_t severity;
-            String component;
+            uint32_t timestamp;    // When the error occurred
+            String message;        // Human-readable error message
+            uint8_t severity;      // How serious the error is
+            String component;      // Which part of the system had the error
+        };
+
+        struct ErrorState 
+        {
+            uint32_t code;         // Numeric error code
+            const char* message;   // Error message (using const char* for memory efficiency)
+            bool isFatal;          // Whether this error stops the system
+            uint32_t timestamp;    // When the error occurred
+            String context;        // Additional error context/details
         };
     }
 
@@ -266,6 +275,7 @@ namespace PrefrontalCortex
     {
         enum class Expression 
         {
+            NEUTRAL,
             HAPPY,
             LOOKING_LEFT,
             LOOKING_RIGHT,
@@ -495,6 +505,21 @@ namespace PrefrontalCortex
             GAME_OVER,
             MENU_SELECT,
             MENU_CHANGE
+        };
+
+        /**
+         * @brief Defines cognitive error response types for audio feedback
+         * 
+         * Maps different system errors to distinct auditory patterns:
+         * - RECORDING: Microphone/input processing errors
+         * - STORAGE: Memory/persistence errors
+         * - PLAYBACK: Audio output processing errors
+         */
+        enum class ErrorSoundType 
+        {
+            RECORDING = 1,  // Microphone/recording system errors
+            STORAGE = 2,    // SD card/storage system errors  
+            PLAYBACK = 3    // Audio playback system errors
         };
     }
 
@@ -848,17 +873,92 @@ namespace PrefrontalCortex
 
     namespace ColorPerceptionTypes 
     {
-        // Fundamental color perceptions
+        /**
+         * @brief Core psychological color mappings
+         * Each color represents a different cognitive/emotional state:
+         * 0 Black   - Unconscious/Rest state
+         * 1 Red     - Primal/Survival instincts
+         * 2 Orange  - Creative/Expressive energy
+         * 3 Yellow  - Intellectual/Mental clarity
+         * 4 Green   - Emotional/Heart-centered
+         * 5 Blue    - Intuitive/Communication
+         * 6 Indigo  - Spiritual/Inner wisdom
+         * 7 Violet  - Transcendent/Higher consciousness
+         */
         extern const CRGB BASE_8_COLORS[8];
         
-        // Temporal-chromatic associations
+        /**
+         * @brief Temporal-emotional color associations
+         * Maps months to color pairs representing:
+         * - Primary: Dominant emotional theme
+         * - Secondary: Supporting emotional quality
+         */
         extern const CRGB MONTH_COLORS[12][2];
         
-        // Circadian color mappings
+        /**
+         * @brief Circadian rhythm color mappings
+         * Associates days with colors based on:
+         * - Traditional planetary associations
+         * - Psychological energy patterns
+         */
         extern const CRGB DAY_COLORS[7];
         
-        // Musical-visual correlations
+        /**
+         * @brief Musical-emotional correlations
+         * Maps musical notes to color pairs representing:
+         * - Primary: Core emotional resonance
+         * - Secondary: Harmonic emotional quality
+         */
         extern const CRGB CHROMATIC_COLORS[12][2];
+
+        // Add color perception context
+        struct ChromaticContext 
+        {
+            CRGB primary;
+            CRGB secondary;
+            uint8_t intensity;
+        };
+
+        // Add emotional color mapping
+        struct EmotionalColor 
+        {
+            RoverTypes::Expression emotion;
+            CRGB primaryColor;
+            CRGB accentColor;
+        };
+
+        // Add strong typing for color intensity
+        struct ColorIntensity 
+        {
+            explicit ColorIntensity(uint8_t value) : value(value) {}
+            uint8_t value;
+        };
+
+        // Add strong typing for color index
+        struct ColorIndex 
+        {
+            explicit ColorIndex(uint8_t value) : value(value % 8) {}
+            uint8_t value;
+        };
+    }
+
+    namespace SynestheticTypes 
+    {
+        // For direct sensory mappings
+        struct AudioVisualMapping 
+        {
+            uint16_t frequency;
+            ColorPerceptionTypes::ChromaticContext colors;
+            uint8_t intensity;
+        };
+
+        // For temporal aspects of synesthesia
+        struct SynestheticTiming 
+        {
+            uint32_t onset;          // When the perception starts
+            uint32_t duration;       // How long it lasts
+            uint8_t fadeRate;        // How quickly it fades
+        };
     }
 }
 

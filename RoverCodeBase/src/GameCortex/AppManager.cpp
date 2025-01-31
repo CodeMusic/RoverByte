@@ -1,3 +1,11 @@
+/**
+ * @file AppManager.cpp
+ * @brief Implementation of the AppManager class for cognitive engagement systems
+ * 
+ * Handles the implementation of application lifecycle management and state transitions
+ * for the entertainment and engagement subsystems.
+ */
+
 #include "AppManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../SomatosensoryCortex/MenuManager.h"
@@ -23,21 +31,11 @@ namespace GameCortex
     AppState AppManager::currentState = AppState::IDLE;
 
     void AppManager::init() {
-        if (initialized) {
-            Utilities::LOG_DEBUG("AppManager already initialized");
-            return;
-        }
-        
-        try {
+        if (!initialized) {
             appRegistry.clear();
             activeApp = nullptr;
             currentState = AppState::IDLE;
             initialized = true;
-            Utilities::LOG_DEBUG("AppManager initialized successfully");
-        } catch (const std::exception& e) {
-            Utilities::LOG_ERROR("AppManager init failed: %s", e.what());
-            initialized = false;
-            throw;
         }
     }
 

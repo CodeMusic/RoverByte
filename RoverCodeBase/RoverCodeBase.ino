@@ -1,3 +1,39 @@
+/**
+ * @brief Core cognitive system integration and neural pathway coordination
+ * 
+ * Manages primary neural processing systems:
+ * - Sensory Integration
+ *   - Visual processing (LED, Display)
+ *   - Auditory processing (Sound, Music)
+ *   - Tactile processing (Touch, Buttons)
+ *   - Proprioceptive feedback
+ * 
+ * - Cognitive Functions
+ *   - Emotional state management
+ *   - Behavioral pattern generation
+ *   - Memory formation and recall
+ *   - Learning and adaptation
+ * 
+ * - Cross-Modal Integration
+ *   - Audio-visual synesthesia
+ *   - Emotional-color mapping
+ *   - Temporal-spatial coordination
+ *   - Multi-sensory binding
+ * 
+ * - System Management
+ *   - Power state regulation
+ *   - Error detection/recovery
+ *   - Resource allocation
+ *   - Neural pathway optimization
+ * 
+ * @note Core system initialization must follow specific order:
+ * 1. FastLED configuration
+ * 2. Hardware interfaces
+ * 3. Cognitive systems
+ * 4. Behavioral patterns
+ * 5. Interactive functions
+ */
+
 // FastLED configuration must come first
 #include "src/VisualCortex/FastLEDConfig.h"
 

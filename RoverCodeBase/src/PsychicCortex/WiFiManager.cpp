@@ -1,3 +1,14 @@
+/**
+ * @brief WiFiManager implementation
+ * 
+ * Handles:
+ * - Network connection establishment
+ * - Connection state management
+ * - Status updates and feedback
+ * - Error handling and recovery
+ * - Integration with visual and audio systems
+ */
+
 #include "WiFiManager.h"
 #include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include "../VisualCortex/RoverViewManager.h"
@@ -27,6 +38,10 @@ namespace PsychicCortex
     bool WiFiManager::timeInitialized = false;
     unsigned long WiFiManager::lastTimeCheck = 0;
 
+    /**
+     * @brief Initialize WiFi hardware and prepare for connections
+     * Sets up WiFi hardware, configures modes, and prepares status indicators
+     */
     bool WiFiManager::init() 
     {
         bool success = false;
@@ -47,6 +62,10 @@ namespace PsychicCortex
         return success;
     }
 
+    /**
+     * @brief Process WiFi operations and state updates
+     * Handles connection maintenance, status checks, and feedback
+     */
     void WiFiManager::checkConnection() 
     {
         static unsigned long lastTimeCheck = 0;
@@ -128,6 +147,12 @@ namespace PsychicCortex
         return false;
     }
 
+    /**
+     * @brief Connect to specified WiFi network
+     * @param ssid Network identifier
+     * @param password Network security key
+     * @return True if connection initiated successfully
+     */
     bool WiFiManager::connectToWiFi() 
     {
         Utilities::LOG_DEBUG("Starting WiFi connection process");
@@ -143,15 +168,15 @@ namespace PsychicCortex
     // Generic error handler
     void handleError(const char* errorMessage) {
         PC::Utilities::LOG_PROD(errorMessage);
-        VisualCortex::RoverManager::setTemporaryExpression(VisualCortex::RoverManager::LOOKING_DOWN, 1000);
+        VisualCortex::RoverManager::setTemporaryExpression(PC::Expression::LOOKING_DOWN, 1000);
     }
 
     // Example usage in various scenarios
     void processAPIRequest(bool success = false) {  // Parameter with default value
-        VisualCortex::RoverManager::setTemporaryExpression(VisualCortex::RoverManager::LOOKING_UP);  // Looking up while thinking
+        VisualCortex::RoverManager::setTemporaryExpression(PC::Expression::LOOKING_UP);  // Looking up while thinking
         
         if (success) {
-            VisualCortex::RoverManager::setTemporaryExpression(VisualCortex::RoverManager::BIG_SMILE, 1000);
+            VisualCortex::RoverManager::setTemporaryExpression(PC::Expression::BIG_SMILE, 1000);
         } else {
             handleError("API request failed");
         }

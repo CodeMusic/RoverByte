@@ -1,3 +1,25 @@
+/**
+ * @brief Visual interface system implementation
+ * 
+ * Implements core display management functions:
+ * - Display buffer handling
+ * - View state transitions
+ * - Error visualization
+ * - Loading sequence coordination
+ * - Cross-modal display feedback
+ * 
+ * The implementation manages:
+ * - Sprite buffer updates
+ * - View rendering cycles
+ * - Error state handling
+ * - Loading animations
+ * - Visual feedback loops
+ * 
+ * @note Coordinates with RoverManager for facial expressions
+ * @note Integrates with PowerManager for state transitions
+ * @note Synchronizes with MenuManager for UI overlays
+ */
+
 #include "RoverViewManager.h"
 #include "../PrefrontalCortex/utilities.h"
 #include "../PrefrontalCortex/PowerManager.h"
@@ -141,7 +163,7 @@ namespace VisualCortex
                 spr.fillSprite(TFT_BLACK);
                 spr.setTextFont(2);
                 spr.setTextColor(TFT_WHITE, TFT_BLACK);
-                spr.drawString("Display Error", SCREEN_CENTER_X, SCREEN_HEIGHT/2);
+                spr.drawString("Display Error", DisplayConfig::SCREEN_CENTER_X, DisplayConfig::SCREEN_HEIGHT/2);
                 spr.pushSprite(0, 0);
                 delay(1000);
                 isRecovering = false;
@@ -219,11 +241,11 @@ namespace VisualCortex
         // Keep text centered
         spr.setTextFont(2);
         spr.setTextColor(TFT_WHITE);
-        spr.drawCentreString("Loading...", SCREEN_CENTER_X - 25, 75, 2);
+        spr.drawCentreString("Loading...", DisplayConfig::SCREEN_CENTER_X - 25, 75, 2);
         
         if (statusText) {
             spr.setTextFont(1);
-            spr.drawCentreString(statusText, SCREEN_CENTER_X - 25, 100, 1);
+            spr.drawCentreString(statusText, DisplayConfig::SCREEN_CENTER_X - 25, 100, 1);
         }
         
         // Push rotated bone sprite to main sprite
@@ -259,16 +281,16 @@ namespace VisualCortex
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Today's Tasks:", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET);
+        spr.drawString("Today's Tasks:", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET);
 
         spr.setTextFont(2); // Regular font for content
-        String task1 = RoverViewManager::wordWrap("1. Service Canada", SCREEN_WIDTH - 50);
-        String task2 = RoverViewManager::wordWrap("2. Call Doctor", SCREEN_WIDTH - 50);
-        String task3 = RoverViewManager::wordWrap("3. Call Therapist", SCREEN_WIDTH - 50);
+        String task1 = RoverViewManager::wordWrap("1. Service Canada", DisplayConfig::SCREEN_WIDTH - 50);
+        String task2 = RoverViewManager::wordWrap("2. Call Doctor", DisplayConfig::SCREEN_WIDTH - 50);
+        String task3 = RoverViewManager::wordWrap("3. Call Therapist", DisplayConfig::SCREEN_WIDTH - 50);
 
-        spr.drawString(task1, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 35);
-        spr.drawString(task2, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 55);
-        spr.drawString(task3, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 75);
+        spr.drawString(task1, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 35);
+        spr.drawString(task2, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 55);
+        spr.drawString(task3, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 75);
     }
 
     void RoverViewManager::drawQuotes() {
@@ -276,16 +298,16 @@ namespace VisualCortex
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Quote of the Day", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET);
+        spr.drawString("Quote of the Day", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET);
 
         spr.setTextFont(2); // Regular font for content
-        String quote1 = RoverViewManager::wordWrap("\"The best way to predict", SCREEN_WIDTH - 50);
-        String quote2 = RoverViewManager::wordWrap("the future is to create it.\"", SCREEN_WIDTH - 50);
-        String author = RoverViewManager::wordWrap("- Peter Drucker", SCREEN_WIDTH - 50);
+        String quote1 = RoverViewManager::wordWrap("\"The best way to predict", DisplayConfig::SCREEN_WIDTH - 50);
+        String quote2 = RoverViewManager::wordWrap("the future is to create it.\"", DisplayConfig::SCREEN_WIDTH - 50);
+        String author = RoverViewManager::wordWrap("- Peter Drucker", DisplayConfig::SCREEN_WIDTH - 50);
 
-        spr.drawString(quote1, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 45);
-        spr.drawString(quote2, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 65);
-        spr.drawString(author, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 85);
+        spr.drawString(quote1, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 45);
+        spr.drawString(quote2, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 65);
+        spr.drawString(author, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 85);
     }
 
     void RoverViewManager::drawWeather() {
@@ -293,16 +315,16 @@ namespace VisualCortex
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Weather", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET + 15);
+        spr.drawString("Weather", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET + 15);
 
         spr.setTextFont(2); // Regular font for content
-        String weather = RoverViewManager::wordWrap("Sunny", SCREEN_WIDTH - 50);
-        String temperature = RoverViewManager::wordWrap("72°F / 22°C", SCREEN_WIDTH - 50);
-        String humidity = RoverViewManager::wordWrap("Humidity: 45%", SCREEN_WIDTH - 50);
+        String weather = RoverViewManager::wordWrap("Sunny", DisplayConfig::SCREEN_WIDTH - 50);
+        String temperature = RoverViewManager::wordWrap("72°F / 22°C", DisplayConfig::SCREEN_WIDTH - 50);
+        String humidity = RoverViewManager::wordWrap("Humidity: 45%", DisplayConfig::SCREEN_WIDTH - 50);
 
-        spr.drawString(weather, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 55);
-        spr.drawString(temperature, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 75);
-        spr.drawString(humidity, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 95);
+        spr.drawString(weather, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 55);
+        spr.drawString(temperature, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 75);
+        spr.drawString(humidity, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 95);
     }
 
     void RoverViewManager::drawStats() {
@@ -310,17 +332,17 @@ namespace VisualCortex
         
         spr.setTextFont(3);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("System Stats", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET + 15);
+        spr.drawString("System Stats", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + TITLE_Y_OFFSET + 15);
         
         spr.setTextFont(2);
         unsigned long uptime = millis(); // Get the uptime in milliseconds
         String uptimeString = RoverViewManager::formatUptime(uptime);
         
-        spr.drawString("Uptime: " + uptimeString, SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 15);
-        spr.drawString("SD Card Size: " + String(SDManager::getCardSize()) + "MB", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 75);
-        spr.drawString("SD Card Used: " + String(SDManager::getUsedSpace()) + "MB", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 95);
-        spr.drawString("SD Card Total: " + String(SDManager::getTotalSpace()) + "MB", SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 115);
-        spr.drawString("WiFi: " + String(WiFiManager::isConnected() ? "Connected" : "Disconnected"), SCREEN_CENTER_X - FRAME_OFFSET_X, FRAME_Y + 135);
+        spr.drawString("Uptime: " + uptimeString, DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 15);
+        spr.drawString("SD Card Size: " + String(SDManager::getCardSize()) + "MB", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 75);
+        spr.drawString("SD Card Used: " + String(SDManager::getUsedSpace()) + "MB", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 95);
+        spr.drawString("SD Card Total: " + String(SDManager::getTotalSpace()) + "MB", DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 115);
+        spr.drawString("WiFi: " + String(WiFiManager::isConnected() ? "Connected" : "Disconnected"), DisplayConfig::SCREEN_CENTER_X - DisplayConfig::FRAME_OFFSET_X, FRAME_Y + 135);
     }
 
     String RoverViewManager::formatUptime(unsigned long uptimeMillis) {
@@ -430,7 +452,7 @@ namespace VisualCortex
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for chakras header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Chakras", SCREEN_CENTER_X - 40, FRAME_Y + TITLE_Y_OFFSET); // Centered header
+        spr.drawString("Chakras", DisplayConfig::SCREEN_CENTER_X - 40, FRAME_Y + TITLE_Y_OFFSET); // Centered header
 
         // Set regular font for content
         spr.setTextFont(2);
@@ -440,12 +462,12 @@ namespace VisualCortex
             const ChakraInfo& chakra = CHAKRA_DATA[i];
             
             // Draw chakra symbol
-            chakra.drawSymbol(SCREEN_CENTER_X - 40, y, 20); // Adjust position for symbol
+            chakra.drawSymbol(DisplayConfig::SCREEN_CENTER_X - 40, y, 20); // Adjust position for symbol
             y += 25; // Move down for the next chakra
 
             // Draw attributes with word wrap
-            String wrappedAttributes = wordWrap(chakra.attributes, SCREEN_WIDTH - 50);
-            spr.drawString(wrappedAttributes, SCREEN_CENTER_X - 40, y);
+            String wrappedAttributes = wordWrap(chakra.attributes, DisplayConfig::SCREEN_WIDTH - 50);
+            spr.drawString(wrappedAttributes, DisplayConfig::SCREEN_CENTER_X - 40, y);
             y += 40; // Add space for the next chakra
         }
     }
@@ -456,7 +478,7 @@ namespace VisualCortex
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for virtues header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Virtues", SCREEN_CENTER_X - 40, FRAME_Y + TITLE_Y_OFFSET); // Centered header
+        spr.drawString("Virtues", DisplayConfig::SCREEN_CENTER_X - 40, FRAME_Y + TITLE_Y_OFFSET); // Centered header
 
         // Set regular font for content
         spr.setTextFont(2);
@@ -466,8 +488,8 @@ namespace VisualCortex
             const VirtueInfo& virtue = VIRTUE_DATA[i];
 
             // Draw attributes with word wrap
-            String wrappedDescription = wordWrap(virtue.description, SCREEN_WIDTH - 50);
-            spr.drawString(wrappedDescription, SCREEN_CENTER_X - 40, y);
+            String wrappedDescription = wordWrap(virtue.description, DisplayConfig::SCREEN_WIDTH - 50);
+            spr.drawString(wrappedDescription, DisplayConfig::SCREEN_CENTER_X - 40, y);
             y += 40; // Add space for the next virtue
         }
     }
@@ -477,7 +499,7 @@ namespace VisualCortex
         
         spr.setTextFont(4);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
-        spr.drawString("Garlic Pasta", SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET + 15);
+        spr.drawString("Garlic Pasta", DisplayConfig::SCREEN_CENTER_X, FRAME_Y + TITLE_Y_OFFSET + 15);
         
         spr.setTextFont(2);
         
@@ -490,7 +512,7 @@ namespace VisualCortex
         
         int y = FRAME_Y + 55;
         for(int i = 0; i < 4; i++) {
-            spr.drawString(ingredients[i], SCREEN_CENTER_X, y);
+            spr.drawString(ingredients[i], DisplayConfig::SCREEN_CENTER_X, y);
             y += 20;
         }
     }
@@ -673,7 +695,7 @@ namespace VisualCortex
         
         // Draw full-height notification box
         int boxWidth = 160;
-        int boxHeight = SCREEN_HEIGHT - 20; // Full height minus margins
+        int boxHeight = DisplayConfig::SCREEN_HEIGHT - 20; // Full height minus margins
         int boxX = 10;
         int boxY = 10;
         
@@ -816,17 +838,17 @@ namespace VisualCortex
         // Draw title - adjust position to be more centered
         spr.setTextFont(4);
         spr.setTextColor(TFT_WHITE);
-        spr.drawString(title, SCREEN_CENTER_X - 30, 30);
+        spr.drawString(title, DisplayConfig::SCREEN_CENTER_X - 30, 30);
         
         // Draw menu items
         spr.setTextFont(2);
         int y = 70;
-        int menuX = SCREEN_CENTER_X - 30;  // Align with title
+        int menuX = DisplayConfig::SCREEN_CENTER_X - 30;  // Align with title
         
         for (size_t i = 0; i < items.size(); i++) {
             if (i == selectedIndex) {
                 spr.setTextColor(TFT_BLACK, TFT_WHITE);
-                spr.fillRect(15, y - 10, SCREEN_WIDTH - 30, 20, TFT_WHITE);
+                spr.fillRect(15, y - 10, DisplayConfig::SCREEN_WIDTH - 30, 20, TFT_WHITE);
             } else {
                 spr.setTextColor(TFT_WHITE, TFT_BLACK);
             }
@@ -884,19 +906,19 @@ namespace VisualCortex
         // Draw ERRORBYTE text and code centered
         spr.setTextFont(2);
         spr.setTextColor(TFT_RED);  // ERRORBYTE always red
-        spr.drawCentreString("ERRORBYTE", SCREEN_CENTER_X - 40, 20, 2);
+        spr.drawCentreString("ERRORBYTE", DisplayConfig::SCREEN_CENTER_X - 40, 20, 2);
         
         char errorCodeStr[32];
         sprintf(errorCodeStr, "0x%08X", (uint8_t)errorCode);
         spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-        spr.drawCentreString(errorCodeStr, SCREEN_CENTER_X - 40, 40, 2);
+        spr.drawCentreString(errorCodeStr, DisplayConfig::SCREEN_CENTER_X - 40, 40, 2);
         
         // Define scale first
         static const float scale = 0.8f;  // Make it static const
         
         // Center all rover graphics
         const int roverY = 80;
-        const int roverX = SCREEN_CENTER_X - (int)(90*scale/2) - 35;  // Cast to int
+        const int roverX = DisplayConfig::SCREEN_CENTER_X - (int)(90*scale/2) - 35;  // Cast to int
         
         // Body and ears - wider body
         spr.fillRect(roverX, roverY, 90*scale, 76*scale, TFT_WHITE);
@@ -946,7 +968,7 @@ namespace VisualCortex
         // Draw error message
         spr.setTextFont(2);
         spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-        spr.drawCentreString(errorMessage, SCREEN_CENTER_X - 40, 160, 2);
+        spr.drawCentreString(errorMessage, DisplayConfig::SCREEN_CENTER_X - 40, 160, 2);
         
         // For warnings, show countdown on separate line in white
         if (!isFatal && PC::RoverBehaviorManager::isWarningCountdownActive()) {
@@ -954,14 +976,14 @@ namespace VisualCortex
             char countdownStr[32];
             int remainingSeconds = PC::RoverBehaviorManager::getRemainingWarningSeconds();
             sprintf(countdownStr, "Clearing in %d...", remainingSeconds);
-            spr.drawCentreString(countdownStr, SCREEN_CENTER_X - 40, 180, 2);
+            spr.drawCentreString(countdownStr, DisplayConfig::SCREEN_CENTER_X - 40, 180, 2);
         }
         
         // Show reboot instruction ONLY for fatal errors
         if (isFatal) {
             spr.setTextFont(1);
             spr.setTextColor(TFT_YELLOW);
-            spr.drawCentreString("Press Rotary to REBOOT", SCREEN_CENTER_X - 40, 225, 1);
+            spr.drawCentreString("Press Rotary to REBOOT", DisplayConfig::SCREEN_CENTER_X - 40, 225, 1);
         }
         
         spr.pushSprite(0, 0);

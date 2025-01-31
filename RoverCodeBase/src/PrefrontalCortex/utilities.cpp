@@ -40,6 +40,10 @@ namespace PrefrontalCortex
         va_end(args);
     }
 
+    /**
+     * @brief Debug level logging for development and troubleshooting
+     * Outputs detailed information about system state and operations
+     */
     void Utilities::LOG_DEBUG(const char* format, ...) 
     {
         va_list args;
@@ -56,6 +60,10 @@ namespace PrefrontalCortex
         va_end(args);
     }
 
+    /**
+     * @brief Information level logging for normal operations
+     * Outputs general status updates and non-critical information
+     */
     void Utilities::LOG_INFO(const char* format, ...) 
     {
         va_list args;
@@ -64,6 +72,10 @@ namespace PrefrontalCortex
         va_end(args);
     }
 
+    /**
+     * @brief Warning level logging for potential issues
+     * Outputs messages about concerning but non-critical situations
+     */
     void Utilities::LOG_WARNING(const char* format, ...) 
     {
         va_list args;

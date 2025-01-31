@@ -19,7 +19,10 @@ namespace PsychicCortex
     using AC::SoundFxManager;
     using PC::VisualTypes::VisualPattern;
 
-    // Initialize static members
+    /**
+     * @brief Initialize static member variables
+     * Sets up initial state for IR transmission system
+     */
     bool IRManager::blasting = false;
     unsigned long IRManager::lastSendTime = 0;
     unsigned long IRManager::lastLEDUpdate = 0;
@@ -29,6 +32,10 @@ namespace PsychicCortex
     bool IRManager::animationDirection = true;
     IRsend IRManager::irsend(BOARD_IR_RX);  // Initialize with IR pin
 
+    /**
+     * @brief Initialize IR hardware
+     * Configures pins and IR transmitter
+     */
     void IRManager::init() 
     {
         pinMode(BOARD_IR_EN, OUTPUT);

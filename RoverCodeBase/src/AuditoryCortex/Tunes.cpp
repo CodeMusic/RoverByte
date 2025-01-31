@@ -1,3 +1,11 @@
+/**
+ * @file Tunes.cpp
+ * @brief Implementation of the Tunes class for musical composition management
+ * 
+ * Contains the implementation of tune retrieval, playback timing calculations,
+ * and storage of predefined musical compositions.
+ */
+
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "PitchPerception.h"
 #include "SoundFxManager.h"

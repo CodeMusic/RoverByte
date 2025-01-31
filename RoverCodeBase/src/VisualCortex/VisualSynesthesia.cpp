@@ -1,3 +1,21 @@
+/**
+ * @brief Implementation of cross-modal sensory integration system
+ * 
+ * Implements core synesthetic processing:
+ * - Color-emotion mapping algorithms
+ * - Audio-visual translation
+ * - Temporal-chromatic correlation
+ * - Energy state visualization
+ * - Multi-sensory binding
+ * 
+ * Key processing pathways:
+ * - Frequency to color conversion
+ * - Emotional state coloring
+ * - Circadian rhythm visualization
+ * - Energy level indication
+ * - Cross-modal feedback loops
+ */
+
 #include "VisualSynesthesia.h"
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "LEDManager.h"
@@ -138,5 +156,65 @@ namespace VisualCortex
             AC::SoundFxManager::playTone(frequency, 200); // Play each note for 200 ms
             delay(250); // Delay between notes
         }
+    }
+
+    ChromaticContext VisualSynesthesia::getChromaticContext(uint16_t frequency) 
+    {
+        ChromaticContext context;
+        context.primary = getColorForFrequency(frequency);
+        context.secondary = getColorForFrequency(frequency + 100); // Slight shift for secondary
+        context.intensity = map(frequency, 200, 2000, 0, 255);
+        return context;
+    }
+
+    EmotionalColor VisualSynesthesia::getEmotionalColor(PC::RoverTypes::Expression emotion) 
+    {
+        EmotionalColor color;
+        color.emotion = emotion;
+        
+        switch(emotion) 
+        {
+            case PC::RoverTypes::Expression::HAPPY:
+                color.primaryColor = CRGB::Yellow;
+                color.accentColor = CRGB::Orange;
+                break;
+            case PC::RoverTypes::Expression::LOOKING_UP:
+                color.primaryColor = CRGB::Blue;
+                color.accentColor = CRGB::Cyan;
+                break;
+            // Add other expressions...
+            default:
+                color.primaryColor = CRGB::Green;
+                color.accentColor = CRGB::Blue;
+        }
+        return color;
+    }
+
+    void VisualSynesthesia::playVisualChord(uint16_t fundamentalFreq, 
+                                           ChromaticContext& rootContext,
+                                           ChromaticContext& thirdContext,
+                                           ChromaticContext& fifthContext) 
+    {
+        // Calculate frequencies
+        uint16_t thirdFreq = fundamentalFreq * 5 / 4;  // Major third
+        uint16_t fifthFreq = fundamentalFreq * 3 / 2;  // Perfect fifth
+        
+        // Get contexts
+        rootContext = getChromaticContext(fundamentalFreq);
+        thirdContext = getChromaticContext(thirdFreq);
+        fifthContext = getChromaticContext(fifthFreq);
+        
+        // Play the frequencies with visual feedback
+        LEDManager::displayChromatic(rootContext);
+        AC::SoundFxManager::playTone(fundamentalFreq, 200);
+        delay(250);
+        
+        LEDManager::displayChromatic(thirdContext);
+        AC::SoundFxManager::playTone(thirdFreq, 200);
+        delay(250);
+        
+        LEDManager::displayChromatic(fifthContext);
+        AC::SoundFxManager::playTone(fifthFreq, 200);
+        delay(250);
     }
 }

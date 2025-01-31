@@ -1,3 +1,11 @@
+/**
+ * @file AppRegistration.cpp
+ * @brief Implementation of the AppRegistration class for cognitive application management
+ * 
+ * Handles the implementation of application callbacks and registration processes,
+ * coordinating cross-cortex communication for entertainment and engagement systems.
+ */
+
 #include "AppRegistration.h"
 #include "AppManager.h"
 #include "../GameCortex/SlotsManager.h"
@@ -14,6 +22,13 @@ using namespace PrefrontalCortex;    // For Utilities
 
 namespace GameCortex
 {
+    using namespace CorpusCallosum;
+    using PC::Utilities;
+    using PC::GameTypes::AppInfo;
+    using VC::LEDManager;
+    using SC::MenuManager;
+    using PSY::NFCManager;
+    using PSY::IRManager;
 
     void AppRegistration::slotsOnRun() {
         Serial.println("[SlotsApp] onRun: Starting Slots game...");

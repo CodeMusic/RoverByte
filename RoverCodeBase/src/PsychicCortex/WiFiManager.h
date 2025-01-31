@@ -12,6 +12,17 @@ namespace PsychicCortex
     using namespace CorpusCallosum;
     using PC::NetworkTypes::NetworkCredentials;
 
+    /**
+     * @brief Manages WiFi connectivity and network interactions
+     * 
+     * Provides:
+     * - WiFi connection initialization and maintenance
+     * - Network state monitoring
+     * - Connection status feedback
+     * - Automatic reconnection handling
+     * - Network configuration management
+     * - Visual and auditory feedback during operations
+     */
     class WiFiManager 
     {
     public:

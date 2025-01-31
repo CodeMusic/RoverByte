@@ -1,5 +1,5 @@
 #ifndef ROVER_BEHAVIOR_MANAGER_H
-#define ROVER_BEHAVIOR_H
+#define ROVER_BEHAVIOR_MANAGER_H
 
 #include "../CorpusCallosum/SynapticPathways.h"
 
@@ -7,31 +7,51 @@ namespace PrefrontalCortex
 {
     using namespace CorpusCallosum;  // Keep this for other utilities
     
+    /**
+     * @brief Manages high-level cognitive behaviors and state transitions
+     * 
+     * Controls:
+     * - Executive function state management
+     * - Behavioral response patterns
+     * - Error detection and recovery
+     * - Cognitive initialization sequence
+     * - Temporal processing of warnings
+     */
     class RoverBehaviorManager 
     {
     public:
+        // Temporal processing constants
+        static constexpr unsigned long WARNING_DURATION = 120000;  // 2 minutes
+        static constexpr unsigned long FATAL_REBOOT_DELAY = 60000;  // 1 minute
+
+        // Core cognitive functions
         static void init();
         static void update();
         static RoverTypes::BehaviorState getCurrentState();
         static void setState(RoverTypes::BehaviorState state);
+        static bool IsInitialized();
+
+        // Executive function processing
         static RoverTypes::LoadingPhase getLoadingPhase();
         static void setLoadingPhase(RoverTypes::LoadingPhase phase);
         static const char* getStatusMessage();
+        static int getCurrentBootStep();
+
+        // Error detection and recovery
         static void triggerFatalError(uint32_t errorCode, const char* errorMessage);
         static void handleFatalError();
         static void triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type);
         static void handleWarning();
-        static bool IsInitialized();
         static bool isErrorFatal(uint32_t errorCode);
-        static int getCurrentBootStep();
+
+        // Warning temporal processing
         static void updateWarningCountdown();
-        static constexpr unsigned long WARNING_DURATION = 120000;  // 2 minutes
-        static constexpr unsigned long FATAL_REBOOT_DELAY = 60000;  // 1 minute
         static bool isWarningCountdownActive() { return isCountingDown; }
         static int getRemainingWarningSeconds();
         static unsigned long getWarningStartTime() { return warningStartTime; }
 
     private:
+        // Neural state variables
         static RoverTypes::BehaviorState currentState;
         static RoverTypes::LoadingPhase loadingPhase;
         static const char* currentStatusMessage;
@@ -43,7 +63,9 @@ namespace PrefrontalCortex
         static bool isFatalError;
         static VisualTypes::VisualPattern pattern;
         static String statusMessage;
+        static bool initialized;
 
+        // Behavioral processing methods
         static void handleLoading();
         static void handleHome();
         static void handleMenu();
@@ -52,8 +74,7 @@ namespace PrefrontalCortex
         static void handleBooting();
         static void handleWiFiConnection();
         static void handleTimeSync();
-        static bool initialized;
     };
 }
 
-#endif // ROVER_BEHAVIOR_H 
+#endif // ROVER_BEHAVIOR_MANAGER_H 

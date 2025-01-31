@@ -1,3 +1,11 @@
+/**
+ * @file SoundFxManager.cpp
+ * @brief Implementation of the SoundFxManager class for audio output and effects
+ * 
+ * Handles the implementation of audio playback, recording, and sound effect generation.
+ * Includes initialization of audio hardware and management of audio resources.
+ */
+
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "SoundFxManager.h"
@@ -26,17 +34,19 @@ namespace AuditoryCortex
     using PC::AudioTypes::NoteInfo;
     using PC::AudioTypes::TimeSignature;
 
+    // Initialize static members with meaningful defaults
+    bool SoundFxManager::_isInitialized = false;
+    bool SoundFxManager::isRecording = false;
+    bool SoundFxManager::isPlayingSound = false;
+    int SoundFxManager::volume = 42;  // Default volume level
+    
     // Initialize static members
     int SoundFxManager::currentNote = 0;
     unsigned long SoundFxManager::lastNoteTime = 0;
     bool SoundFxManager::m_isTunePlaying = false;
     Audio SoundFxManager::audio;
-    bool SoundFxManager::isPlayingSound = false;
     const char* SoundFxManager::RECORD_FILENAME = "/sdcard/temp_record.wav";
-    bool SoundFxManager::isRecording = false;
     File SoundFxManager::recordFile;
-    bool SoundFxManager::_isInitialized = false;
-    int SoundFxManager::volume = 42;
 
     PC::AudioTypes::TunesTypes SoundFxManager::selectedSong = PC::AudioTypes::TunesTypes::ROVERBYTE_JINGLE;
     PC::AudioTypes::Tune SoundFxManager::activeTune;
@@ -187,9 +197,11 @@ namespace AuditoryCortex
         }
     }
 
-    void SoundFxManager::playErrorSound(int type) {
-        switch(type) {
-            case 1: // Recording error
+    void SoundFxManager::playErrorSound(ErrorSoundType type) 
+    {
+        switch(type) 
+        {
+            case ErrorSoundType::RECORDING:
                 SoundFxManager::playTone(PitchPerception::NOTE_B5, 200);
                 delay(100);
                 SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
@@ -197,7 +209,7 @@ namespace AuditoryCortex
                 SoundFxManager::playTone(PitchPerception::NOTE_D5, 400);
                 break;
                 
-            case 2: // SD card error
+            case ErrorSoundType::STORAGE:
                 SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
                 delay(100);
                 SoundFxManager::playTone(PitchPerception::NOTE_G5, 200);
@@ -205,7 +217,7 @@ namespace AuditoryCortex
                 SoundFxManager::playTone(PitchPerception::NOTE_G4, 400);
                 break;
                 
-            case 3: // Playback error
+            case ErrorSoundType::PLAYBACK:
                 SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
                 delay(100);
                 SoundFxManager::playTone(PitchPerception::NOTE_D5, 200);
@@ -221,7 +233,7 @@ namespace AuditoryCortex
         // Delete temporary recording after playback
         if (!SD.remove(RECORD_FILENAME)) {
             Serial.println("Failed to delete temporary recording file");
-            playErrorSound(2);
+            playErrorSound(ErrorSoundType::STORAGE);
         }
         isPlayingSound = false;
     }
@@ -256,7 +268,7 @@ namespace AuditoryCortex
 
         if (i2s_driver_install((i2s_port_t)EXAMPLE_I2S_CH, &i2s_config, 0, NULL) != ESP_OK) {
             Serial.println("ERROR: Failed to install I2S driver");
-            SoundFxManager::playErrorSound(1);
+            playErrorSound(ErrorSoundType::RECORDING);
             RoverManager::setEarsPerked(false);
             return;
         }
@@ -264,7 +276,7 @@ namespace AuditoryCortex
         if (i2s_set_pin((i2s_port_t)EXAMPLE_I2S_CH, &pin_config) != ESP_OK) {
             Serial.println("ERROR: Failed to set I2S pins");
             i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-            SoundFxManager::playErrorSound(1);
+            playErrorSound(ErrorSoundType::RECORDING);
             RoverManager::setEarsPerked(false);
             return;
         }
@@ -274,7 +286,7 @@ namespace AuditoryCortex
         if (!recordFile) {
             Serial.println("ERROR: Failed to open file for recording");
             i2s_driver_uninstall((i2s_port_t)EXAMPLE_I2S_CH);
-            SoundFxManager::playErrorSound(2);
+            playErrorSound(ErrorSoundType::RECORDING);
             RoverManager::setEarsPerked(false);
             return;
         }
@@ -320,7 +332,7 @@ namespace AuditoryCortex
         
         if (!headerWriteSuccess) 
         {
-            SoundFxManager::playErrorSound(2);
+            playErrorSound(ErrorSoundType::RECORDING);
             RoverManager::setEarsPerked(false);
             return;
         }
@@ -330,7 +342,7 @@ namespace AuditoryCortex
         if (!SD.exists(RECORD_FILENAME) || !audio.connecttoFS(SD, RECORD_FILENAME)) 
         {
             Serial.println("ERROR: Playback failed");
-            SoundFxManager::playErrorSound(3);
+            playErrorSound(ErrorSoundType::PLAYBACK);
             RoverManager::setEarsPerked(false);
             return;
         }
@@ -601,7 +613,7 @@ namespace AuditoryCortex
         
         // Set excited expression
         VisualCortex::RoverManager::setTemporaryExpression(
-            VisualCortex::RoverManager::EXCITED, 
+            PC::RoverTypes::Expression::EXCITED, 
             2000
         );
         
@@ -688,11 +700,11 @@ namespace AuditoryCortex
                 break;
 
             case PC::AudioTypes::Tone::ERROR:
-                playErrorSound(1);  // Generic error
+                playErrorSound(ErrorSoundType::PLAYBACK);
                 break;
 
             case PC::AudioTypes::Tone::WARNING:
-                playErrorSound(2);  // Warning variant
+                playErrorSound(ErrorSoundType::STORAGE);
                 break;
 
             case PC::AudioTypes::Tone::NOTIFICATION:
@@ -708,7 +720,7 @@ namespace AuditoryCortex
                 break;
 
             case PC::AudioTypes::Tone::GAME_OVER:
-                playErrorSound(3);  // Game over variant
+                playErrorSound(ErrorSoundType::PLAYBACK);
                 break;
 
             case PC::AudioTypes::Tone::MENU_SELECT:

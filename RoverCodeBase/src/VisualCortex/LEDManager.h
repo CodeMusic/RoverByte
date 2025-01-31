@@ -1,3 +1,14 @@
+/**
+ * @brief Visual perception system for LED pattern generation and control
+ * 
+ * Manages the LED-based visual feedback system:
+ * - Pattern generation and perception
+ * - Emotional state visualization
+ * - Cross-modal sensory integration
+ * - Visual feedback coordination
+ * - Boot sequence visualization
+ */
+
 #pragma once
 #include <FastLED.h>
 #include "../PrefrontalCortex/utilities.h"
@@ -31,8 +42,31 @@ namespace VisualCortex
     class LEDManager 
     {
     public:
-        // Core perception methods
+        /**
+         * @brief Initialize visual processing pathways
+         * Sets up LED hardware and initial perceptual state
+         */
         static void init();
+
+        /**
+         * @brief Process ongoing visual patterns
+         * Updates LED states based on current cognitive state
+         */
+        static void updateLEDs();
+
+        /**
+         * @brief Initiate loading animation sequence
+         * Begins temporal pattern generation for loading feedback
+         */
+        static void startLoadingAnimation();
+
+        /**
+         * @brief Terminate loading animation sequence
+         * Ends temporal pattern generation for loading feedback
+         */
+        static void stopLoadingAnimation();
+
+        // Core perception methods
         static void update();
         static void showLEDs();
 
@@ -44,11 +78,8 @@ namespace VisualCortex
         static PC::VisualTypes::VisualPattern getPattern() { return currentPattern; }
 
         // Animation control
-        static void startLoadingAnimation();
-        static void stopLoadingAnimation();
         static void updateLoadingAnimation();
         static bool isLoadingComplete();
-        static void updateLEDs();
 
         // Visual feedback
         static void flashSuccess();
@@ -65,7 +96,17 @@ namespace VisualCortex
 
         // Special effects
         static void runInitializationTest();
+        /**
+         * @brief Generate card-specific visual pattern
+         * @param uid Card identifier bytes
+         * @param uidLength Length of identifier
+         */
         static void displayCardPattern(const uint8_t* uid, uint8_t uidLength);
+        /**
+         * @brief Visualize musical frequency
+         * @param frequency Note frequency in Hz
+         * @param position LED position for visualization
+         */
         static void displayNote(uint16_t frequency, uint8_t position = 0);
         static void clearNoteDisplay();
 
@@ -80,11 +121,16 @@ namespace VisualCortex
         static FestiveTheme currentTheme;
         static EncodingModes currentEncodingMode;
 
+        // Add new methods
+        static void displayChromatic(const PC::ColorPerceptionTypes::ChromaticContext& context);
+        static void displayEmotional(const PC::ColorPerceptionTypes::EmotionalColor& emotion);
+        static void setIntensity(const PC::ColorPerceptionTypes::ColorIntensity& intensity);
+
     private:
         // LED state management
-        static CRGB leds[PinDefinitions::WS2812_NUM_LEDS];
-        static CRGB previousColors[PinDefinitions::WS2812_NUM_LEDS];
-        static NoteState currentNotes[PinDefinitions::WS2812_NUM_LEDS];
+        static CRGB leds[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
+        static CRGB previousColors[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
+        static NoteState currentNotes[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
         static PC::VisualTypes::VisualPattern currentPattern;
 
         // Mode tracking

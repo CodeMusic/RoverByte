@@ -1,3 +1,17 @@
+/**
+ * @brief SoundFxManager handles audio output and sound effect generation
+ * 
+ * This class manages the rover's audio output capabilities including:
+ * - System sound effects and notifications
+ * - Musical tune playback and jingles
+ * - Voice line playback
+ * - Audio recording and playback
+ * - Cross-modal audio-visual synchronization
+ * 
+ * The manager handles both direct tone generation and WAV file playback,
+ * supporting I2S output for high-quality audio reproduction.
+ */
+
 #ifndef SOUND_FX_MANAGER_H
 #define SOUND_FX_MANAGER_H
 
@@ -35,41 +49,48 @@ namespace AuditoryCortex
     static const int WAVE_HEADER_SIZE = 44;  // WAV header size in bytes
     static const int BYTE_RATE = (EXAMPLE_SAMPLE_RATE * 2);  // 16-bit mono = 2 bytes per sample
 
+
     class SoundFxManager {
     private:
         /* ========================== Private Members ========================== */
         
-        // Jingle-related state
+        /**
+         * @brief State variables for jingle playback
+         */
         static const int JINGLE_LENGTH;
         static bool m_isTunePlaying;
         static int currentNote;
         static unsigned long lastNoteTime;
         static bool jinglePlaying;
+        static const char* RECORD_FILENAME;
 
-        // Recording state
+        /**
+         * @brief Audio recording and playback state
+         */
         static bool isRecording;
         static File recordFile;
         static Audio audio;
         static bool isPlayingSound;
 
-        // Jingle metadata
-        static const char* RECORD_FILENAME;
-        static bool isJingleActive;
-        static unsigned long jingleStartTime;
-        static int currentJingleNote;
-
-        // Initialization and settings
+        /**
+         * @brief System configuration and state
+         */
         static bool _isInitialized;
         static int volume;
-
-        // Selected song state
         static TunesTypes selectedSong;
         static Tune activeTune;
         static int activeTuneLength;
 
         /* ========================== Private Methods ========================== */
+        /**
+         * @brief Initialize audio hardware components
+         */
         static void init_microphone();
         static void initializeAudio();
+        
+        /**
+         * @brief Generate WAV header for recording
+         */
         static void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate);
 
     public:
@@ -78,19 +99,34 @@ namespace AuditoryCortex
         static bool isInitialized() { return _isInitialized; }
 
         /* ========================== Playback Functions ========================== */
-        static void playErrorSound(int type);
-        static void playToneFx(PC::AudioTypes::Tone type);  // New method for playing system tones
-        static void playTune(PC::AudioTypes::TunesTypes type);  // For playing musical pieces
-        static void playTone(int frequency, int duration, int volume = 42); // Raw tone playback
+        /**
+         * @brief Play various system sounds and effects
+         */
+        static void playErrorSound(PC::AudioTypes::ErrorSoundType type = PC::AudioTypes::ErrorSoundType::PLAYBACK);
+        static void playToneFx(PC::AudioTypes::Tone type);
+        static void playTune(PC::AudioTypes::TunesTypes type);
+        static void playTone(int frequency, int duration, int volume = 42);
+
+        /**
+         * @brief UI interaction sound effects
+         */
         static void playRotaryPressSound(int mode = 0);
         static void playRotaryTurnSound(bool clockwise);
         static void playSideButtonSound(bool start = false);
-        static void playStartupSound(){ playTune(TunesTypes::ROVERBYTE_JINGLE); }
-        static void playSuccessSound();
-        static void playTimerDropSound(CRGB color);
         static void playMenuCloseSound();
         static void playMenuOpenSound();
         static void playMenuSelectSound();
+
+        /**
+         * @brief Special effect sounds
+         */
+        static void playStartupSound(){ playTune(TunesTypes::ROVERBYTE_JINGLE); }
+        static void playSuccessSound();
+        static void playTimerDropSound(CRGB color);
+        
+        /**
+         * @brief Voice and melody playback
+         */
         static void playVoiceLine(const char* line, uint32_t cardId = 0);
         static void playCardMelody(uint32_t cardId);
 

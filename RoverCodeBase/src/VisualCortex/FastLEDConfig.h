@@ -1,12 +1,23 @@
-/*
- * FastLEDConfig.h
+/**
+ * @brief Visual nervous system configuration for LED control
  * 
- * Core LED configuration for the visual cortex's nervous system.
- * Defines hardware settings, timing constants, and animation parameters
- * used across the LED control system.
+ * Defines the core neural pathways for LED visual processing:
+ * - Hardware neural interfaces
+ * - Temporal perception parameters
+ * - Visual pattern generation
+ * - Sensory feedback thresholds
+ * - Animation timing constants
  * 
- * Note: This must be included before FastLED.h in the main sketch
- * to properly configure the ESP32 hardware settings.
+ * The FastLEDConfig serves as the primary visual processing framework,
+ * coordinating:
+ * - Hardware neural pathways
+ * - Visual pattern generation
+ * - Temporal synchronization
+ * - Brightness perception
+ * - Animation sequences
+ * 
+ * Note: Must be included before FastLED.h in the main sketch
+ * to properly configure ESP32 hardware settings
  */
 
 #ifndef FASTLED_CONFIG_H
@@ -21,7 +32,10 @@ namespace VisualCortex
     using PC::ConfigTypes:: LEDConfig;
     using PC::VisualTypes::VisualPattern;
 
-    // Core FastLED ESP32 Hardware Configuration
+    /**
+     * @brief Core ESP32 neural pathway configuration
+     * Defines hardware-level visual processing parameters
+     */
     namespace FastLEDHardware 
     {
         constexpr bool INTERNAL = true;
@@ -32,7 +46,10 @@ namespace VisualCortex
         constexpr bool ESP32_RMT = true;
     }
 
-    // LED Strip Configuration
+    /**
+     * @brief LED strip perception parameters
+     * Defines visual output characteristics
+     */
     namespace FastLEDConfig 
     {
         constexpr uint8_t MAX_BRIGHTNESS = 255;
@@ -41,7 +58,10 @@ namespace VisualCortex
         #define LED_TYPE WS2812B
     }
 
-    // Animation Timing Constants
+    /**
+     * @brief Temporal perception constants
+     * Defines timing for visual pattern generation
+     */
     namespace AnimationTiming 
     {
         constexpr uint16_t LOADING_DELAY = 100;
@@ -52,7 +72,10 @@ namespace VisualCortex
         constexpr uint8_t ERROR_MIN_FADE = 64;
     }
 
-    // Pattern Configuration
+    /**
+     * @brief Visual pattern generation parameters
+     * Defines pattern creation and animation thresholds
+     */
     namespace PatternConfig 
     {
         constexpr uint8_t LEDS_PER_STEP = 3;
@@ -62,7 +85,10 @@ namespace VisualCortex
         constexpr uint16_t ANIMATION_DELAY = 50;
     }
 
-    // Boot Sequence Configuration
+    /**
+     * @brief Initialization sequence parameters
+     * Defines visual feedback during system startup
+     */
     namespace BootConfig 
     {
         constexpr uint16_t STEP_DELAY = 100;

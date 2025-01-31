@@ -1,3 +1,21 @@
+/**
+ * @brief Core cognitive system configuration and behavioral parameters
+ * 
+ * Defines fundamental neural processing parameters:
+ * - System-wide log verbosity
+ * - Cognitive state thresholds
+ * - Behavioral response timing
+ * - Sensory processing limits
+ * - Neural pathway configurations
+ * 
+ * This configuration hub establishes:
+ * - Default cognitive states
+ * - Debug information flow
+ * - System-wide constants
+ * - Cross-cortex parameters
+ * - Core behavioral settings
+ */
+
 #pragma once
 
 #include "src/PrefrontalCortex/ProtoPerceptions.h"

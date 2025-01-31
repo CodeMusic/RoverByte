@@ -21,7 +21,8 @@
 
 namespace PrefrontalCortex 
 {
-    namespace PC = PrefrontalCortex;  // Add namespace alias
+    // Namespace aliases for cleaner cognitive pathways
+    namespace PC = PrefrontalCortex;
     using namespace CorpusCallosum;
     using VC::RoverViewManager;
     using VC::LEDManager;
@@ -32,15 +33,10 @@ namespace PrefrontalCortex
     using GC::AppRegistration;
     using PSY::WiFiManager;
 
-    // Forward declare external sprite
-    extern TFT_eSprite spr;
-
-    // Static member initialization with proper namespace qualification
-    bool RoverBehaviorManager::initialized = false;
+    // Initialize neural state variables
     RoverTypes::BehaviorState RoverBehaviorManager::currentState = RoverTypes::BehaviorState::LOADING;
-    String RoverBehaviorManager::statusMessage = "Starting...";
     RoverTypes::LoadingPhase RoverBehaviorManager::loadingPhase = RoverTypes::LoadingPhase::BOOTING;
-    const char* RoverBehaviorManager::currentStatusMessage = "Starting...";
+    const char* RoverBehaviorManager::currentStatusMessage = "Initializing neural pathways...";
     RoverTypes::BehaviorState RoverBehaviorManager::previousState = RoverTypes::BehaviorState::LOADING;
     unsigned long RoverBehaviorManager::warningStartTime = 0;
     bool RoverBehaviorManager::isCountingDown = false;
@@ -48,22 +44,18 @@ namespace PrefrontalCortex
     unsigned long RoverBehaviorManager::fatalErrorStartTime = 0;
     bool RoverBehaviorManager::isFatalError = false;
     VisualTypes::VisualPattern RoverBehaviorManager::pattern = VisualTypes::VisualPattern::NONE;
+    String RoverBehaviorManager::statusMessage = "";
+    bool RoverBehaviorManager::initialized = false;
 
     void RoverBehaviorManager::init() 
     {
-        if (initialized) 
-        {
-            Utilities::LOG_DEBUG("RoverBehaviorManager already initialized");
-            return;
-        }
-
         try 
         {
-            // Initialize SD card first
+            // Initialize core neural pathways
             SDManager::init(BOARD_SD_CS);
-            Utilities::LOG_DEBUG("SD Manager initialized");
+            Utilities::LOG_DEBUG("Memory pathways initialized");
 
-            // Initialize other managers
+            // Initialize sensory processing systems
             LEDManager::init();
             RoverViewManager::init();
             MenuManager::init();
@@ -71,11 +63,11 @@ namespace PrefrontalCortex
             AppManager::init();
 
             initialized = true;
-            Utilities::LOG_DEBUG("RoverBehaviorManager initialized successfully");
+            Utilities::LOG_DEBUG("Cognitive systems initialized successfully");
         }
         catch (const std::exception& e) 
         {
-            Utilities::LOG_ERROR("RoverBehaviorManager init failed: %s", e.what());
+            Utilities::LOG_ERROR("Cognitive initialization failed: %s", e.what());
             throw;
         }
     }
@@ -173,9 +165,6 @@ namespace PrefrontalCortex
                 handleFatalError();
                 break;
         }
-
-        // Push rendered sprite to display
-        spr.pushSprite(0, 0);
 
         // Add to existing update function
         if (currentState == RoverTypes::BehaviorState::WARNING) {

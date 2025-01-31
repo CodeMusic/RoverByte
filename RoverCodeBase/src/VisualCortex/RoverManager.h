@@ -1,3 +1,14 @@
+/**
+ * @brief Manages rover's emotional expression and personality visualization
+ * 
+ * Controls the rover's visual cognitive states:
+ * - Facial expression generation
+ * - Emotional state transitions
+ * - Personality trait display
+ * - Social interaction feedback
+ * - Behavioral animation patterns
+ */
+
 #pragma once
 #include <FastLED.h>
 #include "TFT_eSPI.h"
@@ -19,13 +30,22 @@ namespace VisualCortex
 
         public:
 
+            /**
+             * @brief Converts emotional expression to mood string
+             */
             static const char* expressionToMood(Expression exp);
             static bool showTime;  // Added here as it's related to rover display state
 
+            /**
+             * @brief Checks if expression is in idle state
+             */
             static bool isIdleExpression(Expression exp) {
                 return exp <= Expression::INTENSE;  // Only first 4 are idle expressions
             }
 
+            /**
+             * @brief Sets temporary emotional expression
+             */
             static void setTemporaryExpression(PC::RoverTypes::Expression exp, int duration = 1000, uint16_t starColor = TFT_WHITE);
             static void showThinking() { setTemporaryExpression(PC::RoverTypes::Expression::LOOKING_UP); }
             static void showError() { setTemporaryExpression(PC::RoverTypes::Expression::LOOKING_DOWN, 1000); }

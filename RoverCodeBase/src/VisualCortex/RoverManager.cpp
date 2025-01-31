@@ -1,3 +1,21 @@
+/**
+ * @brief Rover emotional expression system implementation
+ * 
+ * Implements core personality visualization functions:
+ * - Mood state processing
+ * - Animation sequence generation
+ * - Behavioral pattern coordination
+ * - Social interaction feedback
+ * - Personality trait expression
+ * 
+ * The implementation manages:
+ * - Dynamic mood transitions
+ * - Facial component animations
+ * - Sleep state visualization
+ * - Time display integration
+ * - Cross-modal emotional feedback
+ */
+
 #include <time.h>
 #include "VisualSynesthesia.h"
 #include "../PrefrontalCortex/PowerManager.h"

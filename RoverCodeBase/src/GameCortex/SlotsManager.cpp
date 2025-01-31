@@ -1,3 +1,13 @@
+/**
+ * @brief Implementation of the SlotsManager pattern recognition system
+ * 
+ * Handles the implementation of:
+ * - Visual pattern sequencing
+ * - Reward feedback loops
+ * - Cross-modal sensory integration
+ * - Temporal pattern processing
+ */
+
 #include "SlotsManager.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "../VisualCortex/LEDManager.h"
@@ -16,7 +26,7 @@ namespace GameCortex
     using AC::SoundFxManager;
     using SC::MenuManager;
 
-    // Initialize static members
+    // Initialize neural state variables
     uint8_t SlotsManager::activeSlotPair = 0;
     bool SlotsManager::slotLocked[4] = {false};
     CRGB SlotsManager::slotColors[4];
@@ -139,21 +149,14 @@ namespace GameCortex
             SoundFxManager::playStartupSound();
             RoverViewManager::showNotification("SLOTS", "Winner!", "GAME", 3000);
         } else {
-            SoundFxManager::playErrorSound(1);
+            SoundFxManager::playErrorSound(PC::AudioTypes::ErrorSoundType::PLAYBACK);
             RoverViewManager::showNotification("SLOTS", "Try Again!", "GAME", 3000);
         }
     }
 
     CRGB SlotsManager::getRainbowColor(uint8_t index) {
-        switch(index) {
-            case 0: return CRGB::Red;
-            case 1: return CRGB::Orange;
-            case 2: return CRGB::Yellow;
-            case 3: return CRGB::Green;
-            case 4: return CRGB::Blue;
-            case 5: return CRGB::Purple;
-            default: return CRGB::White;
-        }
+        // Use VisualSynesthesia's color perception system
+        return PC::ColorPerceptionTypes::BASE_8_COLORS[index];
     }
 
     void SlotsManager::reset() {
@@ -164,22 +167,7 @@ namespace GameCortex
     }
 
     void SlotsManager::startGame() {
-        gameActive = true;
-        showingResult = false;
-        activeSlotPair = 0;
-        
-        // Initialize slots
-        for(int i = 0; i < 4; i++) {
-            slotLocked[i] = false;
-            slotColors[i] = getRainbowColor(random(7));
-            LEDManager::setLED(i*2, slotColors[i]);
-            LEDManager::setLED(i*2+1, slotColors[i]);
-        }
-        LEDManager::showLEDs();
-        
-        animationTimer = millis();
-        lockTimer = millis() + random(200, 1000); // Set first auto-lock timer
-        MenuManager::hide();
-        RoverViewManager::showNotification("SLOTS", "Auto-locking reels...", "GAME", 2000);
+        init();
+        lockTimer = millis() + 1000; // Initial delay before first lock
     }
 }

@@ -2,17 +2,17 @@
 
 namespace PrefrontalCortex 
 {
-    namespace ColorPerception 
+    namespace ColorPerceptionTypes 
     {
         const CRGB BASE_8_COLORS[8] = {
-            CRGB::Black,          // 0 = Off
-            CRGB(255, 0, 0),      // 1 = Pure Red
-            CRGB(255, 140, 0),    // 2 = Orange
-            CRGB::Yellow,         // 3 = Yellow
-            CRGB::Green,          // 4 = Green
-            CRGB::Blue,           // 5 = Blue
-            CRGB(75, 0, 130),     // 6 = Indigo
-            CRGB(148, 0, 211)     // 7 = Violet
+            CRGB::Black,          // 0 = Off/Unconscious
+            CRGB(255, 0, 0),      // 1 = Pure Red/Primal
+            CRGB(255, 140, 0),    // 2 = Orange/Creative
+            CRGB::Yellow,         // 3 = Yellow/Intellectual
+            CRGB::Green,          // 4 = Green/Emotional
+            CRGB::Blue,           // 5 = Blue/Intuitive
+            CRGB(75, 0, 130),     // 6 = Indigo/Spiritual
+            CRGB(148, 0, 211)     // 7 = Violet/Transcendent
         };
 
         const CRGB MONTH_COLORS[12][2] = {

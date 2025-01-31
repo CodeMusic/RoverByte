@@ -1,3 +1,14 @@
+/**
+ * @brief PitchPerception handles the auditory-cognitive mapping of musical frequencies
+ * 
+ * This class manages the translation between frequencies, musical notes, and their durations.
+ * It provides core functionality for:
+ * - Musical note frequency constants and conversions
+ * - Note duration calculations based on time signatures
+ * - Pitch detection and standardization
+ * - Cross-modal mappings for audio-visual synesthesia
+ */
+
 #ifndef PITCHPERCEPTION_H
 #define PITCHPERCEPTION_H
 
@@ -26,7 +37,10 @@ namespace AuditoryCortex
 
     class PitchPerception {
     public:
-        // Musical note frequencies in Hz
+        /**
+         * @brief Musical note frequencies in Hz
+         * Provides standard frequency values for notes from B0 to DS8
+         */
         static const uint16_t NOTE_B0 = 31;
         static const uint16_t NOTE_C1 = 33;
         static const uint16_t NOTE_CS1 = 35;
@@ -120,8 +134,20 @@ namespace AuditoryCortex
         static const uint16_t NOTE_FREQUENCIES[];
         static const char* NOTE_NAMES[];
 
+        /**
+         * @brief Gets note information from a frequency
+         * @param frequency The input frequency in Hz
+         * @return NoteInfo containing note details
+         */
         static PC::AudioTypes::NoteInfo getNoteInfo(uint16_t frequency);
+
+        /**
+         * @brief Standardizes a frequency to the nearest note
+         * @param frequency The input frequency to standardize
+         * @return The standardized frequency
+         */
         static uint16_t getStandardFrequency(uint16_t frequency);
+
         static uint16_t getNoteFrequency(const PC::AudioTypes::NoteInfo& info);
         static const char* getNoteName(const PC::AudioTypes::NoteInfo& info);
         static uint16_t getDayBaseNote4();

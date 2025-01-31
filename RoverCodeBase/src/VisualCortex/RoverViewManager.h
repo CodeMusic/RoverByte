@@ -1,3 +1,21 @@
+/**
+ * @brief Manages rover's visual interface and display coordination
+ * 
+ * Controls the rover's cognitive display systems:
+ * - View state management
+ * - Display buffer coordination
+ * - Visual feedback processing
+ * - Error state visualization
+ * - Cross-modal display integration
+ * 
+ * Coordinates display of:
+ * - Todo lists and reminders
+ * - Chakra and virtue systems
+ * - Weather and environmental data
+ * - Statistical processing
+ * - Temporal meal planning
+ */
+
 #ifndef ROVER_VIEW_MANAGER_H
 #define ROVER_VIEW_MANAGER_H
 

@@ -12,11 +12,11 @@
 
 #define DEBUG_MODE 
 
-
 using namespace CorpusCallosum;
 
 namespace PsychicCortex 
 {
+    // Initialize static members with default values
     Adafruit_PN532 NFCManager::nfc(SDA_PIN, SCL_PIN);
     uint32_t NFCManager::lastCardId = 0;
     uint32_t NFCManager::totalScans = 0;
@@ -31,13 +31,18 @@ namespace PsychicCortex
     uint8_t NFCManager::initRetries = 0;
     unsigned long NFCManager::initStartTime = 0;
 
-    // Example valid card IDs
+    // Example valid card IDs for testing and validation
     const char* validCardIDs[] = {
         "ROVER123",
         "BYTE456",
         "ROVERBYTE789"
     };
 
+    /**
+     * @brief Initialize NFC hardware and configure for operation
+     * Sets up I2C communication, verifies hardware presence,
+     * and configures the PN532 chip for card reading
+     */
     void NFCManager::init() {
         PrefrontalCortex::Utilities::LOG_PROD("Starting NFC initialization...");
         Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
@@ -60,22 +65,39 @@ namespace PsychicCortex
         AuditoryCortex::SoundFxManager::playStartupSound();
     }
 
+    /**
+     * @brief Handle rotary encoder rotation events
+     * Updates NFC state and provides audio feedback
+     * @param direction Rotation direction (+/-)
+     */
     void NFCManager::handleRotaryTurn(int direction) {
     update();
     AC::SoundFxManager::playVoiceLine("waiting_for_card");
     }
 
+    /**
+     * @brief Process rotary encoder button press
+     * Initiates card scanning and provides feedback
+     */
     void NFCManager::handleRotaryPress() {
         checkForCard();
         AC::SoundFxManager::playVoiceLine("card_detected");
     }
 
+    /**
+     * @brief Begin background initialization sequence
+     * Starts multi-stage initialization process
+     */
     void NFCManager::startBackgroundInit() {
         initInProgress = true;
         initStage = 0;
         lastInitAttempt = millis();
     }
 
+    /**
+     * @brief Main update loop for NFC operations
+     * Handles initialization, card detection, and data processing
+     */
     void NFCManager::update() {
         if (initInProgress && !AC::SoundFxManager::isPlaying()) {
             if (millis() - lastInitAttempt < 1000) return; // Don't try too frequently
@@ -139,6 +161,10 @@ namespace PsychicCortex
         }
     }
 
+    /**
+     * @brief Read data from detected NFC card
+     * Processes card pages and handles encryption
+     */
     void NFCManager::readCardData() {
         memset(cardData, 0, sizeof(cardData));
         
@@ -167,6 +193,10 @@ namespace PsychicCortex
         cardData[dataIndex] = '\0'; // Ensure null termination
     }
 
+    /**
+     * @brief Scan for presence of NFC card
+     * Reads card UID and updates system state
+     */
     void NFCManager::handleNFCScan() {
         if (isCardPresent()) {
             // Card present - start NFC scan flow
@@ -177,10 +207,18 @@ namespace PsychicCortex
         }
     }
 
+    /**
+     * @brief Check if card data is encrypted
+     * Examines authentication block for encryption flags
+     */
     bool NFCManager::isCardEncrypted() {
         return checkForEncryption();
     }
 
+    /**
+     * @brief Verify encryption status of card
+     * Reads authentication block and checks security bits
+     */
     bool NFCManager::checkForEncryption() {
         uint8_t data[4];
         // Check authentication block
@@ -191,6 +229,10 @@ namespace PsychicCortex
         return (data[3] & 0x0F) != 0;
     }
 
+    /**
+     * @brief Scan for presence of NFC card
+     * Reads card UID and updates system state
+     */
     void NFCManager::checkForCard() {
         uint8_t success;
         uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -208,12 +250,20 @@ namespace PsychicCortex
         }
     }
 
+    /**
+     * @brief Stop all NFC operations
+     * Resets scanning and initialization states
+     */
     void NFCManager::stop() {
         isProcessingScan = false;
         initInProgress = false;
         cardPresent = false;
     }
 
+    /**
+     * @brief Validate detected card
+     * Checks card data against known valid patterns
+     */
     bool NFCManager::isCardValid() 
     {
         if (strlen(cardData) == 0) 

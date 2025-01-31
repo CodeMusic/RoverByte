@@ -14,12 +14,24 @@ namespace PsychicCortex
     using VC::VisualMessage;
     using PC::NFCTypes::InitState;
 
+    /**
+     * @brief Manages NFC communication and card interactions
+     * 
+     * Provides:
+     * - NFC hardware initialization and configuration
+     * - Card detection and validation
+     * - Data reading and encryption checking
+     * - Background initialization process
+     * - User input handling for NFC operations
+     */
     class NFCManager {
     public:
+        // Configuration constants
         static constexpr size_t MAX_CARD_DATA = 256;
         static constexpr uint8_t MAX_INIT_RETRIES = 3;
         static constexpr unsigned long INIT_TIMEOUT_MS = 5000;
         
+        // Core NFC operations
         static void init();
         static void update();
         static void checkForCard();
@@ -38,7 +50,10 @@ namespace PsychicCortex
         static void handleRotaryPress();
         
     private:
+        // Hardware interface
         static Adafruit_PN532 nfc;
+
+        // State tracking
         static uint32_t lastCardId;
         static uint32_t totalScans;
         static bool cardPresent;

@@ -12,6 +12,25 @@ namespace SomatosensoryCortex
     using namespace CorpusCallosum;
     using PC::MenuTypes::MenuItem;  // Add this after creating it in ProtoPerceptions
 
+    /**
+     * @brief Manages menu system and user interface interactions
+     * 
+     * Provides:
+     * - Menu navigation and selection handling
+     * - Dynamic menu structure management
+     * - Visual feedback coordination
+     * - Application state transitions
+     * - User input processing
+     * - Menu stack management for navigation history
+     * 
+     * The MenuManager serves as the cognitive interface between
+     * user intentions and system responses, coordinating:
+     * - Menu item organization and display
+     * - Navigation state tracking
+     * - Selection feedback
+     * - Application switching
+     * - Visual and audio responses
+     */
     class MenuManager 
     {
     public:
@@ -29,6 +48,8 @@ namespace SomatosensoryCortex
         static void enterSubmenu(const std::vector<MenuItem>& submenu);
         static void goBack();
         static int getSelectedIndex();
+        static const MenuItem& getCurrentItem();
+
 
         // Menu rendering methods
         static void drawMenu();

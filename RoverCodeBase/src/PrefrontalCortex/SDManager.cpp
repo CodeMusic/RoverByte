@@ -15,11 +15,11 @@ namespace PrefrontalCortex
     using PC::StorageTypes::StorageDevice;
     using PC::StorageTypes::FileMetadata;
 
+    // Initialize neural state variables
     bool SDManager::initialized = false;
-    const char* SDManager::NFC_FOLDER = "/NFC";
-    const char* SDManager::SCANNED_CARDS_FILE = "/NFC/scannedcards.inf";
-
-    uint8_t SDManager::cardType;
+    uint8_t SDManager::cardType = 0;
+    const char* SDManager::NFC_FOLDER = "/nfc";
+    const char* SDManager::SCANNED_CARDS_FILE = "/nfc/scanned_cards.txt";
     uint64_t SDManager::cardSize = 0;
     uint64_t SDManager::totalSpace = 0;
     uint64_t SDManager::usedSpace = 0;
@@ -42,35 +42,41 @@ namespace PrefrontalCortex
     int mosi =  BOARD_SD_MOSI;
     int cs =    BOARD_SD_CS;
 
-    void SDManager::listDir(fs::FS &fs, const char * dirname, uint8_t levels){
-        Utilities::LOG_DEBUG("Listing directory: %s\n", dirname);
-
+    void SDManager::listDir(fs::FS &fs, const char *dirname, uint8_t levels) 
+    {
         File root = fs.open(dirname);
-        if(!root){
-            Utilities::LOG_ERROR("Failed to open directory");
+        if (!root) 
+        {
+            Utilities::LOG_ERROR("Memory pathway access failed: %s", dirname);
             return;
         }
-        if(!root.isDirectory()){
-            Utilities::LOG_ERROR("Not a directory");
+        if (!root.isDirectory()) 
+        {
+            Utilities::LOG_ERROR("Not a memory cluster: %s", dirname);
             return;
         }
 
         File file = root.openNextFile();
-        while(file){
-            if(file.isDirectory()){
-                Utilities::LOG_DEBUG("  DIR : %s", file.name());
-                if(levels){
-                    listDir(fs, file.path(), levels -1);
+        while (file) 
+        {
+            if (file.isDirectory()) 
+            {
+                Utilities::LOG_DEBUG("Memory cluster: %s", file.name());
+                if (levels) 
+                {
+                    listDir(fs, file.path(), levels - 1);
                 }
-            } else {
-                Utilities::LOG_DEBUG("  FILE: %s  SIZE: %llu", file.name(), file.size());
+            } 
+            else 
+            {
+                Utilities::LOG_DEBUG("Memory fragment: %s, size: %d", file.name(), file.size());
             }
             file = root.openNextFile();
         }
     }
 
-    void SDManager::createDir(fs::FS &fs, const char * path){
-        Utilities::LOG_DEBUG("Creating Dir: %s\n", path);
+    void SDManager::createDir(fs::FS &fs, const char *path) 
+    {
         if(fs.mkdir(path)){
             Utilities::LOG_DEBUG("Dir created");
         } else {
@@ -78,8 +84,8 @@ namespace PrefrontalCortex
         }
     }
 
-    void SDManager::removeDir(fs::FS &fs, const char * path){
-        Utilities::LOG_DEBUG("Removing Dir: %s\n", path);
+    void SDManager::removeDir(fs::FS &fs, const char *path) 
+    {
         if(fs.rmdir(path)){
             Utilities::LOG_DEBUG("Dir removed");
         } else {
@@ -87,9 +93,8 @@ namespace PrefrontalCortex
         }
     }
 
-    void SDManager::readFile(fs::FS &fs, const char * path){
-        Utilities::LOG_DEBUG("Reading file: %s\n", path);
-
+    void SDManager::readFile(fs::FS &fs, const char *path) 
+    {
         File file = fs.open(path);
         if(!file){
             Utilities::LOG_ERROR("Failed to open file for reading");
@@ -103,9 +108,8 @@ namespace PrefrontalCortex
         file.close();
     }
 
-    void SDManager::writeFile(fs::FS &fs, const char * path, const char * message){
-        Utilities::LOG_DEBUG("Writing file: %s\n", path);
-
+    void SDManager::writeFile(fs::FS &fs, const char *path, const char *message) 
+    {
         File file = fs.open(path, FILE_WRITE);
         if(!file){
             Utilities::LOG_ERROR("Failed to open file for writing");
@@ -119,9 +123,8 @@ namespace PrefrontalCortex
         file.close();
     }
 
-    void SDManager::appendFile(fs::FS &fs, const char * path, const char * message){
-        Utilities::LOG_DEBUG("Appending to file: %s\n", path);
-
+    void SDManager::appendFile(fs::FS &fs, const char *path, const char *message) 
+    {
         File file = fs.open(path, FILE_APPEND);
         if(!file){
             Utilities::LOG_ERROR("Failed to open file for appending");
@@ -135,8 +138,8 @@ namespace PrefrontalCortex
         file.close();
     }
 
-    void SDManager::renameFile(fs::FS &fs, const char * path1, const char * path2){
-        Utilities::LOG_DEBUG("Renaming file %s to %s\n", path1, path2);
+    void SDManager::renameFile(fs::FS &fs, const char *path1, const char *path2) 
+    {
         if (fs.rename(path1, path2)) {
             Utilities::LOG_DEBUG("File renamed");
         } else {
@@ -144,8 +147,8 @@ namespace PrefrontalCortex
         }
     }
 
-    void SDManager::deleteFile(fs::FS &fs, const char * path){
-        Utilities::LOG_DEBUG("Deleting file: %s\n", path);
+    void SDManager::deleteFile(fs::FS &fs, const char *path) 
+    {
         if(fs.remove(path)){
             Utilities::LOG_DEBUG("File deleted");
         } else {
@@ -153,7 +156,8 @@ namespace PrefrontalCortex
         }
     }
 
-    void SDManager::testFileIO(fs::FS &fs, const char * path){
+    void SDManager::testFileIO(fs::FS &fs, const char *path) 
+    {
         File file = fs.open(path);
         static uint8_t buf[512];
         size_t len = 0;
@@ -178,7 +182,6 @@ namespace PrefrontalCortex
             Utilities::LOG_ERROR("Failed to open file for reading");
         }
 
-
         file = fs.open(path, FILE_WRITE);
         if(!file){
             Utilities::LOG_ERROR("Failed to open file for writing");
@@ -196,26 +199,25 @@ namespace PrefrontalCortex
         delete[] buf;
     }
 
-    void SDManager::init(uint8_t cs) {
-        if (initialized) return;
-
-        // Initialize SD card
-        if (!SD.begin(cs)) {
-            Utilities::LOG_ERROR("SD Card initialization failed!");
+    void SDManager::init(uint8_t cs) 
+    {
+        if (!SD.begin(cs)) 
+        {
+            Utilities::LOG_ERROR("Memory pathway initialization failed");
             return;
         }
 
-        // Check card type
         cardType = SD.cardType();
-        if (cardType == CARD_NONE) {
-            Utilities::LOG_ERROR("No SD Card detected!");
+        if (cardType == CARD_NONE) 
+        {
+            Utilities::LOG_ERROR("No memory storage detected");
             return;
         }
 
-        // Log card information
-        cardSize = (uint64_t)SD.cardSize() / (1024 * 1024);
-        totalSpace = (uint64_t)SD.totalBytes() / (1024 * 1024);
-        usedSpace = (uint64_t)SD.usedBytes() / (1024 * 1024);
+        // Initialize memory capacity metrics
+        cardSize = SD.cardSize() / (1024 * 1024);
+        totalSpace = SD.totalBytes() / (1024 * 1024);
+        usedSpace = SD.usedBytes() / (1024 * 1024);
 
         const char* cardTypeStr = 
             cardType == CARD_MMC ? "MMC" :
@@ -228,15 +230,21 @@ namespace PrefrontalCortex
         Utilities::LOG_DEBUG("Used space: %llu MB", usedSpace);
         
         initialized = true;
+        Utilities::LOG_DEBUG("Memory pathways initialized successfully");
+        
+        // Ensure experiential memory structure exists
+        ensureNFCFolderExists();
     }
 
-    void SDManager::ensureNFCFolderExists() {
+    void SDManager::ensureNFCFolderExists() 
+    {
         if (!SD.exists(NFC_FOLDER)) {
             SD.mkdir(NFC_FOLDER);
         }
     }
 
-    bool SDManager::hasCardBeenScanned(uint32_t cardId) {
+    bool SDManager::hasCardBeenScanned(uint32_t cardId) 
+    {
         return false;
         /*
         if (!initialized) return false;
@@ -260,7 +268,8 @@ namespace PrefrontalCortex
         */
     }
 
-    void SDManager::recordCardScan(uint32_t cardId) {
+    void SDManager::recordCardScan(uint32_t cardId) 
+    {
         return;
         /*
         if (!initialized) return;

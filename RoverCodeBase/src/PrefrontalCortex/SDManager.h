@@ -15,8 +15,20 @@ namespace PrefrontalCortex
 {
     using PC::StorageTypes::StorageStats;
 
-    class SDManager {
+    /**
+     * @brief Manages long-term memory storage and retrieval pathways
+     * 
+     * Controls:
+     * - Memory formation and storage
+     * - Information retrieval patterns
+     * - Memory consolidation processes
+     * - Neural pathway persistence
+     * - Experiential data recording
+     */
+    class SDManager 
+    {
     public:
+        // Core memory functions
         static void init(uint8_t cs);
         static void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
         static void createDir(fs::FS &fs, const char *path);
@@ -29,15 +41,18 @@ namespace PrefrontalCortex
         static void testFileIO(fs::FS &fs, const char *path);
         static bool isInitialized() { return initialized; }
 
+        // Experiential memory management
         static void ensureNFCFolderExists();
         static bool hasCardBeenScanned(uint32_t cardId);
         static void recordCardScan(uint32_t cardId);
 
+        // Memory capacity assessment
         static uint64_t getCardSize();
         static uint64_t getTotalSpace();
         static uint64_t getUsedSpace();
 
     private:
+        // Neural state variables
         static bool initialized;
         static uint8_t cardType;
         static const char* NFC_FOLDER;
@@ -46,6 +61,6 @@ namespace PrefrontalCortex
         static uint64_t totalSpace;
         static uint64_t usedSpace;
     };
-
 }
+
 #endif // SDMANAGER_H

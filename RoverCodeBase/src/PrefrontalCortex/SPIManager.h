@@ -7,28 +7,37 @@
 #include "../MotorCortex/PinDefinitions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 
-using namespace CorpusCallosum;
-
 namespace PrefrontalCortex 
 {
-    namespace PC = PrefrontalCortex;
+    using namespace CorpusCallosum;
 
-    class SPIManager {
+    /**
+     * @brief Manages SPI bus communication and device selection
+     * 
+     * Controls:
+     * - SPI bus initialization and configuration
+     * - Device chip select management
+     * - Multi-device coordination
+     * - Safe device switching
+     * - High-speed data transfer
+     */
+    class SPIManager 
+    {
     public:
-        // Check if SPIManager is initialized
+        // Check if SPI bus is ready
         static bool isInitialized();
 
-        // Initialize SPI and CS pins
+        // Initialize SPI bus and chip selects
         static void init();
 
-        // Select a specific SPI device
+        // Select specific device for communication
         static void selectDevice(uint8_t deviceCS);
 
-        // Deselect all SPI devices
+        // Deselect all devices
         static void deselectAll();
 
     private:
+        // Track initialization state
         static bool initialized;
     };
-
 }

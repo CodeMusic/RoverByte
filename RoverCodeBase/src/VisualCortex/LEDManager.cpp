@@ -1,3 +1,14 @@
+/**
+ * @brief Visual perception system implementation
+ * 
+ * Implements core visual processing functions:
+ * - Pattern generation algorithms
+ * - Temporal sequence processing
+ * - Cross-modal sensory integration
+ * - Emotional state visualization
+ * - Boot sequence coordination
+ */
+
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "../PrefrontalCortex/utilities.h"
@@ -48,7 +59,7 @@ namespace VisualCortex
     using PC::AudioTypes::Tone;
 
     // Visual constants from FastLEDConfig
-    using namespace VC::FastLEDConfig;  // Changed from VC::FastLEDConfig::LEDConfig
+    using namespace VC::FastLEDConfig;  // Changed from VC::FastLEDConfig
     using namespace VC::AnimationTiming;  // Changed from VC::FastLEDConfig::AnimationTiming
     using namespace VC::PatternConfig;  // Changed from VC::FastLEDConfig::PatternConfig
     using namespace VC::BootConfig;  // Changed from VC::FastLEDConfig::BootConfig
@@ -60,9 +71,9 @@ namespace VisualCortex
     const CRGB LEDManager::FINAL_PREP_COLOR = CRGB::Gold;
 
     // Static member initialization - LED Arrays
-    CRGB LEDManager::leds[PinDefinitions::WS2812_NUM_LEDS];
-    CRGB LEDManager::previousColors[PinDefinitions::WS2812_NUM_LEDS];
-    NoteState LEDManager::currentNotes[PinDefinitions::WS2812_NUM_LEDS];
+    CRGB LEDManager::leds[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
+    CRGB LEDManager::previousColors[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
+    NoteState LEDManager::currentNotes[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
 
     // Visual state tracking
     PC::VisualTypes::VisualPattern LEDManager::currentPattern = PC::VisualTypes::VisualPattern::NONE;
@@ -126,16 +137,20 @@ namespace VisualCortex
         {1, 29, FestiveTheme::CHINESE_NEW_YEAR}// Date varies
     };
 
+    /**
+     * @brief Initialize visual processing pathways
+     * Sets up LED hardware and initial perceptual state
+     */
     void LEDManager::init() {
         Utilities::LOG_DEBUG("Starting LED Manager initialization...");
         
         try {
             // Initialize FastLED with hardware SPI configuration
             FastLED.addLeds<LED_TYPE,  // Changed from LEDConfig::LED_TYPE
-                           PinDefinitions::WS2812_DATA_PIN, 
-                           PinDefinitions::WS2812_COLOR_ORDER>(
+                           MC::PinDefinitions::VisualPathways::WS2812_DATA_PIN, 
+                           MC::PinDefinitions::VisualPathways::WS2812_COLOR_ORDER>(
                 leds, 
-                PinDefinitions::WS2812_NUM_LEDS
+                MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS
             ).setCorrection(FastLEDConfig::COLOR_CORRECTION);  // Changed from LEDConfig::COLOR_CORRECTION
             
             FastLED.setBrightness(FastLEDConfig::MAX_BRIGHTNESS);  // Changed from LEDConfig::MAX_BRIGHTNESS
@@ -143,7 +158,7 @@ namespace VisualCortex
             FastLED.clear(true);
             
             // Initialize boot sequence colors
-            fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
+            fill_solid(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
             FastLED.show();
             
             Utilities::LOG_DEBUG("LED Manager initialized successfully");
@@ -157,7 +172,7 @@ namespace VisualCortex
 
     void LEDManager::runInitializationTest()
     {
-        fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
+        fill_solid(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
         FastLED.show();
         delay(100);
         FastLED.clear(true);
@@ -170,7 +185,7 @@ namespace VisualCortex
         currentMode = VisualMode::ENCODING_MODE;
         currentEncodingMode = EncodingModes::FULL_MODE;
         // Initialize FULL_MODE pattern
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             leds[i] = CRGB::Blue;  // Start with blue
             previousColors[i] = CRGB::Black;
         }
@@ -180,6 +195,10 @@ namespace VisualCortex
         Utilities::LOG_DEBUG("LED Manager: Transitioned to FULL_MODE with patterns");
     }
 
+    /**
+     * @brief Process ongoing visual patterns
+     * Updates LED states based on current cognitive state
+     */
     void LEDManager::updateLEDs() {
         if (GC::AppManager::isAppActive()) {
             switch (currentPattern) {  // Using class member variable
@@ -365,7 +384,7 @@ namespace VisualCortex
             CRGB::Purple, CRGB::White, CRGB::Black
         };
         static const int NUM_TIMER_COLORS = sizeof(timerColors) / sizeof(timerColors[0]);
-        static CRGB backgroundColors[PinDefinitions::WS2812_NUM_LEDS] = {CRGB::Black};
+        static CRGB backgroundColors[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS] = {CRGB::Black};
         static bool isMoving = false;
         
         unsigned long currentTime = millis();
@@ -386,7 +405,7 @@ namespace VisualCortex
                 leds[currentPosition] = backgroundColors[currentPosition];
                 
                 // Move to next position if possible
-                if (currentPosition < PinDefinitions::WS2812_NUM_LEDS - 1 && 
+                if (currentPosition < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS - 1 && 
                     leds[currentPosition + 1] == backgroundColors[currentPosition + 1]) 
                 {
                     currentPosition++;
@@ -401,7 +420,7 @@ namespace VisualCortex
                     
                     // Check if we completed this color's cycle
                     bool allFilled = true;
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) 
                     {
                         if (leds[i] == backgroundColors[i]) 
                         {
@@ -413,7 +432,7 @@ namespace VisualCortex
                     if (allFilled) 
                     {
                         // Update background for next color
-                        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) 
                         {
                             backgroundColors[i] = timerColors[currentColorIndex];
                         }
@@ -421,7 +440,7 @@ namespace VisualCortex
                         if (currentColorIndex == 0) 
                         {
                             // Reset background when starting over
-                            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) 
+                            for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) 
                             {
                                 backgroundColors[i] = CRGB::Black;
                             }
@@ -495,11 +514,11 @@ namespace VisualCortex
     }
 
     bool LEDManager::isLoadingComplete() {
-        return completedCycles >= PinDefinitions::WS2812_NUM_LEDS;
+        return completedCycles >= MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS;
     }
 
     void LEDManager::setLED(int index, CRGB color) {
-        if (index >= 0 && index < PinDefinitions::WS2812_NUM_LEDS) {
+        if (index >= 0 && index < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS) {
             // Direct color setting without conversion
             leds[index] = color;
         }
@@ -510,36 +529,36 @@ namespace VisualCortex
     }
 
     void LEDManager::scaleLED(int index, uint8_t scale) {
-        if (index >= 0 && index < PinDefinitions::WS2812_NUM_LEDS) {
+        if (index >= 0 && index < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS) {
             leds[index].nscale8(scale);
         }
     }
 
     void LEDManager::flashSuccess() {
         // Save current LED state
-        CRGB savedState[PinDefinitions::WS2812_NUM_LEDS];
-        memcpy(savedState, leds, sizeof(CRGB) * PinDefinitions::WS2812_NUM_LEDS);
+        CRGB savedState[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
+        memcpy(savedState, leds, sizeof(CRGB) * MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS);
         
         // Flash green
-        fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Green);
+        fill_solid(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, CRGB::Green);
         FastLED.show();
         delay(BootConfig::SUCCESS_FLASH_DURATION);
         
         // Restore previous state
-        memcpy(leds, savedState, sizeof(CRGB) * PinDefinitions::WS2812_NUM_LEDS);
+        memcpy(leds, savedState, sizeof(CRGB) * MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS);
         FastLED.show();
     }
 
     void LEDManager::flashLevelUp() {
         // First pass - clockwise light up in gold/yellow
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             leds[i] = CRGB::Gold;
             FastLED.show();
             delay(50);
         }
         
         // Flash all bright white
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             leds[i] = CRGB::White;
         }
         FastLED.show();
@@ -547,7 +566,7 @@ namespace VisualCortex
         
         // Sparkle effect
         for (int j = 0; j < 3; j++) {  // Do 3 sparkle cycles
-            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+            for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                 if (random(2) == 0) {  // 50% chance for each LED
                     leds[i] = CRGB::Gold;
                 } else {
@@ -559,7 +578,7 @@ namespace VisualCortex
         }
         
         // Fade out
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             leds[i] = CRGB::Black;
             FastLED.show();
             delay(30);
@@ -574,7 +593,7 @@ namespace VisualCortex
         lastUpdate = millis();
         
         // Use card UID to create unique patterns
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             uint8_t hue = (uid[i % length] + step) % 255;
             leds[i] = CHSV(hue, 255, 255);
         }
@@ -653,7 +672,7 @@ namespace VisualCortex
     void LEDManager::updateMenuMode() {
         
         int selectedIndex = SC::MenuManager::getSelectedIndex();
-        for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+        for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             if (i <= selectedIndex) {
                 setLED(i, VisualSynesthesia::getBase8Color(i));
                 delay(50);
@@ -687,7 +706,7 @@ namespace VisualCortex
 
             CRGB color = VisualSynesthesia::getBase8Color(batteryLevel8);
 
-            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+            for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                 if (i <= uptime8) {
                     setLED(i, color);
                     delay(50);
@@ -697,8 +716,8 @@ namespace VisualCortex
                 }
             }
         } else {
-            for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
-                leds[i] = CHSV(((i * 256 / PinDefinitions::WS2812_NUM_LEDS) + currentTime/10) % 256, 255, 255);
+            for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
+                leds[i] = CHSV(((i * 256 / MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS) + currentTime/10) % 256, 255, 255);
             }
         }
 
@@ -713,7 +732,7 @@ namespace VisualCortex
             switch (currentTheme) {
                 case FestiveTheme::NEW_YEAR:
                     // Fireworks effect with bright colors
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = CRGB::White; // Bright white for fireworks
                         if (random8() < 20) { // 20% chance to add color
                             leds[i] = CRGB(random8(255), random8(255), random8(255));
@@ -727,7 +746,7 @@ namespace VisualCortex
                     if (fadeValue >= 250) fadeDirection = false;
                     if (fadeValue <= 50) fadeDirection = true;
 
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         CRGB color = (i % 2 == 0) ? CRGB::Red : CRGB::Pink;
                         color.nscale8(fadeValue);
                         leds[i] = color;
@@ -736,15 +755,15 @@ namespace VisualCortex
 
                 case FestiveTheme::ST_PATRICK:
                     // Rotating shamrock effect with green shades
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
-                        int adjustedPos = (i + animationStep) % PinDefinitions::WS2812_NUM_LEDS;
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
+                        int adjustedPos = (i + animationStep) % MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS;
                         switch (adjustedPos % 3) {
                             case 0: leds[i] = CRGB::Green; break;
                             case 1: leds[i] = CRGB(0, 180, 0); break;
                             case 2: leds[i] = CRGB(0, 100, 0); break;
                         }
                     }
-                    animationStep = (animationStep + 1) % PinDefinitions::WS2812_NUM_LEDS;
+                    animationStep = (animationStep + 1) % MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS;
                     break;
 
                 case FestiveTheme::EASTER:
@@ -762,7 +781,7 @@ namespace VisualCortex
                         case 3: targetColor = CRGB(200, 255, 200); break;
                     }
 
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = blend(previousColors[i], targetColor, animationStep);
                         previousColors[i] = leds[i];
                     }
@@ -771,7 +790,7 @@ namespace VisualCortex
                 case FestiveTheme::CANADA_DAY:
                     // Waving flag effect with red and white
                     animationStep = (animationStep + 1) % 255;
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         int wave = sin8(animationStep + (i * 32));
                         if (i == 0 || i == 4) {
                             CRGB red = CRGB::Red;
@@ -791,7 +810,7 @@ namespace VisualCortex
                     if (fadeValue >= 250) fadeDirection = false;
                     if (fadeValue <= 50) fadeDirection = true;
 
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         CRGB color = (i % 2 == 0) ? CRGB::Orange : CRGB::Purple;
                         color.nscale8(fadeValue);
                         leds[i] = color;
@@ -800,63 +819,63 @@ namespace VisualCortex
 
                 case FestiveTheme::THANKSGIVING:
                     // Autumn colors fading effect
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 2 == 0) ? CRGB::Orange : CRGB::Brown; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::INDEPENDENCE_DAY:
                     // Red, white, and blue flashing
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 3 == 0) ? CRGB::Red : (i % 3 == 1) ? CRGB::White : CRGB::Blue;
                     }
                     break;
 
                 case FestiveTheme::DIWALI:
                     // Colorful lights effect
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = CRGB(random8(255), random8(255), random8(255)); // Random colors
                     }
                     break;
 
                 case FestiveTheme::RAMADAN:
                     // Soft white and gold glow
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 2 == 0) ? CRGB::White : CRGB::Gold; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::CHINESE_NEW_YEAR:
                     // Red and gold flashing
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::Gold; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::MARDI_GRAS:
                     // Purple, green, and gold flashing
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 3 == 0) ? CRGB::Purple : (i % 3 == 1) ? CRGB::Green : CRGB::Gold; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::LABOR_DAY:
                     // Red and white stripes
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 2 == 0) ? CRGB::Red : CRGB::White; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::MEMORIAL_DAY:
                     // Red, white, and blue stripes
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         leds[i] = (i % 3 == 0) ? CRGB::Red : (i % 3 == 1) ? CRGB::White : CRGB::Blue; // Alternating colors
                     }
                     break;
 
                 case FestiveTheme::FLAG_DAY:
                     // Red and white stripes with blue at the ends
-                    for (int i = 0; i < PinDefinitions::WS2812_NUM_LEDS; i++) {
+                    for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
                         if (i < 2) {
                             leds[i] = CRGB::Blue; // Blue at the ends
                         } else {
@@ -944,8 +963,8 @@ namespace VisualCortex
             if (fadeValue <= AnimationTiming::MIN_FADE) fadeDirection = true;
             if (fadeValue >= AnimationTiming::MAX_FADE) fadeDirection = false;
             
-            fill_solid(leds, PinDefinitions::WS2812_NUM_LEDS, CRGB::Blue);
-            fadeToBlackBy(leds, PinDefinitions::WS2812_NUM_LEDS, 255 - fadeValue);
+            fill_solid(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, CRGB::Blue);
+            fadeToBlackBy(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, 255 - fadeValue);
         }
         FastLED.show();
     }
@@ -1048,7 +1067,7 @@ namespace VisualCortex
     }
 
     void LEDManager::displayNote(uint16_t frequency, uint8_t position) {
-        position = position % PinDefinitions::WS2812_NUM_LEDS;
+        position = position % MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS;
         
         NoteInfo info = AC::PitchPerception::getNoteInfo(frequency);
         LEDManager::currentNotes[position].isSharp = info.isSharp;
@@ -1161,5 +1180,38 @@ namespace VisualCortex
         currentMode = VisualMode::ENCODING_MODE; // Set the main mode to ENCODING_MODE
         currentEncodingMode = mode; // Set the specific encoding mode
         // Additional logic to handle the encoding mode can be added here
+    }
+
+    /**
+     * @brief Process chromatic visual perception
+     * @param context Chromatic sensory context for visualization
+     */
+    void LEDManager::displayChromatic(const PC::ColorPerceptionTypes::ChromaticContext& context) 
+    {
+        // Set primary color on odd LEDs
+        for(int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i += 2) 
+        {
+            leds[i] = context.primary;
+            leds[i].nscale8(context.intensity);
+        }
+        
+        // Set secondary color on even LEDs
+        for(int i = 1; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i += 2) 
+        {
+            leds[i] = context.secondary;
+            leds[i].nscale8(context.intensity);
+        }
+        
+        FastLED.show();
+    }
+
+        void LEDManager::displayEmotional(const PC::ColorPerceptionTypes::EmotionalColor& emotion) 
+    {
+        // Alternate between primary and accent colors
+        for(int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) 
+        {
+            leds[i] = (i % 2 == 0) ? emotion.primaryColor : emotion.accentColor;
+        }
+        FastLED.show();
     }
 }

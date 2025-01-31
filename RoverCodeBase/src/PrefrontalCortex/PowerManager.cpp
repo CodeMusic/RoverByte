@@ -10,48 +10,58 @@ namespace PrefrontalCortex
     using VC::RoverViewManager;
     using VC::RoverManager;
 
-    // Initialize static members
+    // Initialize neural state variables
     XPowersPPM PowerManager::PPM;
     bool PowerManager::batteryInitialized = false;
     unsigned long PowerManager::lastActivityTime = 0;
     PowerState PowerManager::currentPowerState = PowerState::AWAKE;
     unsigned long PowerManager::startUpTime = 0;
-    void PowerManager::init() {
+
+    void PowerManager::init() 
+    {
         startUpTime = millis();
-        // Ensure LED power stays enabled
+        
+        // Initialize sensory pathways
         pinMode(BOARD_PWR_EN, OUTPUT);
         digitalWrite(BOARD_PWR_EN, HIGH);
         
-        // Initialize LEDC for backlight first
         setupBacklight();
         
-        // Initialize I2C for battery management
+        // Initialize metabolic regulation
         Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
         Wire.setClock(100000);
         
-        delay(100);  // Give I2C time to stabilize
+        delay(100);  // Neural stabilization period
         
-        // Initialize battery directly
+        // Initialize homeostatic systems
         bool result = PPM.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, BQ25896_SLAVE_ADDRESS);
-        if (result) {
+        if (result) 
+        {
             batteryInitialized = true;
-            Utilities::LOG_PROD("Battery management initialized successfully");
+            Utilities::LOG_PROD("Metabolic regulation initialized");
             
-            // Configure battery parameters
-            PPM.setSysPowerDownVoltage(3300);
-            PPM.setInputCurrentLimit(3250);
-            PPM.disableCurrentLimitPin();
-            PPM.setChargeTargetVoltage(4208);
-            PPM.setPrechargeCurr(64);
-            PPM.setChargerConstantCurr(832);
-            PPM.enableADCMeasure();
-            PPM.enableCharge();
-        } else {
-            Utilities::LOG_ERROR("Failed to initialize battery management");
+            // Configure energy parameters
+            configureEnergySystem();
+        } 
+        else 
+        {
+            Utilities::LOG_ERROR("Metabolic regulation initialization failed");
         }
         
         lastActivityTime = millis();
         currentPowerState = PowerState::AWAKE;
+    }
+
+    void PowerManager::configureEnergySystem() 
+    {
+        PPM.setSysPowerDownVoltage(3300);
+        PPM.setInputCurrentLimit(3250);
+        PPM.disableCurrentLimitPin();
+        PPM.setChargeTargetVoltage(4208);
+        PPM.setPrechargeCurr(64);
+        PPM.setChargerConstantCurr(832);
+        PPM.enableADCMeasure();
+        PPM.enableCharge();
     }
 
     unsigned long PowerManager::getUpTime() {

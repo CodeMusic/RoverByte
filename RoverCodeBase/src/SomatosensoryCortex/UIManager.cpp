@@ -1,3 +1,14 @@
+/**
+ * @brief UIManager implementation
+ * 
+ * Handles:
+ * - Input device initialization
+ * - State management
+ * - Input processing
+ * - Feedback coordination
+ * - System responses
+ */
+
 #include "UIManager.h"
 #include "../VisualCortex/RoverViewManager.h"
 #include "../VisualCortex/RoverManager.h"
@@ -30,6 +41,10 @@ namespace SomatosensoryCortex
     unsigned long UIManager::lastDebounceTime = 0;
     InputState UIManager::initState = InputState::NOT_STARTED;
 
+    /**
+     * @brief Initialize input devices and state
+     * Sets up encoder, buttons, and initial conditions
+     */
     void UIManager::init() 
     {
         if (encoder != nullptr) 
@@ -59,6 +74,10 @@ namespace SomatosensoryCortex
         initState = InputState::READY;
     }
 
+    /**
+     * @brief Update input states and process changes
+     * Manages input polling and state transitions
+     */
     void UIManager::update() 
     {
         if (initState != InputState::READY) 
@@ -70,6 +89,11 @@ namespace SomatosensoryCortex
         updateSideButton();
     }
 
+    /**
+     * @brief Process rotary encoder movement
+     * @param newPosition Current encoder position
+     * Handles rotation events and generates feedback
+     */
     void UIManager::updateEncoder() 
     {
         if (!encoder) return;  // Guard against null encoder
@@ -126,26 +150,10 @@ namespace SomatosensoryCortex
         }
     }
 
-    void UIManager::handleRotaryTurn(int direction) 
-    {
-        if (MenuManager::isVisible()) 
-        {
-            // Invert the direction for menu navigation
-            MenuManager::handleRotaryTurn(-direction);
-        } 
-        else 
-        {
-            if (direction > 0) 
-            {
-                RoverViewManager::nextView();
-            } 
-            else 
-            {
-                RoverViewManager::previousView();
-            }
-        }
-    }
-
+    /**
+     * @brief Process rotary encoder button press
+     * Manages selection events and feedback
+     */
     void UIManager::handleRotaryPress() 
     {
         static bool lastButtonState = HIGH;
@@ -170,6 +178,10 @@ namespace SomatosensoryCortex
         lastButtonState = currentButtonState;
     }
 
+    /**
+     * @brief Process side button interactions
+     * Handles secondary input and system responses
+     */
     void UIManager::updateSideButton() 
     {
         static bool lastButtonState = HIGH;
@@ -197,4 +209,23 @@ namespace SomatosensoryCortex
             lastDebounceTime = millis();
         }
     }
+
+    /**
+     * @brief Check for input device availability
+     * @return True if input systems are operational
+     */
+    bool UIManager::isInitialized() 
+    {
+        return initState == InputState::READY;
+    }
+
+    /**
+     * @brief Reset input states to defaults
+     * Clears pending inputs and resets state
+     */
+    void UIManager::resetState() 
+    {
+        initState = InputState::NOT_STARTED;
+    }
+
 }
