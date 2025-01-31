@@ -50,6 +50,25 @@ RoverByte is an AI-powered **quadrupedal robotic companion** that integrates int
 🔹 **Seamless AI Integration** → Works directly with RoverSeer & RoverRadio.  
 
 ---
+### 🔗 Project-Specific Documentation  
+
+#### 📂 Rover Modules  
+
+- **[RoverCodeBase README](./RoverCodeBase/README.md)** – Learn more about **RoverRadio** and its RF-based automation.  
+- **[RoverSeer README](./RoverSeer/README.md)** – Redmine-based task automation & AI memory.  
+- **[RoverByte README](./RoverByte/README.md)** – Details on the AI-driven quadrupedal robot.  
+- **[TheRoverVerse README](./TheRoverVerse/README.md)** – Ongoing experimental Rover systems.  
+
+#### 📜 RoverCodeBase Documentation  
+
+Inside **RoverCodeBase/documentation/**, you’ll find additional technical details:  
+
+- **[CodeMap.MD](./RoverCodeBase/documentation/CodeMap.MD)** – Overview of the **code structure** and program flow.  
+- **[CodeStyle.MD](./RoverCodeBase/documentation/CodeStyle.MD)** – Coding conventions and best practices.  
+- **[RoverByte_Overview.md](./RoverCodeBase/documentation/RoverByte_Overview.md)** – High-level summary of the RoverByte system.  
+
+For further details, check the **README.md** and documentation files in each respective folder. 🚀  
+---
 
 ## 🎮 Rover's Gamified Economy & Engagement  
 
@@ -108,8 +127,8 @@ RoverAI is **not just another chatbot or automation system**—it is a **learnin
 
 ### 1️⃣ **Clone the Repository**  
 ```bash
-git clone https://github.com/YourUsername/RoverProject.git
-cd RoverProject'
+git clone https://github.com/CodeMusic/RoverByte.git
+cd RoverByte'
 
 ### 2️⃣ **Explore Individual Rover Modules**  
 The Rover ecosystem consists of multiple interconnected projects, each focusing on a specific function. Navigate to the directory of the project you're interested in:  
