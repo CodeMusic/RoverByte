@@ -35,33 +35,86 @@ namespace SomatosensoryCortex
     {
     public:
         // Core menu perception methods
+        /**
+         * @brief Initialize the menu
+         */
         static void init();
+        /**
+         * @brief Show the menu
+         */
         static void show();
+        /**
+         * @brief Hide the menu
+         */
         static void hide();
+        /**
+         * @brief Check if menu system is currently visible
+         * @return True if menu is being displayed
+         */
         static bool isVisible() { return isMenuVisible; }
         
         // Input handling methods
+        /**
+         * @brief Handle the rotary turn
+         * @param direction The direction of the turn
+         */
         static void handleRotaryTurn(int direction);
+        /**
+         * @brief Handle the menu select
+         */
         static void handleMenuSelect();
         
         // Menu navigation methods
+        /**
+         * @brief Enter the submenu
+         * @param submenu The submenu to enter
+         */
         static void enterSubmenu(const std::vector<MenuItem>& submenu);
+        /**
+         * @brief Go back
+         */
         static void goBack();
+        /**
+         * @brief Get the selected index
+         * @return The selected index
+         */
         static int getSelectedIndex();
+        /**
+         * @brief Get the current item
+         */
         static const MenuItem& getCurrentItem();
 
-
-        // Menu rendering methods
+        // Menu rendering methods   
+        /**
+         * @brief Draw the menu
+         */
         static void drawMenu();
-        
+        /**
+         * @brief Handle the IR blast menu
+         */
         // Specialized menu handlers
         static void handleIRBlastMenu();
+        /**
+         * @brief Select the menu item
+         */
         static void selectMenuItem();
 
         // Menu structure definitions
+        /**
+         * @brief The app settings menu
+         */
         static std::vector<MenuItem> appSettingsMenu;
+        /**
+         * @brief The led modes menu
+         */
         static std::vector<MenuItem> ledModesMenu;
+        /**
+         * @brief The encoding modes menu
+         */
         static std::vector<MenuItem> encodingModesMenu;
+        /**
+         * @brief The festive modes menu
+         */
         static std::vector<MenuItem> festiveModesMenu;
 
     private:

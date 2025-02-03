@@ -377,13 +377,4 @@ namespace SomatosensoryCortex
         return selectedIndex;
     }
 
-
-    /**
-     * @brief Check if menu system is currently visible
-     * @return True if menu is being displayed
-     */
-    bool MenuManager::isVisible() 
-    {
-        return isMenuVisible;
-    }
 }

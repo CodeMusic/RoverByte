@@ -109,17 +109,11 @@ namespace MotorCortex
         // Storage System
         struct StoragePathways
         {
-            // TF card
+            // Keep only BOARD_ prefixed versions
             #define BOARD_SD_CS   13
             #define BOARD_SD_SCK  BOARD_SPI_SCK
             #define BOARD_SD_MOSI BOARD_SPI_MOSI
             #define BOARD_SD_MISO BOARD_SPI_MISO
-
-            // Additional SD Card pins
-            #define SD_CS    13  // SD Card CS pin
-            #define SD_MOSI  10  // SD Card MOSI pin
-            #define SD_MISO  9   // SD Card MISO pin
-            #define SD_SCK   11  // SD Card SCK pin    
         };
 
         // LORA Communication

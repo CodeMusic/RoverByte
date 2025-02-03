@@ -123,7 +123,7 @@ namespace AuditoryCortex
                 playTone(frequency, noteDuration, volume);
                 
                 // Update LED visualization
-                for (int j = 0; j < PinDefinitions::WS2812_NUM_LEDS; j++) 
+                for (int j = 0; j < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; j++) 
                 {
                     if (bitRead(activeTune.ledAnimation[currentNote], j)) 
                     {
@@ -141,10 +141,6 @@ namespace AuditoryCortex
                 m_isTunePlaying = false;
             }
         }
-    }
-
-    bool SoundFxManager::isTunePlaying() {
-        return m_isTunePlaying;
     }
 
     void SoundFxManager::playSuccessSound() {

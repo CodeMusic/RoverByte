@@ -59,10 +59,10 @@ namespace VisualCortex
     using PC::AudioTypes::Tone;
 
     // Visual constants from FastLEDConfig
-    using namespace VC::FastLEDConfig;  // Changed from VC::FastLEDConfig
-    using namespace VC::AnimationTiming;  // Changed from VC::FastLEDConfig::AnimationTiming
-    using namespace VC::PatternConfig;  // Changed from VC::FastLEDConfig::PatternConfig
-    using namespace VC::BootConfig;  // Changed from VC::FastLEDConfig::BootConfig
+    using namespace VC::FastLEDConfig;
+    using VC::AnimationTiming;
+    using VC::PatternConfig;
+    using VC::BootConfig;
 
     // Boot sequence color constants
     const CRGB LEDManager::HARDWARE_INIT_COLOR = CRGB::Blue;

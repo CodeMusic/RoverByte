@@ -210,14 +210,6 @@ namespace SomatosensoryCortex
         }
     }
 
-    /**
-     * @brief Check for input device availability
-     * @return True if input systems are operational
-     */
-    bool UIManager::isInitialized() 
-    {
-        return initState == InputState::READY;
-    }
 
     /**
      * @brief Reset input states to defaults

@@ -60,7 +60,7 @@
 using namespace CorpusCallosum;
 
 // Include all managers after namespace declaration
-#include "src/PrefrontalCortex/Utilities.h"
+#include "src/PrefrontalCortex/utilities.h"
 #include "src/PrefrontalCortex/SPIManager.h"
 #include "src/PrefrontalCortex/RoverBehaviorManager.h"
 #include "src/VisualCortex/DisplayConfig.h"
@@ -103,23 +103,23 @@ RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03)
 
 void setup() {
     Serial.begin(115200);
-    LOG_PROD("Starting setup...");
+    Utilities::LOG_PROD("Starting setup...");
 
     // Check free heap memory before initialization
     //LOG_DEBUG("Free heap before initialization: %d", ESP.getFreeHeap());
 
     // Initialize SPI bus and chip selects first
     SPIManager::init();
-    LOG_DEBUG("SPI Manager initialized.");
+    Utilities::LOG_DEBUG("SPI Manager initialized.");
 
     try 
     {
         RoverViewManager::init();
-        LOG_DEBUG("Display initialized successfully.");
+        Utilities::LOG_DEBUG("Display initialized successfully.");
     } 
     catch (const std::exception& e) 
     {
-        LOG_ERROR("Display initialization failed: %s", e.what());
+        Utilities::LOG_ERROR("Display initialization failed: %s", e.what());
         return;
     }
 
@@ -135,15 +135,15 @@ void setup() {
     {
         try 
         {
-            LOG_DEBUG("Starting RoverBehaviorManager...");
+            Utilities::LOG_DEBUG("Starting RoverBehaviorManager...");
             RoverBehaviorManager::init();
-            LOG_DEBUG("RoverBehaviorManager started successfully.");
+            Utilities::LOG_DEBUG("RoverBehaviorManager started successfully.");
         } 
         catch (const std::exception& e) 
         {
-            LOG_ERROR("Initialization error: %s", e.what());
+            Utilities::LOG_ERROR("Initialization error: %s", e.what());
             RoverBehaviorManager::triggerFatalError(
-                static_cast<uint32_t>(RoverBehaviorManager::StartupErrorCode::CORE_INIT_FAILED),
+                static_cast<uint32_t>(PC::StartupErrorCode::CORE_INIT_FAILED),
                 e.what()
             );
             return;
@@ -167,7 +167,7 @@ void loop() {
         delay(1);
 
         // Only update UI and LED if we're not in LOADING state
-        if (RoverBehaviorManager::getCurrentState() != RoverBehaviorManager::BehaviorState::LOADING) {
+        if (RoverBehaviorManager::getCurrentState() != PC::BehaviorState::LOADING) {
             UIManager::update();
             delay(1);
             
@@ -204,7 +204,7 @@ void loop() {
                 );
             }
             else if (RoverBehaviorManager::getCurrentState() == 
-                     RoverBehaviorManager::BehaviorState::LOADING) 
+                     PC::BehaviorState::LOADING) 
             {
                 // Draw loading screen during initialization
                 RoverViewManager::drawLoadingScreen(
@@ -234,7 +234,7 @@ void loop() {
             delay(1); // Reduced delay for better performance
         }
     } catch (const std::exception& e) {
-        LOG_ERROR("Loop error: %s", e.what());
+        Utilities::LOG_ERROR("Loop error: %s", e.what());
         delay(100); // Give system time to recover
     }
     

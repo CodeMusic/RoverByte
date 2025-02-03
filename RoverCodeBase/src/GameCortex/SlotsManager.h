@@ -9,6 +9,7 @@
  */
 
 #pragma once
+#include "../CorpusCallosum/SynapticPathways.h"
 #include <FastLED.h>
 #include "../VisualCortex/LEDManager.h"
 #include "../VisualCortex/RoverManager.h"
@@ -17,6 +18,8 @@
 
 namespace GameCortex
 {
+    namespace PC = PrefrontalCortex;
+    using namespace CorpusCallosum;
     using PC::GameTypes::GameState;
     using PC::GameTypes::SlotSymbol;
     using PC::GameTypes::GameScore;

@@ -36,10 +36,29 @@ namespace SomatosensoryCortex
         static void update();
         
         // Input states
+        /**
+        * @brief Check if the rotary encoder is pressed
+        * @return True if the rotary encoder is pressed
+        */
         static bool isRotaryPressed() { return rotaryPressed; }
+        /**
+        * @brief Check if the side button is pressed
+        * @return True if the side button is pressed
+        */
         static bool isSideButtonPressed() { return sideButtonPressed; }
+        /**
+        * @brief Get the encoder position
+        * @return The position of the encoder
+        */
         static int getEncoderPosition() { return lastEncoderPosition; }
+        /**
+        * @brief Check for input device availability
+        * @return True if input systems are operational
+        */
         static bool isInitialized() { return initState == InputState::READY; }
+        /**
+        * @brief Reset the state
+        */
         static void resetState();
         
     private:
@@ -50,10 +69,22 @@ namespace SomatosensoryCortex
         static InputState initState;
         static unsigned long lastDebounceTime;
         static const unsigned long DEBOUNCE_DELAY = 50;
-        
+        /**
+        * @brief Handle the rotary encoder turn
+        * @param direction The direction of the turn
+        */
         static void handleRotaryTurn(int direction);
+        /**
+        * @brief Handle the rotary encoder press
+        */
         static void handleRotaryPress();
+        /**
+        * @brief Update the encoder
+        */
         static void updateEncoder();
+        /**
+        * @brief Update the side button
+        */
         static void updateSideButton();
     };
 

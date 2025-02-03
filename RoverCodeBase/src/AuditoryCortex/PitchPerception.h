@@ -20,8 +20,8 @@
 namespace AuditoryCortex
 {
     using namespace CorpusCallosum;
+    // Use the PrefrontalCortex definition instead of redefining
     using PC::AudioTypes::NoteInfo;
-    using PC::AudioTypes::NoteIndex;
     using PC::AudioTypes::NoteType;
     using PC::AudioTypes::TimeSignature;
 
@@ -154,15 +154,16 @@ namespace AuditoryCortex
         static uint16_t getDayBaseNote5();
         static uint16_t getDayBaseNote(bool is4thOctave);
         static bool isSharp(uint16_t frequency);
-        static uint16_t getNoteDuration(NoteType note, TimeSignature timeSignature);
+        static uint16_t getNoteDuration(
+            PrefrontalCortex::AudioTypes::NoteType note, 
+            PrefrontalCortex::AudioTypes::TimeSignature timeSignature
+        );
 
         // Helper for SoundFxManager
         static uint16_t getOctaveUp(uint16_t baseNote) { return baseNote * 2; }
         static uint16_t getOctaveAndFifthUp(uint16_t baseNote) { return baseNote * 3; }
         static uint16_t getToneDown(uint16_t baseNote) { return baseNote * 8 / 10; }
         static uint16_t getNoteMinus2(uint16_t baseNote) { return baseNote * 8 / 10; }
-
-        static uint16_t getNoteDuration(NoteType note, TimeSignature timeSignature);
 
         static const uint16_t* getNoteFrequencies() {
             return NOTE_FREQUENCIES;

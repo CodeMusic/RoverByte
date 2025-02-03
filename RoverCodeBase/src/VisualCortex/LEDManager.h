@@ -19,16 +19,14 @@
 
 using namespace MotorCortex;
 using namespace CorpusCallosum;
+using namespace PrefrontalCortex::VisualTypes;  // Import all visual types
 
 namespace VisualCortex 
 {
-    namespace VC = VisualCortex;  // Add namespace alias
-    using PC::VisualTypes::VisualPattern;  // Use ProtoPerceptions type
-    using PC::VisualTypes::VisualMode;     // Use ProtoPerceptions type
-    using PC::VisualTypes::VisualMessage;  // Use ProtoPerceptions type
-    using PC::VisualTypes::FestiveTheme;   // Use ProtoPerceptions type
-    using PC::VisualTypes::NoteState;      // Use ProtoPerceptions type
-    using PC::VisualTypes::EncodingModes;  // Use ProtoPerceptions type
+    namespace VC = VisualCortex;
+    
+    // Replace individual using declarations with namespace import
+    using namespace PrefrontalCortex::VisualTypes;
 
     // Visual perception constants
     namespace VisualConstants
@@ -74,8 +72,8 @@ namespace VisualCortex
         static void setMode(VisualMode mode);
         static void nextMode();
         static VisualMode getMode() { return currentMode; }
-        static void setPattern(PC::VisualPattern pattern);
-        static PC::VisualTypes::VisualPattern getPattern() { return currentPattern; }
+        static void setPattern(VisualPattern pattern);
+        static VisualPattern getPattern() { return currentPattern; }
 
         // Animation control
         static void updateLoadingAnimation();
@@ -111,7 +109,7 @@ namespace VisualCortex
         static void clearNoteDisplay();
 
         // State management
-        static void handleMessage(PC::VisualMessage message);
+        static void handleMessage(VisualMessage message);
         static void setFestiveTheme(FestiveTheme theme);
         static void checkAndSetFestiveMode();
         static void setEncodingMode(EncodingModes mode);
@@ -122,16 +120,16 @@ namespace VisualCortex
         static EncodingModes currentEncodingMode;
 
         // Add new methods
-        static void displayChromatic(const PC::ColorPerceptionTypes::ChromaticContext& context);
-        static void displayEmotional(const PC::ColorPerceptionTypes::EmotionalColor& emotion);
-        static void setIntensity(const PC::ColorPerceptionTypes::ColorIntensity& intensity);
+        static void displayChromatic(const PrefrontalCortex::ColorPerceptionTypes::ChromaticContext& context);
+        static void displayEmotional(const PrefrontalCortex::ColorPerceptionTypes::EmotionalColor& emotion);
+        static void setIntensity(const PrefrontalCortex::ColorPerceptionTypes::ColorIntensity& intensity);
 
     private:
-        // LED state management
+        // LED Arrays
         static CRGB leds[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
         static CRGB previousColors[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
         static NoteState currentNotes[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
-        static PC::VisualTypes::VisualPattern currentPattern;
+        static VisualPattern currentPattern;
 
         // Mode tracking
         static VisualMode previousMode;

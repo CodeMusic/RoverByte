@@ -483,4 +483,12 @@ namespace PrefrontalCortex
         return currentStatusMessage;
     }
 
+    int RoverBehaviorManager::getRemainingWarningSeconds() 
+    {
+        if (!isCountingDown || isFatalError) return 0;
+        
+        unsigned long elapsed = millis() - warningStartTime;
+        return (WARNING_DURATION - elapsed) / 1000;
+    }
+
 }

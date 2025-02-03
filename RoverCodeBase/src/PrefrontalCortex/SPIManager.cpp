@@ -6,7 +6,7 @@ namespace PrefrontalCortex
 {
     namespace PC = PrefrontalCortex;  // Add namespace alias
 
-    // Initialize neural state variables
+    // Initialize state tracking
     bool SPIManager::initialized = false;
 
     bool SPIManager::isInitialized() 

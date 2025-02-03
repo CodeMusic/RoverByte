@@ -128,6 +128,36 @@ namespace PrefrontalCortex
         };
     }
 
+    // Power Management Types
+    namespace PowerTypes 
+    {
+        enum class PowerState 
+        {
+            AWAKE,
+            DIM_DISPLAY,
+            DISPLAY_OFF,
+            DEEP_SLEEP
+        };
+
+        struct BatteryStatus 
+        {
+            float voltageLevel;
+            int percentageCharge;
+            bool isCharging;
+            float temperature;
+            uint32_t lastUpdateTime;
+        };
+
+        struct PowerConfig 
+        {
+            PowerState defaultState;
+            uint32_t dimTimeout;
+            uint32_t sleepTimeout;
+            uint8_t dimBrightness;
+            bool enableDeepSleep;
+        };
+    }
+
     // 5. System Types
     namespace SystemTypes 
     {
@@ -187,6 +217,13 @@ namespace PrefrontalCortex
             bool isFatal;          // Whether this error stops the system
             uint32_t timestamp;    // When the error occurred
             String context;        // Additional error context/details
+        };
+
+        enum class ErrorType 
+        {
+            WARNING,
+            FATAL,
+            SILENT
         };
     }
 
@@ -316,14 +353,15 @@ namespace PrefrontalCortex
             SD_INIT_FAILED,
             DISPLAY_INIT_FAILED,
             UI_INIT_FAILED,
-            APP_INIT_FAILED
+            APP_INIT_FAILED,
+            CORE_INIT_FAILED
         };
 
         struct ErrorInfo 
         {
             uint32_t code;
             const char* message;
-            ErrorType type;
+            SystemTypes::ErrorType type;
         };
     }
 
@@ -523,14 +561,6 @@ namespace PrefrontalCortex
         };
     }
 
-    // Core Types
-    enum class ErrorType 
-    {
-        WARNING,
-        FATAL,
-        SILENT  // Serial-only output
-    };
-
     // Visual Types
     namespace VisualTypes 
     {
@@ -639,35 +669,40 @@ namespace PrefrontalCortex
         static const CRGB SYSTEM_START_COLOR;
         static const CRGB NETWORK_PREP_COLOR;
         static const CRGB FINAL_PREP_COLOR;
-    }
 
-    // Power Management Types
-    namespace PowerTypes 
-    {
-        enum class PowerState 
+        /**
+         * @brief Visual Animation Parameters
+         */
+        struct AnimationPerception 
         {
-            AWAKE,          // Full power, display at max brightness
-            DIM_DISPLAY,    // Display dimmed to save power
-            DISPLAY_OFF,    // Display off but system still running
-            DEEP_SLEEP     // System in deep sleep mode
+            static constexpr uint16_t LOADING_DELAY = 100;
+            static constexpr uint16_t FLASH_DURATION = 100;
+            static constexpr uint8_t FADE_STEP = 5;
+            static constexpr uint8_t MIN_FADE = 50;
+            static constexpr uint8_t MAX_FADE = 250;
+            static constexpr uint8_t ERROR_MIN_FADE = 64;
         };
 
-        struct BatteryStatus 
+        /**
+         * @brief Visual Pattern Parameters
+         */
+        struct PatternPerception 
         {
-            float voltageLevel;      // Current voltage
-            int percentageCharge;    // 0-100%
-            bool isCharging;         // Charging state
-            float temperature;       // Battery temperature
-            uint32_t lastUpdateTime; // Last time status was updated
+            static constexpr uint8_t LEDS_PER_STEP = 3;
+            static constexpr uint8_t ERROR_LED_INDEX = 0;
+            static constexpr uint8_t ERROR_LED_COUNT = 8;
+            static constexpr uint8_t FADE_INCREMENT = 5;
+            static constexpr uint16_t ANIMATION_DELAY = 50;
         };
 
-        struct PowerConfig 
+        /**
+         * @brief Boot Sequence Parameters
+         */
+        struct BootPerception 
         {
-            uint32_t idleTimeout;     // Time before entering idle state
-            uint32_t dimTimeout;      // Time before dimming display
-            uint32_t sleepTimeout;    // Time before entering sleep
-            uint8_t dimBrightness;    // Brightness level when dimmed
-            bool enableDeepSleep;     // Whether deep sleep is allowed
+            static constexpr uint16_t STEP_DELAY = 100;
+            static constexpr uint16_t SUCCESS_FLASH_DURATION = 100;
+            static constexpr uint16_t ERROR_FLASH_DURATION = 200;
         };
     }
 

@@ -1017,4 +1017,16 @@ namespace VisualCortex
         wrappedText += text; // Add any remaining text
         return wrappedText;
     }
+
+    void RoverViewManager::clearSprite() 
+    {
+        spr.fillSprite(TFT_BLACK);
+        spr.pushSprite(0, 0);
+    }
+
+    void RoverViewManager::pushSprite() 
+    {
+        spr.pushSprite(0, 0);
+    }
+
 }

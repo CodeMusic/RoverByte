@@ -25,6 +25,7 @@
 #include <FastLED.h>
 #include <vector>
 #include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 // Forward declare all cortex namespaces and their components
 namespace PrefrontalCortex 
@@ -44,8 +45,8 @@ namespace VisualCortex
     class RoverViewManager;
     class RoverManager;
     class VisualSynesthesia;
-    enum class VisualPattern;
-    enum class VisualMessage;
+    using PrefrontalCortex::VisualTypes::VisualPattern;
+    using PrefrontalCortex::VisualTypes::VisualMessage;
 }
 
 namespace SomatosensoryCortex 
@@ -57,8 +58,8 @@ namespace SomatosensoryCortex
 namespace AuditoryCortex 
 {
     class SoundFxManager;
-    struct NoteInfo;
     class PitchPerception;
+    using PrefrontalCortex::AudioTypes::NoteInfo;
 }
 
 namespace PsychicCortex 
@@ -96,6 +97,7 @@ namespace CorpusCallosum
     using namespace PC::StorageTypes;    // Storage related types
     using namespace PC::SensorTypes;     // Sensor related types
     using namespace PC::ConfigTypes;     // Configuration types
+    using namespace PC::PowerTypes;      // Power management types
     
     // Import specialized cognitive type systems
     using namespace PC::BehaviorTypes;   // Behavior related types
@@ -111,6 +113,19 @@ namespace CorpusCallosum
     using namespace PC::VirtueTypes;     // Virtue system types
     using namespace PC::AuditoryTypes;   // Sound related types
     using namespace PC::PsychicTypes;    // ESP/remote sensing types
+
+    // Instead, use the PrefrontalCortex types directly
+    using PrefrontalCortex::VisualTypes::VisualPattern;
+    using PrefrontalCortex::VisualTypes::VisualMessage;
+    using PrefrontalCortex::AudioTypes::NoteInfo;
+
+    // Create namespace aliases for neural pathways
+    using VP = MC::PinDefinitions::VisualPathways;
+    using AP = MC::PinDefinitions::AuditoryPathways;
+    using TP = MC::PinDefinitions::TactilePathways;
+    using CP = MC::PinDefinitions::CommunicationPathways;
+    using SP = MC::PinDefinitions::StoragePathways;
+    using LP = MC::PinDefinitions::LoRaPathways;
 }
 
 #endif // SYNAPTIC_PATHWAYS_H

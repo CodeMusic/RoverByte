@@ -24,14 +24,13 @@
 
 namespace VisualCortex 
 {
-    // Add namespace aliases for cleaner code
     namespace PC = PrefrontalCortex;
-    using PC::NoteInfo;
+    using namespace CorpusCallosum;
+    using PC::AudioTypes::NoteInfo;
     using PC::ColorPerceptionTypes::ChromaticContext;
     using PC::ColorPerceptionTypes::EmotionalColor;
     using PC::ColorPerceptionTypes::ColorIntensity;
     using PC::ColorPerceptionTypes::ColorIndex;
-    using namespace CorpusCallosum;
 
     class VisualSynesthesia 
     {
