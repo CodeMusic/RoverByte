@@ -71,7 +71,7 @@ RoverByte is continuously evolving! Planned features include:
 
 ## 📩 Get Involved!  
 Want to contribute or follow the latest updates? Connect with us:  
-- **GitHub:** [github.com/YourUsername/RoverByte](https://github.com/YourUsername/RoverByte)  
+- **GitHub:** [github.com/CodeMusic/RoverByte](https://github.com/CodeMusic/RoverByte)  
 - **Community Forum:** [Join the discussion here!]  
 
 ---

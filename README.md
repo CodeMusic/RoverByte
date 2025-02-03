@@ -52,12 +52,12 @@ RoverByte is an AI-powered **quadrupedal robotic companion** that integrates int
 ---
 ### 🔗 Project-Specific Documentation  
 
-#### 📂 Rover Modules  
+#### 📂 Rover Modules  <DOCUMENTATION COMING SOON>
 
-- **[RoverCodeBase README](./RoverCodeBase/README.md)** – Learn more about **RoverRadio** and its RF-based automation.  
-- **[RoverSeer README](./RoverSeer/README.md)** – Redmine-based task automation & AI memory.  
-- **[RoverByte README](./RoverByte/README.md)** – Details on the AI-driven quadrupedal robot.  
-- **[TheRoverVerse README](./TheRoverVerse/README.md)** – Ongoing experimental Rover systems.  
+[wip] - **[RoverCodeBase README](./RoverCodeBase/README.md)** – Learn more about **RoverRadio** and its RF-based automation.  
+[wip] - **[RoverSeer README](./RoverSeer/README.md)** – Redmine-based task automation & AI memory.  
+[wip] - **[RoverByte README](./RoverByte/README.md)** – Details on the AI-driven quadrupedal robot.  
+[wip] - **[TheRoverVerse README](./TheRoverVerse/README.md)** – Ongoing experimental Rover systems.  
 
 #### 📜 RoverCodeBase Documentation  
 
