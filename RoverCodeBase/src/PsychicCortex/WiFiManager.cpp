@@ -10,14 +10,14 @@
  */
 
 #include "WiFiManager.h"
-#include "../PrefrontalCortex/RoverBehaviorManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../PrefrontalCortex/PowerManager.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../MotorCortex/PinDefinitions.h"
+#include "PrefrontalCortex/RoverBehaviorManager.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "PrefrontalCortex/PowerManager.h"
+#include "VisualCortex/RoverManager.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "MotorCortex/PinDefinitions.h"
 #include <WiFi.h>
 #include <time.h>
 

@@ -1,8 +1,8 @@
-#include "utilities.h"
+#include "Utilities.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <Arduino.h>
-#include "../../RoverConfig.h"
+#include "../RoverConfig.h"
 
 namespace PrefrontalCortex 
 {

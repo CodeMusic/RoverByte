@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "src/PrefrontalCortex/ProtoPerceptions.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
 
 // Global configuration settings
 namespace RoverConfig 

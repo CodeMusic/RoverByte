@@ -19,8 +19,8 @@
 #define VISUAL_SYNESTHESIA_H
 
 #include <FastLED.h>
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {

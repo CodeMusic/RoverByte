@@ -1,7 +1,7 @@
 #include "PowerManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../VisualCortex/RoverManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "VisualCortex/RoverManager.h"
 
 namespace PrefrontalCortex 
 {

@@ -1,15 +1,16 @@
 #ifndef SDMANAGER_H
 #define SDMANAGER_H
 
+#include "PrefrontalCortex/Utilities.h"
+#include <Arduino.h>
 #include "FS.h"
-#include "SD.h"
-#include "SPI.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../PrefrontalCortex/RoverBehaviorManager.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../MotorCortex/PinDefinitions.h"
+#include <SD.h>
+#include <SPI.h>
+#include "VisualCortex/LEDManager.h"
+#include "VisualCortex/RoverManager.h"
+#include "PrefrontalCortex/RoverBehaviorManager.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "MotorCortex/PinDefinitions.h"
 
 namespace PrefrontalCortex 
 {

@@ -12,8 +12,8 @@
 #ifndef PITCHPERCEPTION_H
 #define PITCHPERCEPTION_H
 
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
 #include <Arduino.h>
 #include <cstdint> // For fixed-width integer types
 

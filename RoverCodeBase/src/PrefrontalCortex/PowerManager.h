@@ -1,7 +1,7 @@
 #pragma once
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../PrefrontalCortex/utilities.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "PrefrontalCortex/Utilities.h"
 #include <Arduino.h>
 #include <XPowersLib.h>
 #include <FastLED.h>

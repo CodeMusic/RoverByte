@@ -1,11 +1,11 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 
-#include "../PrefrontalCortex/RoverBehaviorManager.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/RoverBehaviorManager.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace PsychicCortex 
 {

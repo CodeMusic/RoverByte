@@ -1,7 +1,8 @@
 #ifndef ROVER_BEHAVIOR_MANAGER_H
 #define ROVER_BEHAVIOR_MANAGER_H
 
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace PrefrontalCortex 
 {
@@ -29,7 +30,9 @@ namespace PrefrontalCortex
         static void update();
         static RoverTypes::BehaviorState getCurrentState();
         static void setState(RoverTypes::BehaviorState state);
-        static bool IsInitialized();
+        static bool isInitialized();
+        static bool isValid();
+        static void attemptRecovery();
 
         // Executive function processing
         static RoverTypes::LoadingPhase getLoadingPhase();

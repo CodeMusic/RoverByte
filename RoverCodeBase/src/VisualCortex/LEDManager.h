@@ -11,11 +11,11 @@
 
 #pragma once
 #include <FastLED.h>
-#include "../PrefrontalCortex/utilities.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "../GameCortex/SlotsManager.h"
-#include "../PsychicCortex/IRManager.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "GameCortex/SlotsManager.h"
+#include "PsychicCortex/IRManager.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 using namespace MotorCortex;
 using namespace CorpusCallosum;
@@ -124,6 +124,10 @@ namespace VisualCortex
         static void displayEmotional(const PrefrontalCortex::ColorPerceptionTypes::EmotionalColor& emotion);
         static void setIntensity(const PrefrontalCortex::ColorPerceptionTypes::ColorIntensity& intensity);
 
+        static bool isInitialized() {
+            return initialized;
+        }
+
     private:
         // LED Arrays
         static CRGB leds[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
@@ -184,5 +188,7 @@ namespace VisualCortex
         static constexpr uint8_t ERROR_LED_COUNT = 8;
         static constexpr uint8_t LEDS_PER_STEP = 3;
         static uint8_t loadingPosition;
+
+        static bool initialized;
     }; 
 }

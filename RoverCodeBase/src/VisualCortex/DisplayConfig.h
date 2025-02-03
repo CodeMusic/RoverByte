@@ -21,7 +21,7 @@
 #define DISPLAY_CONFIG_H
 
 #include <TFT_eSPI.h>
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {

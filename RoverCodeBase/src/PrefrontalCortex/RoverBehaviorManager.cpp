@@ -2,21 +2,21 @@
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
 
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../MotorCortex/PinDefinitions.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "MotorCortex/PinDefinitions.h"
 #include "RoverBehaviorManager.h"
-#include "utilities.h"
+#include "Utilities.h"
 #include "SPIManager.h"
 #include "SDManager.h"
-#include "../PsychicCortex/WiFiManager.h"
-#include "../SomatosensoryCortex/UIManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../SomatosensoryCortex/MenuManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
-#include "../GameCortex/AppManager.h"
-#include "../GameCortex/AppRegistration.h"
+#include "PsychicCortex/WiFiManager.h"
+#include "SomatosensoryCortex/UIManager.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "VisualCortex/RoverManager.h"
+#include "SomatosensoryCortex/MenuManager.h"
+#include "AuditoryCortex/SoundFxManager.h"
+#include "GameCortex/AppManager.h"
+#include "GameCortex/AppRegistration.h"
 #include <SPIFFS.h>
 
 namespace PrefrontalCortex 
@@ -91,11 +91,6 @@ namespace PrefrontalCortex
                 // No LED encoding mode change for other states
                 break;
         }
-    }
-
-    bool RoverBehaviorManager::IsInitialized() 
-    {
-        return initialized;
     }
 
     void RoverBehaviorManager::update() 
@@ -494,6 +489,20 @@ namespace PrefrontalCortex
     bool RoverBehaviorManager::isWarningCountdownActive()
     {
         return isCountingDown && !isFatalError;
+    }
+
+    void RoverBehaviorManager::attemptRecovery() {
+        // Basic recovery attempt
+        PC::Utilities::LOG_DEBUG("Attempting system recovery...");
+        delay(100);
+    }
+
+    bool RoverBehaviorManager::isInitialized() {
+        return initialized;
+    }   
+
+    bool RoverBehaviorManager::isValid() {
+        return isInitialized();
     }
 
 }
