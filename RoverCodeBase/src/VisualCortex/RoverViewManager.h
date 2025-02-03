@@ -102,7 +102,10 @@ namespace VisualCortex
         static void clearSprite();
         static void pushSprite();
 
+        static bool isInitialized() { return initialized; }
+
     private:
+        static bool initialized;
         static int currentFrameX;
         static int currentFrameY;
         

@@ -57,7 +57,6 @@ namespace PrefrontalCortex
 
             // Initialize sensory processing systems
             LEDManager::init();
-            RoverViewManager::init();
             MenuManager::init();
             SoundFxManager::init();
             AppManager::init();
@@ -278,7 +277,6 @@ namespace PrefrontalCortex
                         break;
                     case 1:
                         currentStatusMessage = "Loading display...";
-                        RoverViewManager::init();
                         break;
                     case 2:
                         currentStatusMessage = "Initializing Sound...";
@@ -485,10 +483,17 @@ namespace PrefrontalCortex
 
     int RoverBehaviorManager::getRemainingWarningSeconds() 
     {
-        if (!isCountingDown || isFatalError) return 0;
+        if (!isCountingDown || isFatalError) {
+            return 0;
+        }
         
         unsigned long elapsed = millis() - warningStartTime;
-        return (WARNING_DURATION - elapsed) / 1000;
+        return ((WARNING_DURATION - elapsed) / 1000);
+    }
+
+    bool RoverBehaviorManager::isWarningCountdownActive()
+    {
+        return isCountingDown && !isFatalError;
     }
 
 }

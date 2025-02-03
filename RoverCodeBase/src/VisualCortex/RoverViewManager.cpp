@@ -79,6 +79,7 @@ namespace VisualCortex
     bool RoverViewManager::isError = false;
     bool RoverViewManager::isFatalError = false;
     unsigned long RoverViewManager::warningStartTime = 0;
+    bool RoverViewManager::initialized = false;
 
     // Forward declare all drawing functions
     void drawRootChakra(int x, int y, int size);
@@ -130,6 +131,7 @@ namespace VisualCortex
         Utilities::LOG_SCOPE("Initializing RoverViewManager");
         drawFrame();
         drawCurrentView();
+        initialized = true;
     }
 
     void RoverViewManager::setCurrentView(ViewType view) {

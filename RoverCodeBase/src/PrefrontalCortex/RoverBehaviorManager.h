@@ -46,7 +46,7 @@ namespace PrefrontalCortex
 
         // Warning temporal processing
         static void updateWarningCountdown();
-        static bool isWarningCountdownActive() { return isCountingDown; }
+        static bool isWarningCountdownActive();
         static int getRemainingWarningSeconds();
         static unsigned long getWarningStartTime() { return warningStartTime; }
 

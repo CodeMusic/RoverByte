@@ -28,6 +28,7 @@
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
 #include "../SomatosensoryCortex/MenuManager.h"
+#include "RoverViewManager.h"
 
 namespace VisualCortex 
 {
@@ -45,6 +46,7 @@ namespace VisualCortex
     using PC::Utilities;
     using PC::PowerManager;
     using SC::MenuManager;
+    using VC::RoverViewManager;
 
   extern TFT_eSprite spr;
 
@@ -71,6 +73,10 @@ namespace VisualCortex
 
 
     void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
+        if (!RoverViewManager::isInitialized()) 
+        {
+            return;
+        }
         Utilities::LOG_SCOPE("Drawing rover");
         if (SC::MenuManager::isVisible()) {
             return;
