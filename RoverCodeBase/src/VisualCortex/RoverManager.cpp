@@ -68,16 +68,23 @@ namespace VisualCortex
     Expression RoverManager::previousExpression = Expression::HAPPY;
 
     void RoverManager::setShowTime(bool show) {
+        Utilities::LOG_SCOPE("setShowTime(bool)", String(show));
         showTime = show;
     }
 
 
     void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
+        Utilities::LOG_SCOPE("drawRover(const char*, bool, bool, int, int)", 
+            mood, 
+            String(earsPerked), 
+            String(large), 
+            String(x), 
+            String(y)
+        );
         if (!RoverViewManager::isInitialized()) 
         {
             return;
         }
-        Utilities::LOG_SCOPE("Drawing rover");
         if (SC::MenuManager::isVisible()) {
             return;
         }
@@ -157,6 +164,14 @@ namespace VisualCortex
     }
 
     void RoverManager::drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale) {
+        Utilities::LOG_SCOPE("drawEyes(String, int, int, uint16_t, uint16_t, float)", 
+            mood,
+            String(roverX),
+            String(currentY),
+            String(leftEyeColor),
+            String(rightEyeColor),
+            String(scale)
+        );
         // Draw white background circles for eyes
         spr.fillCircle(roverX + 30*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
         spr.fillCircle(roverX + 70*scale, currentY + 20*scale, 10*scale, TFT_WHITE);
@@ -218,6 +233,12 @@ namespace VisualCortex
     }
 
     void RoverManager::drawNoseAndMouth(String mood, int roverX, int currentY, float scale) {
+        Utilities::LOG_SCOPE("drawNoseAndMouth(String, int, int, float)", 
+            mood,
+            String(roverX),
+            String(currentY),
+            String(scale)
+        );
         // Draw triangular nose
         spr.fillTriangle(roverX + 45*scale, currentY + 35*scale, 
                         roverX + 40*scale, currentY + 45*scale, 
@@ -243,6 +264,7 @@ namespace VisualCortex
     }
 
     void RoverManager::updateHoverAnimation() {
+        Utilities::LOG_SCOPE("updateHoverAnimation()");
         // Only update hover animation when device is awake
         if (PC::PowerManager::getCurrentPowerState() != PC::PowerState::AWAKE) return;
         
@@ -263,24 +285,33 @@ namespace VisualCortex
     }
 
     const char* RoverManager::getCurrentMood() {
+        Utilities::LOG_SCOPE("getCurrentMood()");
         return moods[currentMood];
     }
 
     void RoverManager::nextMood() {
+        Utilities::LOG_SCOPE("nextMood()");
         currentMood = (currentMood + 1) % NUM_MOODS;
     }
 
     void RoverManager::previousMood() {
+        Utilities::LOG_SCOPE("previousMood()");
         currentMood = (currentMood - 1 + NUM_MOODS) % NUM_MOODS;
     }
 
     void RoverManager::setRandomMood() {
+        Utilities::LOG_SCOPE("setRandomMood()");
         currentMood = random(0, NUM_MOODS);
         drawRover(moods[currentMood], earsPerked);
     }
 
     // New function to handle temporary expressions
     void RoverManager::setTemporaryExpression(Expression exp, int duration, uint16_t color) {
+        Utilities::LOG_SCOPE("setTemporaryExpression(<Expression>, int, uint16_t)", 
+            String(static_cast<int>(exp)),
+            String(duration),
+            String(color)
+        );
         previousExpression = currentExpression;
         currentExpression = exp;
         expressionStartTime = millis();
@@ -290,6 +321,9 @@ namespace VisualCortex
     }
 
     const char* RoverManager::expressionToMood(Expression exp) {
+        Utilities::LOG_SCOPE("expressionToMood(<Expression>)", 
+            String(static_cast<int>(exp))
+        );
         switch(exp) {
             case Expression::HAPPY: return "happy";
             case Expression::LOOKING_UP: return "looking_up";
@@ -305,11 +339,15 @@ namespace VisualCortex
 
 
     void RoverManager::drawExpression(Expression exp) {
+        Utilities::LOG_SCOPE("drawExpression(<Expression>)", 
+            String(static_cast<int>(exp))
+        );
         const char* mood = expressionToMood(exp);
         drawRover(mood, earsPerked);
     }
 
     void RoverManager::setEarsPerked(bool up) {
+        Utilities::LOG_SCOPE("setEarsPerked(bool)", String(up));
         earsPerked = up;
         setTemporaryExpression(Expression::HAPPY);
         drawRover(moods[currentMood], up);

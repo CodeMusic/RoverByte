@@ -102,8 +102,10 @@ using GC::SlotsManager;
 RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
 
 void setup() {
+    Utilities::LOG_SCOPE("setup()");
     Serial.begin(115200);
-    Utilities::LOG_PROD("Starting setup...");
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
+    Utilities::LOG_DEBUG("Starting with verbose logging...");
 
     // Check free heap memory before initialization
     //LOG_DEBUG("Free heap before initialization: %d", ESP.getFreeHeap());
@@ -116,6 +118,9 @@ void setup() {
     {
         RoverViewManager::init();
         Utilities::LOG_DEBUG("Display initialized successfully.");
+        
+        // Draw initial loading screen instead of error screen
+        RoverViewManager::drawLoadingScreen("Starting up...");
     } 
     catch (const std::exception& e) 
     {
@@ -157,6 +162,7 @@ void setup() {
 }
 
 void loop() {
+    Utilities::LOG_SCOPE("loop()");
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;

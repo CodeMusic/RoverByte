@@ -20,6 +20,7 @@
 #include "../AuditoryCortex/SoundFxManager.h"
 #include "LEDManager.h"
 #include <FastLED.h>
+#include "../PreFrontalCortex/utilities.h"
 
 namespace VisualCortex 
 {
@@ -30,16 +31,19 @@ namespace VisualCortex
 
     CRGB VisualSynesthesia::getBase8Color(uint8_t cognitiveValue) 
     {
+        PC::Utilities::LOG_SCOPE("getBase8Color(uint8_t)", String(cognitiveValue));
         return PC::ColorPerceptionTypes::BASE_8_COLORS[cognitiveValue % 8];
     }
 
     CRGB VisualSynesthesia::getDayColor(uint8_t circadianIndex) 
     {
+        PC::Utilities::LOG_SCOPE("getDayColor(uint8_t)", String(circadianIndex));
         return PC::ColorPerceptionTypes::DAY_COLORS[(circadianIndex - 1) % 7];
     }
 
     void VisualSynesthesia::getMonthColors(uint8_t temporalIndex, CRGB& primaryPerception, CRGB& secondaryPerception) 
     {
+        PC::Utilities::LOG_SCOPE("getMonthColors(uint8_t, CRGB&, CRGB&)", String(temporalIndex));
         temporalIndex = (temporalIndex - 1) % 12;
         primaryPerception = PC::ColorPerceptionTypes::MONTH_COLORS[temporalIndex][0];
         secondaryPerception = PC::ColorPerceptionTypes::MONTH_COLORS[temporalIndex][1];
@@ -47,6 +51,7 @@ namespace VisualCortex
 
     void VisualSynesthesia::getHourColors(uint8_t circadianHour, CRGB& primaryPerception, CRGB& secondaryPerception) 
     {
+        PC::Utilities::LOG_SCOPE("getHourColors(uint8_t, CRGB&, CRGB&)", String(circadianHour));
         circadianHour = (circadianHour - 1) % 12;
         primaryPerception = PC::ColorPerceptionTypes::CHROMATIC_COLORS[circadianHour][0];
         secondaryPerception = PC::ColorPerceptionTypes::CHROMATIC_COLORS[circadianHour][1];
@@ -54,6 +59,7 @@ namespace VisualCortex
 
     CRGB VisualSynesthesia::getBatteryColor(uint8_t energyLevel) 
     {
+        PC::Utilities::LOG_SCOPE("getBatteryColor(uint8_t)", String(energyLevel));
         if (energyLevel > 75) 
         {
             return CRGB::Green;
@@ -74,6 +80,7 @@ namespace VisualCortex
 
     CRGB VisualSynesthesia::getColorForFrequency(uint16_t freq) 
     {
+        PC::Utilities::LOG_SCOPE("getColorForFrequency(uint16_t)", String(freq));
         if (freq >= PitchPerception::NOTE_C5) return PC::ColorPerceptionTypes::BASE_8_COLORS[1];      // Red
         else if (freq >= PitchPerception::NOTE_B4) return PC::ColorPerceptionTypes::BASE_8_COLORS[7]; // Violet
         else if (freq >= PitchPerception::NOTE_A4) return PC::ColorPerceptionTypes::BASE_8_COLORS[6]; // Indigo
@@ -86,6 +93,7 @@ namespace VisualCortex
 
     CRGB VisualSynesthesia::blendNoteColors(const NoteInfo& musicalPerception) 
     {
+        PC::Utilities::LOG_SCOPE("blendNoteColors(NoteInfo)");
         if (musicalPerception.isSharp) 
         {
             // For sharp notes, blend the colors of the adjacent natural notes
@@ -101,6 +109,8 @@ namespace VisualCortex
 
     void VisualSynesthesia::playVisualChord(uint16_t baseFreq, CRGB& rootPerception, CRGB& thirdPerception, CRGB& fifthPerception) 
     {
+        PC::Utilities::LOG_SCOPE("playVisualChord(uint16_t, CRGB&, CRGB&, CRGB&)", 
+            String(baseFreq));
         // Get root note information
         NoteInfo rootInfo = AC::PitchPerception::getNoteInfo(baseFreq);
 
@@ -146,10 +156,12 @@ namespace VisualCortex
 
     uint16_t VisualSynesthesia::convertToRGB565(CRGB neuralColor) 
     {
+        PC::Utilities::LOG_SCOPE("convertToRGB565(CRGB)");
         return ((neuralColor.r & 0xF8) << 8) | ((neuralColor.g & 0xFC) << 3) | (neuralColor.b >> 3);
     }
 
     void VisualSynesthesia::playNFCCardData(const char* cardData) {
+        PC::Utilities::LOG_SCOPE("playNFCCardData(const char*)", cardData);
         for (int i = 0; i < strlen(cardData); i++) {
             // Map each character to a frequency
             uint16_t frequency = map(cardData[i], 32, 126, 200, 2000); // Map printable ASCII to a frequency range
@@ -160,6 +172,7 @@ namespace VisualCortex
 
     ChromaticContext VisualSynesthesia::getChromaticContext(uint16_t frequency) 
     {
+        PC::Utilities::LOG_SCOPE("getChromaticContext(uint16_t)", String(frequency));
         ChromaticContext context;
         context.primary = getColorForFrequency(frequency);
         context.secondary = getColorForFrequency(frequency + 100); // Slight shift for secondary
@@ -169,6 +182,7 @@ namespace VisualCortex
 
     EmotionalColor VisualSynesthesia::getEmotionalColor(PC::RoverTypes::Expression emotion) 
     {
+        PC::Utilities::LOG_SCOPE("getEmotionalColor(Expression)", String(static_cast<int>(emotion)));
         EmotionalColor color;
         color.emotion = emotion;
         
@@ -195,6 +209,8 @@ namespace VisualCortex
                                            ChromaticContext& thirdContext,
                                            ChromaticContext& fifthContext) 
     {
+        PC::Utilities::LOG_SCOPE("playVisualChord(uint16_t, ChromaticContext&, ChromaticContext&, ChromaticContext&)", 
+            String(fundamentalFreq));
         // Calculate frequencies
         uint16_t thirdFreq = fundamentalFreq * 5 / 4;  // Major third
         uint16_t fifthFreq = fundamentalFreq * 3 / 2;  // Perfect fifth

@@ -49,30 +49,40 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::init() 
     {
+        Utilities::LOG_SCOPE("init()");
         try 
         {
-            // Initialize core neural pathways
+            Utilities::LOG_DEBUG("Starting RoverBehaviorManager initialization...");
+
+            // Initialize core memory and storage systems
+            Utilities::LOG_DEBUG("Initializing SD Manager...");
             SDManager::init(BOARD_SD_CS);
             Utilities::LOG_DEBUG("Memory pathways initialized");
 
-            // Initialize sensory processing systems
+            // Initialize core visual systems
+            Utilities::LOG_DEBUG("Initializing LED Manager...");
             LEDManager::init();
-            MenuManager::init();
-            SoundFxManager::init();
-            AppManager::init();
+            Utilities::LOG_DEBUG("LED system initialized");
 
+            // Set initial behavioral state
+            Utilities::LOG_DEBUG("Setting initial state...");
+            currentState = RoverTypes::BehaviorState::LOADING;
+            loadingPhase = RoverTypes::LoadingPhase::BOOTING;
+            currentStatusMessage = "Initializing core systems...";
+            
             initialized = true;
-            Utilities::LOG_DEBUG("Cognitive systems initialized successfully");
+            Utilities::LOG_DEBUG("Core neural pathways initialized successfully");
         }
         catch (const std::exception& e) 
         {
-            Utilities::LOG_ERROR("Cognitive initialization failed: %s", e.what());
+            Utilities::LOG_ERROR("Core initialization failed: %s", e.what());
             throw;
         }
     }
 
     void RoverBehaviorManager::setState(RoverTypes::BehaviorState newState) 
     {
+        Utilities::LOG_SCOPE("setState(<BehaviorState>)", String(static_cast<int>(newState)));
         if (currentState == newState) return;
 
         currentState = newState;
@@ -95,11 +105,13 @@ namespace PrefrontalCortex
 
     bool RoverBehaviorManager::IsInitialized() 
     {
+        Utilities::LOG_SCOPE("IsInitialized()");
         return initialized;
     }
 
     void RoverBehaviorManager::update() 
     {
+        Utilities::LOG_SCOPE("update()");
         switch (currentState) 
         {
             case RoverTypes::BehaviorState::LOADING:
@@ -171,12 +183,15 @@ namespace PrefrontalCortex
         }
     }
 
-    RoverTypes::BehaviorState RoverBehaviorManager::getCurrentState() {
+    RoverTypes::BehaviorState RoverBehaviorManager::getCurrentState() 
+    {
+        Utilities::LOG_SCOPE("getCurrentState()");
         return currentState;
     }
 
     void RoverBehaviorManager::handleLoading() 
     {
+        Utilities::LOG_SCOPE("handleLoading()");
         LEDManager::updateLoadingAnimation();
 
         switch (loadingPhase) 
@@ -193,24 +208,31 @@ namespace PrefrontalCortex
         }
     }
 
-    void RoverBehaviorManager::handleHome() {
+    void RoverBehaviorManager::handleHome() 
+    {
+        Utilities::LOG_SCOPE("handleHome()");
         // Basic updates in home state
         LEDManager::updateLoadingAnimation();
         RoverManager::updateHoverAnimation();
     }
 
-    void RoverBehaviorManager::handleMenu() {
-        Utilities::LOG_DEBUG("handleMenu...");
+    void RoverBehaviorManager::handleMenu() 
+    {
+        Utilities::LOG_SCOPE("handleMenu()");
         // The menu system manages its own logic
     }
 
-    void RoverBehaviorManager::handleApp() {
+    void RoverBehaviorManager::handleApp() 
+    {
+        Utilities::LOG_SCOPE("handleApp()");
         if (!AppManager::isAppActive()) {
             setState(RoverTypes::BehaviorState::HOME);
         }
     }
 
-    void RoverBehaviorManager::handleError() {
+    void RoverBehaviorManager::handleError() 
+    {
+        Utilities::LOG_SCOPE("handleError()");
         // Remove auto-reboot completely
         static bool inError = false;
         if (!inError) {
@@ -219,7 +241,9 @@ namespace PrefrontalCortex
         // No reboot logic here
     }
 
-    void RoverBehaviorManager::handleFatalError() {
+    void RoverBehaviorManager::handleFatalError() 
+    {
+        Utilities::LOG_SCOPE("handleFatalError()");
         if (!RoverViewManager::isFatalError) return;
         
         // Only check for manual reboot via button press, but don't actually reboot
@@ -228,7 +252,9 @@ namespace PrefrontalCortex
         }
     }
 
-    void RoverBehaviorManager::updateWarningCountdown() {
+    void RoverBehaviorManager::updateWarningCountdown() 
+    {
+        Utilities::LOG_SCOPE("updateWarningCountdown()");
         if (!isCountingDown && !isFatalError) return;
         
         unsigned long elapsed;
@@ -262,6 +288,7 @@ namespace PrefrontalCortex
     //----- Sub-phase Handlers for LOADING -----
     void RoverBehaviorManager::handleBooting() 
     {
+        Utilities::LOG_SCOPE("handleBooting()");
         static unsigned long lastMsgChange = 0;
         static int step = 0;
         const unsigned long stepDelay = 800;
@@ -277,24 +304,27 @@ namespace PrefrontalCortex
                         break;
                     case 1:
                         currentStatusMessage = "Loading display...";
+                        // Skip RoverViewManager init since it's already done
                         break;
                     case 2:
                         currentStatusMessage = "Initializing Sound...";
-                        SoundFxManager::init();
+                        if (!SoundFxManager::isInitialized()) {
+                            SoundFxManager::init();
+                        }
                         break;
                     case 3:
                         currentStatusMessage = "Starting UI...";
-                        SC::UIManager::init();
+                        if (!MenuManager::isInitialized()) {
+                            MenuManager::init();
+                        }
                         break;
                     case 4:
                         currentStatusMessage = "Preparing apps...";
-                        MenuManager::init();
-                        break;
-                    case 5:
-                        currentStatusMessage = "Registering apps...";
-                        AppManager::init();
-                        if (AppManager::isInitialized()) {
-                            AppRegistration::registerDefaultApps();
+                        if (!AppManager::isInitialized()) {
+                            AppManager::init();
+                            if (AppManager::isInitialized()) {
+                                AppRegistration::registerDefaultApps();
+                            }
                         }
                         break;
                 }
@@ -302,12 +332,11 @@ namespace PrefrontalCortex
                 currentBootStep = step;
                 lastMsgChange = millis();
                 
-                // Draw loading screen before incrementing step
                 RoverViewManager::drawLoadingScreen(currentStatusMessage);
                 
                 step++;
                 
-                if (step >= 5) 
+                if (step >= 4) 
                 {
                     Utilities::LOG_DEBUG("Boot sequence complete, moving to WiFi phase");
                     setLoadingPhase(RoverTypes::LoadingPhase::CONNECTING_WIFI);
@@ -317,28 +346,10 @@ namespace PrefrontalCortex
             catch (const std::exception& e) 
             {
                 Utilities::LOG_ERROR("Boot step %d failed: %s", step, e.what());
-                switch(step) 
-                {
-                    case 1:
-                        triggerFatalError(
-                            static_cast<uint32_t>(RoverTypes::StartupErrorCode::DISPLAY_INIT_FAILED),
-                            "Display initialization failed"
-                        );
-                        break;
-                    case 2:
-                        triggerFatalError(
-                            static_cast<uint32_t>(RoverTypes::StartupErrorCode::UI_INIT_FAILED),
-                            "UI initialization failed"
-                        );
-                        break;
-                    case 3:
-                    case 4:
-                        triggerFatalError(
-                            static_cast<uint32_t>(RoverTypes::StartupErrorCode::APP_INIT_FAILED),
-                            "App initialization failed"
-                        );
-                        break;
-                }
+                triggerFatalError(
+                    static_cast<uint32_t>(RoverTypes::StartupErrorCode::CORE_INIT_FAILED),
+                    e.what()
+                );
                 return;
             }
         }
@@ -346,6 +357,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleWiFiConnection() 
     {
+        Utilities::LOG_SCOPE("handleWiFiConnection()");
         static unsigned long startAttempt = millis();
         static bool timeoutWarningShown = false;
         const unsigned long WIFI_TIMEOUT = 20000;
@@ -377,6 +389,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleTimeSync() 
     {
+        Utilities::LOG_SCOPE("handleTimeSync()");
         static int retryCount = 0;
         const int MAX_RETRIES = 3;
         
@@ -402,7 +415,12 @@ namespace PrefrontalCortex
         }
     }
 
-    void RoverBehaviorManager::triggerFatalError(uint32_t errorCode, const char* errorMessage) {
+    void RoverBehaviorManager::triggerFatalError(uint32_t errorCode, const char* errorMessage) 
+    {
+        Utilities::LOG_SCOPE("triggerFatalError(uint32_t, const char*)", 
+            String(errorCode), 
+            errorMessage
+        );
         setState(RoverTypes::BehaviorState::FATAL_ERROR);
         RoverViewManager::errorCode = errorCode;
         RoverViewManager::errorMessage = errorMessage;
@@ -415,6 +433,12 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type) 
     {
+        Utilities::LOG_SCOPE("triggerError(uint32_t, const char*, ErrorType)", 
+            String(errorCode), 
+            errorMessage, 
+            String(static_cast<int>(type))
+        );
+        
         // Always log to serial
         Serial.printf("ERROR 0x%08X: %s (Type: %s)\n", 
             errorCode, 
@@ -449,12 +473,17 @@ namespace PrefrontalCortex
         RoverViewManager::drawErrorScreen(errorCode, errorMessage, type == ErrorType::FATAL);
     }
 
-    int RoverBehaviorManager::getCurrentBootStep() {
+    int RoverBehaviorManager::getCurrentBootStep() 
+    {
+        Utilities::LOG_SCOPE("getCurrentBootStep()");
         return currentBootStep;
     }
 
     void RoverBehaviorManager::setLoadingPhase(RoverTypes::LoadingPhase phase) 
     {
+        Utilities::LOG_SCOPE("setLoadingPhase(<LoadingPhase>)", 
+            String(static_cast<int>(phase))
+        );
         loadingPhase = phase;
         
         switch(phase) 
@@ -473,16 +502,19 @@ namespace PrefrontalCortex
 
     RoverTypes::LoadingPhase RoverBehaviorManager::getLoadingPhase() 
     {
+        Utilities::LOG_SCOPE("getLoadingPhase()");
         return loadingPhase;
     }
 
     const char* RoverBehaviorManager::getStatusMessage() 
     {
+        Utilities::LOG_SCOPE("getStatusMessage()");
         return currentStatusMessage;
     }
 
     int RoverBehaviorManager::getRemainingWarningSeconds() 
     {
+        Utilities::LOG_SCOPE("getRemainingWarningSeconds()");
         if (!isCountingDown || isFatalError) {
             return 0;
         }
@@ -493,7 +525,14 @@ namespace PrefrontalCortex
 
     bool RoverBehaviorManager::isWarningCountdownActive()
     {
+        Utilities::LOG_SCOPE("isWarningCountdownActive()");
         return isCountingDown && !isFatalError;
+    }
+
+    unsigned long RoverBehaviorManager::getWarningStartTime() 
+    {
+        Utilities::LOG_SCOPE("getWarningStartTime()");
+        return warningStartTime;
     }
 
 }

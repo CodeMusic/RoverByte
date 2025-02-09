@@ -127,11 +127,47 @@ namespace VisualCortex
         return VisualSynesthesia::convertToRGB565(dayColor);
     }
 
-    void RoverViewManager::init() {
+    void RoverViewManager::init() 
+    {
         Utilities::LOG_SCOPE("Initializing RoverViewManager");
-        drawFrame();
-        drawCurrentView();
-        initialized = true;
+        
+        try 
+        {
+            // Initialize TFT display first
+            tft.init();
+            tft.setRotation(1);  // Landscape mode
+            tft.fillScreen(TFT_BLACK);
+            
+            // Create sprite directly without assignment
+            spr.createSprite(DisplayConfig::SCREEN_WIDTH, DisplayConfig::SCREEN_HEIGHT);
+            spr.fillSprite(TFT_BLACK);
+            
+            // Set default text properties
+            spr.setTextDatum(MC_DATUM);
+            spr.setTextColor(TFT_WHITE, TFT_BLACK);
+            
+            // Initialize error state
+            errorCode = 0;
+            errorMessage = "";
+            isError = false;
+            isFatalError = false;
+            
+            // Draw initial frame
+            drawFrame();
+            
+            // Push initial frame to display
+            spr.pushSprite(0, 0);
+            
+            initialized = true;
+            
+            Utilities::LOG_DEBUG("RoverViewManager initialized successfully");
+        }
+        catch (const std::exception& e) 
+        {
+            Utilities::LOG_ERROR("RoverViewManager initialization failed: %s", e.what());
+            initialized = false;
+            throw;
+        }
     }
 
     void RoverViewManager::setCurrentView(ViewType view) {

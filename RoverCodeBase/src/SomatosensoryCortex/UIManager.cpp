@@ -47,6 +47,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::init() 
     {
+        Utilities::LOG_SCOPE("init()");
         if (encoder != nullptr) 
         {
             delete encoder;  // Clean up if already initialized
@@ -80,6 +81,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::update() 
     {
+        Utilities::LOG_SCOPE("update()");
         if (initState != InputState::READY) 
         {
             init();
@@ -96,6 +98,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::updateEncoder() 
     {
+        Utilities::LOG_SCOPE("updateEncoder()");
         if (!encoder) return;  // Guard against null encoder
         
         int newPos = encoder->getPosition();
@@ -156,6 +159,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::handleRotaryPress() 
     {
+        Utilities::LOG_SCOPE("handleRotaryPress()");
         static bool lastButtonState = HIGH;
         bool currentButtonState = digitalRead(ENCODER_KEY);
         
@@ -184,6 +188,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::updateSideButton() 
     {
+        Utilities::LOG_SCOPE("updateSideButton()");
         static bool lastButtonState = HIGH;
         bool currentButtonState = digitalRead(BOARD_USER_KEY);
         
@@ -217,6 +222,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::resetState() 
     {
+        Utilities::LOG_SCOPE("resetState()");
         initState = InputState::NOT_STARTED;
     }
 

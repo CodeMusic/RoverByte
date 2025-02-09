@@ -33,9 +33,14 @@ namespace PrefrontalCortex
         static void LOG_INFO(const char* format, ...);
         static void LOG_WARNING(const char* format, ...);
         static void LOG_SCOPE(const char* format, ...);
+        
+
 
     private:
         static void debugLog(LogLevel level, const char* format, va_list args);
+        static String formatParameter(const String& type, const String& value);
+
+
     };
 }
 #endif // UTILITIES_H

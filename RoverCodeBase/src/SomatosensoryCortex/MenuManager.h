@@ -52,6 +52,11 @@ namespace SomatosensoryCortex
          * @return True if menu is being displayed
          */
         static bool isVisible() { return isMenuVisible; }
+        /**
+         * @brief Check if menu system is initialized
+         * @return True if menu is initialized
+         */
+        static bool isInitialized() { return initialized; }
         
         // Input handling methods
         /**
@@ -124,7 +129,7 @@ namespace SomatosensoryCortex
         static std::vector<std::vector<MenuItem>*> menuStack;
         static int selectedIndex;
         static bool isMenuVisible;
-        
+        static bool initialized;
         // Timing constants
         static constexpr unsigned long DEBOUNCE_DELAY = 50;
     }; 

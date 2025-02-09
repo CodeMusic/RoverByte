@@ -48,7 +48,7 @@ namespace PrefrontalCortex
         static void updateWarningCountdown();
         static bool isWarningCountdownActive();
         static int getRemainingWarningSeconds();
-        static unsigned long getWarningStartTime() { return warningStartTime; }
+        static unsigned long getWarningStartTime();
 
     private:
         // Neural state variables

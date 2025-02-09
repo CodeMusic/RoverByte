@@ -40,7 +40,7 @@ namespace SomatosensoryCortex
     std::vector<MenuItem> MenuManager::mainMenu;
     std::vector<std::vector<MenuItem>*> MenuManager::menuStack;
     int MenuManager::selectedIndex = 0;
-
+    bool MenuManager::initialized = false;
     // Used elsewhere, so keep it
     bool isRoverRadio = true;
 
@@ -247,6 +247,7 @@ namespace SomatosensoryCortex
         };
 
         currentMenu = mainMenu;
+        initialized = true;
     }
 
     /**
@@ -255,6 +256,9 @@ namespace SomatosensoryCortex
      */
     void MenuManager::show() 
     {
+        if (!initialized) {
+            return;
+        }
         isMenuVisible = true;
         RoverViewManager::drawMenuBackground();
         drawMenu();
@@ -262,6 +266,9 @@ namespace SomatosensoryCortex
 
     void MenuManager::hide() 
     {
+        if (!initialized) {
+            return;
+        }
         isMenuVisible = false;
         selectedIndex = 0;
         currentMenu = mainMenu;
@@ -282,6 +289,9 @@ namespace SomatosensoryCortex
      */
     void MenuManager::handleRotaryTurn(int direction) 
     {
+        if (!initialized) {
+            return;
+        }
         if (!isMenuVisible) return;
         
         selectedIndex += direction;
@@ -304,6 +314,9 @@ namespace SomatosensoryCortex
      */
     void MenuManager::handleMenuSelect() 
     {
+        if (!initialized) {
+            return;
+        }
         if (!isMenuVisible || selectedIndex >= static_cast<int>(currentMenu.size())) 
         {
             return;
@@ -319,6 +332,9 @@ namespace SomatosensoryCortex
 
     // If you still want a separate IR submenu for advanced IR control, you can place it here
     void MenuManager::handleIRBlastMenu() {
+        if (!initialized) {
+            return;
+        }
         Utilities::LOG_DEBUG("handleIRBlastMenu......");
         // Example placeholder. Could call AppManager::startApp("IrBlastApp") 
         // or handle advanced IR menus here.
@@ -331,6 +347,9 @@ namespace SomatosensoryCortex
      */
     void MenuManager::enterSubmenu(const std::vector<MenuItem>& submenu) 
     {
+        if (!initialized) {
+            return;
+        }
         menuStack.push_back(&currentMenu);
         currentMenu = submenu;
         selectedIndex = 0;
@@ -344,6 +363,9 @@ namespace SomatosensoryCortex
      */
     void MenuManager::goBack() 
     {
+        if (!initialized) {
+            return;
+        }
         if (!menuStack.empty()) 
         {
             currentMenu = *menuStack.back();
@@ -358,6 +380,9 @@ namespace SomatosensoryCortex
     }
 
     void MenuManager::selectMenuItem() {
+        if (!initialized) {
+            return;
+        }
         if (currentMenu.empty()) return; // No items to select
 
         // Execute the action associated with the selected menu item
@@ -370,10 +395,17 @@ namespace SomatosensoryCortex
      */
     const MenuItem& MenuManager::getCurrentItem() 
     {
+        if (!initialized) {
+            return currentMenu[0];
+        }
         return currentMenu[selectedIndex];
     }
 
-        int MenuManager::getSelectedIndex() {
+    int MenuManager::getSelectedIndex() 
+    {
+        if (!initialized) {
+            return 0;
+        }
         return selectedIndex;
     }
 
