@@ -11,8 +11,8 @@
 #ifndef APP_MANAGER_H
 #define APP_MANAGER_H
 
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
 #include <vector>
 #include <functional>
 #include <string>

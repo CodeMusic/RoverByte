@@ -7,13 +7,13 @@
  */
 
 #include "AppManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../SomatosensoryCortex/MenuManager.h"
-#include "../GameCortex/AppRegistration.h"
-#include "../GameCortex/SlotsManager.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PsychicCortex/IRManager.h"
-#include "../PsychicCortex/NFCManager.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "SomatosensoryCortex/MenuManager.h"
+#include "GameCortex/AppRegistration.h"
+#include "GameCortex/SlotsManager.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "PsychicCortex/IRManager.h"
+#include "PsychicCortex/NFCManager.h"
 
 namespace GameCortex
 {

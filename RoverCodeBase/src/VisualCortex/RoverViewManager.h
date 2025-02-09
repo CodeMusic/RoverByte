@@ -20,13 +20,13 @@
 #define ROVER_VIEW_MANAGER_H
 
 #include "TFT_eSPI.h"
-#include "../PrefrontalCortex/utilities.h"
+#include "PrefrontalCortex/Utilities.h"
 #include "VisualSynesthesia.h"
-#include "../PrefrontalCortex/PowerManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
+#include "PrefrontalCortex/PowerManager.h"
+#include "AuditoryCortex/SoundFxManager.h"
 #include <vector>
-#include "../SomatosensoryCortex/MenuManager.h"
-#include "../MotorCortex/PinDefinitions.h"
+#include "SomatosensoryCortex/MenuManager.h"
+#include "MotorCortex/PinDefinitions.h"
 
 namespace VisualCortex 
 {
@@ -103,6 +103,9 @@ namespace VisualCortex
         static void pushSprite();
 
         static bool isInitialized() { return initialized; }
+        static bool isValid() { 
+            return isInitialized() && !isFatalError; 
+        }
 
     private:
         static bool initialized;

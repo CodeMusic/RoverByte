@@ -10,15 +10,15 @@
  */
 
 #include "UIManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../PrefrontalCortex/PowerManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
-#include "../PrefrontalCortex/RoverBehaviorManager.h"
-#include "../SomatosensoryCortex/MenuManager.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "../PrefrontalCortex/utilities.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "VisualCortex/RoverManager.h"
+#include "PrefrontalCortex/PowerManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "AuditoryCortex/SoundFxManager.h"
+#include "PrefrontalCortex/RoverBehaviorManager.h"
+#include "SomatosensoryCortex/MenuManager.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "PrefrontalCortex/Utilities.h"
 
 namespace SomatosensoryCortex 
 {

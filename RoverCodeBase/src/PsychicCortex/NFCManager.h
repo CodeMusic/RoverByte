@@ -2,10 +2,10 @@
 #define NFC_MANAGER_H
 
 #include <Adafruit_PN532.h>
-#include "../PrefrontalCortex/utilities.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "VisualCortex/LEDManager.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
 
 namespace PsychicCortex 
 {

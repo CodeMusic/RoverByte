@@ -21,19 +21,19 @@
  */
 
 #include "RoverViewManager.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PrefrontalCortex/PowerManager.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "PrefrontalCortex/PowerManager.h"
 #include "DisplayConfig.h"
 #include "RoverManager.h"
-#include "../PsychicCortex/NFCManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include "PsychicCortex/NFCManager.h"
+#include "AuditoryCortex/SoundFxManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "PrefrontalCortex/RoverBehaviorManager.h"
 #include <TFT_eSPI.h>
-#include "../PrefrontalCortex/SDManager.h"
-#include "../PsychicCortex/WiFiManager.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/SDManager.h"
+#include "PsychicCortex/WiFiManager.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {

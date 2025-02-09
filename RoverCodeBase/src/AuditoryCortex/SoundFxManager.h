@@ -15,18 +15,18 @@
 #ifndef SOUND_FX_MANAGER_H
 #define SOUND_FX_MANAGER_H
 
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../AuditoryCortex/PitchPerception.h"
-#include "../PrefrontalCortex/utilities.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "Tunes.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "AuditoryCortex/PitchPerception.h"
+#include "PrefrontalCortex/Utilities.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "VisualCortex/RoverManager.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "AuditoryCortex/Tunes.h"
 
 #include <time.h>
 #include <SPIFFS.h>
 #include <FS.h>
-#include "Audio.h"
+#include <Audio.h>
 #include <SD.h>
 
 namespace AuditoryCortex
@@ -97,6 +97,9 @@ namespace AuditoryCortex
         /* ========================== Core Functionality ========================== */
         static void init();
         static bool isInitialized() { return _isInitialized; }
+        static bool isValid() { 
+            return isInitialized(); 
+        }
 
         /* ========================== Playback Functions ========================== */
         /**

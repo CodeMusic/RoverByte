@@ -18,16 +18,16 @@
 
 #include <time.h>
 #include "VisualSynesthesia.h"
-#include "../PrefrontalCortex/PowerManager.h"
+#include "PrefrontalCortex/PowerManager.h"
 #include "LEDManager.h"
-#include "../AuditoryCortex/SoundFxManager.h"
+#include "AuditoryCortex/SoundFxManager.h"
 #include "RoverManager.h"
-#include "../PrefrontalCortex/utilities.h"
+#include "PrefrontalCortex/Utilities.h"
 #include "DisplayConfig.h"
-#include "../MotorCortex/PinDefinitions.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../CorpusCallosum/SynapticPathways.h"
-#include "../SomatosensoryCortex/MenuManager.h"
+#include "MotorCortex/PinDefinitions.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
+#include "SomatosensoryCortex/MenuManager.h"
 #include "RoverViewManager.h"
 
 namespace VisualCortex 
@@ -51,6 +51,7 @@ namespace VisualCortex
   extern TFT_eSprite spr;
 
     // Initialize static members
+    bool RoverManager::initialized = false;
     bool RoverManager::earsPerked = false;
     int RoverManager::currentMood = 0;
     int RoverManager::hoverOffset = 0;
@@ -72,6 +73,9 @@ namespace VisualCortex
         showTime = show;
     }
 
+    void RoverManager::init() {
+        initialized = true;
+    }
 
     void RoverManager::drawRover(const char* mood, bool earsPerked, bool large, int x, int y) {
         Utilities::LOG_SCOPE("drawRover(const char*, bool, bool, int, int)", 

@@ -1,6 +1,13 @@
 {
     "files.associations": {
         ".fantomasignore": "ignore",
-        "string": "cpp"
-    }
+        "string": "cpp",
+        "optional": "cpp"
+    },
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/.pio/libdeps/esp32dev/**",
+        "${workspaceFolder}/include"
+    ],
+    "C_Cpp.errorSquiggles": "enabled"
 }

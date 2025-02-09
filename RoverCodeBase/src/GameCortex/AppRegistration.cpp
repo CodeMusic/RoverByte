@@ -8,12 +8,12 @@
 
 #include "AppRegistration.h"
 #include "AppManager.h"
-#include "../GameCortex/SlotsManager.h"
-#include "../PsychicCortex/NFCManager.h"
-#include "../PsychicCortex/IRManager.h"
-#include "../VisualCortex/LEDManager.h"
-#include "../SomatosensoryCortex/MenuManager.h"
-#include "../PrefrontalCortex/Utilities.h"
+#include "GameCortex/SlotsManager.h"
+#include "PsychicCortex/NFCManager.h"
+#include "PsychicCortex/IRManager.h"
+#include "VisualCortex/LEDManager.h"
+#include "SomatosensoryCortex/MenuManager.h"
+#include "PrefrontalCortex/Utilities.h"
 #include <Arduino.h>
 
 using namespace PsychicCortex;      // For IRManager, NFCManager

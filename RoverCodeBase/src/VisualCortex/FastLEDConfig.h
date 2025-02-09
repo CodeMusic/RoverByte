@@ -16,8 +16,8 @@
 
 #include <FastLED.h>
 #include "FastLEDHardware.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {

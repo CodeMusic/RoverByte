@@ -6,16 +6,16 @@
  * and storage of predefined musical compositions.
  */
 
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "CorpusCallosum/SynapticPathways.h"
 #include "PitchPerception.h"
 #include "SoundFxManager.h"
 #include "Arduino.h"
 #include <time.h>
 #include <SPIFFS.h>
-#include "../PrefrontalCortex/SDManager.h"
-#include "../VisualCortex/RoverViewManager.h"
-#include "../VisualCortex/RoverManager.h"
-#include "../VisualCortex/LEDManager.h"
+#include "PrefrontalCortex/SDManager.h"
+#include "VisualCortex/RoverViewManager.h"
+#include "VisualCortex/RoverManager.h"
+#include "VisualCortex/LEDManager.h"
 #include "Tunes.h"
 
 namespace AuditoryCortex

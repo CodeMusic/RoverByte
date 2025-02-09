@@ -50,7 +50,6 @@
 #include <XPowersLib.h>
 #include "driver/i2s.h"
 #include <vector>
-#include "src/main.cpp"
 
 // Include core configurations first
 #include "CorpusCallosum/SynapticPathways.h"
@@ -106,11 +105,14 @@ using GC::SlotsManager;
 // Create encoder using pin definitions directly
 RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
 
+// Function declarations
+void setup();
+void loop();
+
+// Implementation
 void setup() {
-    Utilities::LOG_SCOPE("setup()");
     Serial.begin(115200);
-    esp_log_level_set("*", ESP_LOG_VERBOSE);
-    Utilities::LOG_DEBUG("Starting with verbose logging...");
+    Utilities::LOG_PROD("Starting setup...");
 
     // Enable watchdog
     esp_task_wdt_init(30, true); // 30 second timeout
@@ -137,9 +139,6 @@ void setup() {
     {
         RoverViewManager::init();
         Utilities::LOG_DEBUG("Display initialized successfully.");
-        
-        // Draw initial loading screen instead of error screen
-        RoverViewManager::drawLoadingScreen("Starting up...");
     } 
     catch (const std::exception& e) 
     {
@@ -181,7 +180,6 @@ void setup() {
 }
 
 void loop() {
-    Utilities::LOG_SCOPE("loop()");
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;
@@ -290,7 +288,5 @@ void loop() {
     // Final yield with slightly longer delay for stability
     delay(5);
 }
-
-
 
 

@@ -24,8 +24,8 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <vector>
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../MotorCortex/PinDefinitions.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "MotorCortex/PinDefinitions.h"
 
 // Forward declare all cortex namespaces and their components
 namespace PrefrontalCortex 

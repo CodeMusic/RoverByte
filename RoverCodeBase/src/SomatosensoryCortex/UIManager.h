@@ -3,8 +3,8 @@
 
 #include <RotaryEncoder.h>
 #include <Arduino.h>
-#include "../PrefrontalCortex/ProtoPerceptions.h"
-#include "../CorpusCallosum/SynapticPathways.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "CorpusCallosum/SynapticPathways.h"
 
 namespace SomatosensoryCortex 
 {

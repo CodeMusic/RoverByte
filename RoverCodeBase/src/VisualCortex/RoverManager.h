@@ -12,7 +12,7 @@
 #pragma once
 #include <FastLED.h>
 #include "TFT_eSPI.h"
-#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "PrefrontalCortex/ProtoPerceptions.h"
 
 namespace SomatosensoryCortex { class MenuManager; }  // Forward declaration
 
@@ -61,6 +61,9 @@ namespace VisualCortex
             static void setRandomMood();
             static void setEarsPerked(bool up);
 
+            static bool isInitialized() { return initialized; }
+            static void init();
+
         private:
             static void drawEyes(String mood, int roverX, int currentY, uint16_t leftEyeColor, uint16_t rightEyeColor, float scale);
             static void drawNoseAndMouth(String mood, int roverX, int currentY, float scale);
@@ -83,6 +86,7 @@ namespace VisualCortex
             static int expressionDuration;
             static uint16_t starColor;
             static void drawExpression(PC::RoverTypes::Expression exp);
+            static bool initialized;
         };
 
         // Define the static const arrays outside the class
