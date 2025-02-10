@@ -158,7 +158,8 @@ void setup() {
     // After successful initialization
     RoverViewManager::drawErrorScreen(
         RoverViewManager::errorCode,
-        RoverViewManager::errorMessage,
+        RoverViewManager::genericErrorMessage,
+        RoverViewManager::detailedErrorMessage,
         RoverViewManager::isFatalError
     );
     RoverViewManager::drawLoadingScreen(RoverBehaviorManager::getStatusMessage());
@@ -188,8 +189,7 @@ void setup() {
 }
 
 void loop() {
-    
-    Utilities::LOG_SCOPE("loop()");
+    //Utilities::LOG_SCOPE("Main::loop()");
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;
@@ -249,7 +249,8 @@ void loop() {
                 // Only draw error screen in error state
                 RoverViewManager::drawErrorScreen(
                     RoverViewManager::errorCode,
-                    RoverViewManager::errorMessage,
+                    RoverViewManager::genericErrorMessage,
+                    RoverViewManager::detailedErrorMessage,
                     RoverViewManager::isFatalError
                 );
             }

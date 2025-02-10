@@ -94,9 +94,10 @@ namespace VisualCortex
 
         static void drawMenuBackground();
         static String formatUptime(unsigned long uptimeMillis);
-        static void drawErrorScreen(uint32_t errorCode, const char* errorMessage, bool isFatal);
+        static void drawErrorScreen(uint32_t errorCode, const char* genericMessage, const char* detailedMessage, bool isFatal);
         static uint32_t errorCode;
-        static const char* errorMessage;
+        static const char* genericErrorMessage;
+        static const char* detailedErrorMessage;
         static bool isError;
         static bool isFatalError;
 

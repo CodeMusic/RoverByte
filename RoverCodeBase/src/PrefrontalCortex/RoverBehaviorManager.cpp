@@ -278,10 +278,11 @@ namespace PrefrontalCortex
         // Update countdown display
         int remainingSeconds = ((WARNING_DURATION - elapsed) / 1000);
         char countdownMsg[32];
-        sprintf(countdownMsg, "%s", RoverViewManager::errorMessage);
+        sprintf(countdownMsg, "%s", RoverViewManager::genericErrorMessage);
         RoverViewManager::drawErrorScreen(
             RoverViewManager::errorCode,
             countdownMsg,
+            RoverViewManager::detailedErrorMessage,
             false
         );
     }
@@ -390,7 +391,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleTimeSync() 
     {
-        Utilities::LOG_SCOPE("handleTimeSync()");
+        Utilities::LOG_SCOPE("RoverBehaviorManager::handleTimeSync()");
         static int retryCount = 0;
         const int MAX_RETRIES = 3;
         
@@ -424,12 +425,13 @@ namespace PrefrontalCortex
         );
         setState(RoverTypes::BehaviorState::FATAL_ERROR);
         RoverViewManager::errorCode = errorCode;
-        RoverViewManager::errorMessage = errorMessage;
+        RoverViewManager::genericErrorMessage = "System Error Detected";
+        RoverViewManager::detailedErrorMessage = errorMessage;
         RoverViewManager::isError = true;
         RoverViewManager::isFatalError = true;
         
         // Draw error screen
-        RoverViewManager::drawErrorScreen(errorCode, errorMessage, true);
+        RoverViewManager::drawErrorScreen(errorCode, "System Error Detected", errorMessage, true);
     }
 
     void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type) 
@@ -461,8 +463,10 @@ namespace PrefrontalCortex
             isCountingDown = true;
         }
         
+        // Store both generic and detailed messages
         RoverViewManager::errorCode = errorCode;
-        RoverViewManager::errorMessage = errorMessage;
+        RoverViewManager::genericErrorMessage = "System Error Detected";
+        RoverViewManager::detailedErrorMessage = errorMessage;
         RoverViewManager::isError = true;
         RoverViewManager::isFatalError = (type == ErrorType::FATAL);
         
@@ -470,8 +474,13 @@ namespace PrefrontalCortex
         SoundFxManager::playErrorCode(errorCode, type == ErrorType::FATAL);
         LEDManager::setErrorPattern(errorCode, type == ErrorType::FATAL);
         
-        // Draw error screen with countdown for warnings
-        RoverViewManager::drawErrorScreen(errorCode, errorMessage, type == ErrorType::FATAL);
+        // Draw error screen with both messages
+        RoverViewManager::drawErrorScreen(
+            errorCode,
+            "System Error Detected",
+            errorMessage,
+            type == ErrorType::FATAL
+        );
     }
 
     int RoverBehaviorManager::getCurrentBootStep() 
@@ -526,13 +535,13 @@ namespace PrefrontalCortex
 
     bool RoverBehaviorManager::isWarningCountdownActive()
     {
-        Utilities::LOG_SCOPE("isWarningCountdownActive()");
+        Utilities::LOG_SCOPE("RoverBehaviorManager::isWarningCountdownActive()");
         return isCountingDown && !isFatalError;
     }
 
     unsigned long RoverBehaviorManager::getWarningStartTime() 
     {
-        Utilities::LOG_SCOPE("getWarningStartTime()");
+        Utilities::LOG_SCOPE("RoverBehaviorManager::getWarningStartTime()");
         return warningStartTime;
     }
 
@@ -544,7 +553,7 @@ namespace PrefrontalCortex
 
 
     bool RoverBehaviorManager::isValid() {
-        Utilities::LOG_SCOPE("isValid()");
+        Utilities::LOG_SCOPE("RoverBehaviorManager::isValid()");
         return isInitialized();
 
     }

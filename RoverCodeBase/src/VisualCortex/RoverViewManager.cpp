@@ -76,7 +76,8 @@ namespace VisualCortex
     uint32_t RoverViewManager::roverExperienceToNextLevel = 327;
     uint8_t RoverViewManager::roverLevel = 1;
     uint32_t RoverViewManager::errorCode = 0;
-    const char* RoverViewManager::errorMessage = nullptr;
+    const char* RoverViewManager::genericErrorMessage = nullptr;
+    const char* RoverViewManager::detailedErrorMessage = nullptr;
     bool RoverViewManager::isError = false;
     bool RoverViewManager::isFatalError = false;
     unsigned long RoverViewManager::warningStartTime = 0;
@@ -149,7 +150,8 @@ namespace VisualCortex
             
             // Initialize error state
             errorCode = 0;
-            errorMessage = "";
+            genericErrorMessage = "System Error Detected";
+            detailedErrorMessage = "";
             isError = false;
             isFatalError = false;
             
@@ -939,7 +941,15 @@ namespace VisualCortex
         }
     }
 
-    void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* errorMessage, bool isFatal) {
+    void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* genericMessage, const char* detailedMessage, bool isFatal)
+    {
+        Utilities::LOG_SCOPE("drawErrorScreen(uint32_t, const char*, const char*, bool)",
+            String(errorCode),
+            genericMessage,
+            detailedMessage,
+            String(isFatal)
+        );
+        
         spr.fillSprite(TFT_BLACK);
         
         // Draw ERRORBYTE text and code centered
@@ -1004,10 +1014,15 @@ namespace VisualCortex
         // Right end
         spr.fillRect(roverX + 63*scale, roverY + 65*scale, 2*scale, 4*scale, TFT_BLACK);
         
-        // Draw error message
+        // Draw generic error message
         spr.setTextFont(2);
         spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-        spr.drawCentreString(errorMessage, DisplayConfig::SCREEN_CENTER_X - 40, 160, 2);
+        spr.drawCentreString(genericMessage, DisplayConfig::SCREEN_CENTER_X - 40, 160, 2);
+        
+        // Draw detailed message in smaller font below
+        spr.setTextFont(1);
+        spr.setTextColor(TFT_WHITE);
+        spr.drawCentreString(detailedMessage, DisplayConfig::SCREEN_CENTER_X - 40, 180, 1);
         
         // For warnings, show countdown on separate line in white
         if (!isFatal && PC::RoverBehaviorManager::isWarningCountdownActive()) {

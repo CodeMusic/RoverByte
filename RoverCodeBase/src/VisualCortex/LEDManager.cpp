@@ -493,7 +493,11 @@ namespace VisualCortex
     }
 
     void LEDManager::updateLoadingAnimation() {
-        Utilities::LOG_SCOPE("updateLoadingAnimation()");
+        Utilities::LOG_SCOPE("LEDManager::updateLoadingAnimation()");
+        if (!PC::RoverBehaviorManager::isInitialized()) {
+            return;  // Add this protection
+        }
+        
         if (millis() - lastUpdate < AnimationTiming::LOADING_DELAY) return;
         lastUpdate = millis();
         
@@ -638,7 +642,7 @@ namespace VisualCortex
 
     void LEDManager::syncLEDsForDay() 
     {
-        Utilities::LOG_SCOPE("syncLEDsForDay()");
+        Utilities::LOG_SCOPE("LEDManager::syncLEDsForDay()");
         time_t now = time(nullptr);
         struct tm* timeInfo = localtime(&now);
         int currentDay = timeInfo->tm_wday;
@@ -664,7 +668,7 @@ namespace VisualCortex
     }
 
     void LEDManager::update() {
-        Utilities::LOG_SCOPE("update()");
+        Utilities::LOG_SCOPE("LEDManager::update()");
         // Check and set festive mode based on the current date
         LEDManager::checkAndSetFestiveMode();
 

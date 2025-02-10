@@ -49,6 +49,7 @@ namespace PsychicCortex
      */
     bool WiFiManager::init() 
     {
+        Utilities::LOG_SCOPE("WiFiManager::init()");
         bool success = false;
         static size_t currentNetwork = 0;
         
@@ -76,6 +77,7 @@ namespace PsychicCortex
 
     void WiFiManager::update() 
     {
+        Utilities::LOG_SCOPE("WiFiManager::update()");
         static size_t currentNetwork = 0;
         static uint8_t totalAttempts = 0;
         static const uint8_t MAX_TOTAL_ATTEMPTS = ROVER_WIFI_MAX_ATTEMPTS;
@@ -129,6 +131,7 @@ namespace PsychicCortex
      */
     void WiFiManager::checkConnection() 
     {
+        Utilities::LOG_SCOPE("WiFiManager::checkConnection()");
         static unsigned long lastTimeCheck = 0;
         static int connectionAttempts = 0;
         static size_t currentNetwork = 0;
@@ -179,27 +182,46 @@ namespace PsychicCortex
 
     bool WiFiManager::syncTime() 
     {
+        Utilities::LOG_SCOPE("WiFiManager::syncTime()");
         static unsigned long lastTimeCheck = 0;
         static int timeAttempts = 0;
         
-        if (!timeInitialized && millis() - lastTimeCheck >= TIME_CHECK_INTERVAL) 
+        try 
         {
-            configTime(GMT_OFFSET_SEC, DAY_LIGHT_OFFSET_SEC, NTP_SERVER);
-            if (time(nullptr) > 1000000000) 
+            if (!timeInitialized && millis() - lastTimeCheck >= TIME_CHECK_INTERVAL) 
             {
-                timeInitialized = true;
-                Utilities::LOG_PROD("Time sync complete");
-                return true;
-            } 
-            else 
-            {
-                timeAttempts++;
-                if (timeAttempts >= 40) 
+                if (!isWiFiConnected) return false;
+
+                configTime(GMT_OFFSET_SEC, DAY_LIGHT_OFFSET_SEC, NTP_SERVER);
+                
+                if (time(nullptr) > 1000000000) 
                 {
-                    timeAttempts = 0;
+                    timeInitialized = true;
+                    Utilities::LOG_PROD("Time sync complete");
+                    return true;
+                } 
+                else 
+                {
+                    timeAttempts++;
+                    if (timeAttempts >= 40) 
+                    {
+                        timeAttempts = 0;
+                        Utilities::LOG_ERROR("Time sync failed after 40 attempts");
+                        return false;
+                    }
                 }
+                lastTimeCheck = millis();
             }
-            lastTimeCheck = millis();
+        }
+        catch (const std::exception& e)
+        {
+            Utilities::LOG_ERROR("Time sync error: %s", e.what());
+            return false;
+        }
+        catch (...)
+        {
+            Utilities::LOG_ERROR("Unknown error in time sync");
+            return false;
         }
         return false;
     }
@@ -212,6 +234,7 @@ namespace PsychicCortex
      */
     bool WiFiManager::connectToWiFi() 
     {
+        Utilities::LOG_SCOPE("WiFiManager::connectToWiFi()");
         static size_t currentNetwork = 0;
         static uint8_t totalAttempts = 0;
         
