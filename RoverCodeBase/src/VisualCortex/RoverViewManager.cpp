@@ -192,15 +192,23 @@ namespace VisualCortex
         drawCurrentView();
     }
 
-    void RoverViewManager::drawCurrentView() {
-        PC::Utilities::LOG_SCOPE("Drawing current view");
+    void RoverViewManager::drawCurrentView() 
+    {
+        Utilities::LOG_SCOPE("RoverViewManager::drawCurrentView()");
+        if (!isInitialized || !spr.created()) {
+            Utilities::LOG_ERROR("RoverViewManager not properly initialized");
+            return;
+        }
+
         if (MenuManager::isVisible()) {
             return;
         }
+        
         static bool isRecovering = false;
         
         try {
             if (isRecovering) {
+                if (!spr.created()) return;
                 spr.fillSprite(TFT_BLACK);
                 spr.setTextFont(2);
                 spr.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -211,7 +219,13 @@ namespace VisualCortex
                 return;
             }
             
+            if (!spr.created()) return;
             spr.fillSprite(TFT_BLACK);
+            
+            if (isError) {
+                drawErrorScreen(errorCode, genericErrorMessage, detailedErrorMessage, isFatalError);
+                return;
+            }
             
             RoverViewManager::drawFrame();
             RoverViewManager::drawStatusBar();
