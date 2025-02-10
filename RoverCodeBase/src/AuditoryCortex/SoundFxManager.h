@@ -15,13 +15,13 @@
 #ifndef SOUND_FX_MANAGER_H
 #define SOUND_FX_MANAGER_H
 
-#include "CorpusCallosum/SynapticPathways.h"
-#include "AuditoryCortex/PitchPerception.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "VisualCortex/RoverManager.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "AuditoryCortex/Tunes.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "PitchPerception.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "Tunes.h"
 
 #include <time.h>
 #include <SPIFFS.h>

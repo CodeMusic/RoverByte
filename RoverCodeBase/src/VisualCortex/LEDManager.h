@@ -11,11 +11,11 @@
 
 #pragma once
 #include <FastLED.h>
-#include "PrefrontalCortex/Utilities.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "GameCortex/SlotsManager.h"
-#include "PsychicCortex/IRManager.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../GameCortex/SlotsManager.h"
+#include "../PsychicCortex/IRManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 using namespace MotorCortex;
 using namespace CorpusCallosum;

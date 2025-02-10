@@ -9,23 +9,23 @@
  * - Boot sequence coordination
  */
 
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/PowerManager.h"  
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/PowerManager.h"  
 #include "LEDManager.h"
 #include "VisualSynesthesia.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "GameCortex/AppManager.h"
-#include "AuditoryCortex/PitchPerception.h"
-#include "PsychicCortex/NFCManager.h"
-#include "PrefrontalCortex/RoverBehaviorManager.h"
-#include "GameCortex/SlotsManager.h"
-#include "PsychicCortex/IRManager.h"
-#include "SomatosensoryCortex/MenuManager.h"
-#include "RoverViewManager.h"  
-#include "FastLEDConfig.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../GameCortex/AppManager.h"
+#include "../AuditoryCortex/PitchPerception.h"
+#include "../PsychicCortex/NFCManager.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include "../GameCortex/SlotsManager.h"
+#include "../PsychicCortex/IRManager.h"
+#include "../SomatosensoryCortex/MenuManager.h"
+#include "../VisualCortex/RoverViewManager.h"  
+#include "../VisualCortex/FastLEDConfig.h"
 
 namespace VisualCortex 
 {
@@ -136,6 +136,8 @@ namespace VisualCortex
         {4, 1, FestiveTheme::RAMADAN},         // Date varies
         {1, 29, FestiveTheme::CHINESE_NEW_YEAR}// Date varies
     };
+
+    bool LEDManager::initialized = false;
 
     /**
      * @brief Initialize visual processing pathways

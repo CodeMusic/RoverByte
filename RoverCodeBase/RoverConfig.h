@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "src/PrefrontalCortex/ProtoPerceptions.h"
 
 // Global configuration settings
 namespace RoverConfig 
@@ -26,4 +26,7 @@ namespace RoverConfig
     // Default log level for the system
     static const PrefrontalCortex::SystemTypes::LogLevel DEFAULT_LOG_LEVEL = 
         PrefrontalCortex::SystemTypes::LogLevel::SCOPE;
+
+    // WiFi Configuration
+    #define ROVER_WIFI_MAX_ATTEMPTS 3  // Maximum number of complete network rotation attempts
 }

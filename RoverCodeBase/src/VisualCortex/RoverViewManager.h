@@ -19,14 +19,18 @@
 #ifndef ROVER_VIEW_MANAGER_H
 #define ROVER_VIEW_MANAGER_H
 
-#include "TFT_eSPI.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "VisualSynesthesia.h"
-#include "PrefrontalCortex/PowerManager.h"
-#include "AuditoryCortex/SoundFxManager.h"
+#include <Arduino.h>
+#include <TFT_eSPI.h>
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../VisualCortex/DisplayConfig.h"
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../PrefrontalCortex/PowerManager.h"
+#include "../AuditoryCortex/SoundFxManager.h"
 #include <vector>
-#include "SomatosensoryCortex/MenuManager.h"
-#include "MotorCortex/PinDefinitions.h"
+#include "../SomatosensoryCortex/MenuManager.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 namespace VisualCortex 
 {

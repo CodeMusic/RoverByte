@@ -9,12 +9,13 @@
  * - Cross-modal mappings for audio-visual synesthesia
  */
 
-#ifndef PITCHPERCEPTION_H
-#define PITCHPERCEPTION_H
+#ifndef PITCH_PERCEPTION_H
+#define PITCH_PERCEPTION_H
 
-#include "CorpusCallosum/SynapticPathways.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
 #include <Arduino.h>
+#include <FastLED.h>
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include <cstdint> // For fixed-width integer types
 
 namespace AuditoryCortex
@@ -182,4 +183,4 @@ namespace AuditoryCortex
     }; 
 
 }
-#endif // PITCHPERCEPTION_H
+#endif // PITCH_PERCEPTION_H

@@ -16,11 +16,11 @@
  * - Cross-modal feedback loops
  */
 
-#include "VisualSynesthesia.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "LEDManager.h"
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../VisualCortex/LEDManager.h"
 #include <FastLED.h>
-#include "../PreFrontalCortex/utilities.h"
+#include "../PrefrontalCortex/Utilities.h"
 
 namespace VisualCortex 
 {

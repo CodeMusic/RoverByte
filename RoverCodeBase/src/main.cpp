@@ -102,17 +102,23 @@ using GC::SlotsManager;
     #include "esp32-hal.h"
 #endif
 
-// Create encoder using pin definitions directly
+#include "main.h"
+
+// Define the global encoder instance
 RotaryEncoder encoder(ENCODER_INA, ENCODER_INB, RotaryEncoder::LatchMode::TWO03);
 
 // Function declarations
 void setup();
 void loop();
 
+
+
 // Implementation
 void setup() {
+    Utilities::LOG_SCOPE("setup()");
     Serial.begin(115200);
-    Utilities::LOG_PROD("Starting setup...");
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
+    Utilities::LOG_DEBUG("Starting with verbose logging...");
 
     // Enable watchdog
     esp_task_wdt_init(30, true); // 30 second timeout
@@ -139,6 +145,9 @@ void setup() {
     {
         RoverViewManager::init();
         Utilities::LOG_DEBUG("Display initialized successfully.");
+        
+        // Draw initial loading screen instead of error screen
+        RoverViewManager::drawLoadingScreen("Starting up...");
     } 
     catch (const std::exception& e) 
     {
@@ -176,10 +185,11 @@ void setup() {
     // Check free heap memory after initialization
     //LOG_DEBUG("Free heap after initialization: %d", ESP.getFreeHeap());
 
-
 }
 
 void loop() {
+    
+    Utilities::LOG_SCOPE("loop()");
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;

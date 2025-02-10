@@ -4,8 +4,8 @@
 #include <vector>
 #include <functional>
 #include <string>
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace SomatosensoryCortex 
 {

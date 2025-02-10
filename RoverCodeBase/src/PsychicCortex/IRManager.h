@@ -4,8 +4,8 @@
 #include <Arduino.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
-#include "CorpusCallosum/SynapticPathways.h"  // Replace individual includes with central nervous system
-#include "MotorCortex/PinDefinitions.h"
+#include "../CorpusCallosum/SynapticPathways.h"  // Replace individual includes with central nervous system
+#include "../MotorCortex/PinDefinitions.h"
 
 namespace PsychicCortex 
 {

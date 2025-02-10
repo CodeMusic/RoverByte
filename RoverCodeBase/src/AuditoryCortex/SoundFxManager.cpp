@@ -6,20 +6,20 @@
  * Includes initialization of audio hardware and management of audio resources.
  */
 
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 #include "SoundFxManager.h"
 #include "Arduino.h"
 #include <time.h>
 #include <SPIFFS.h>
-#include "PrefrontalCortex/SDManager.h"
-#include "VisualCortex/RoverViewManager.h"
-#include "VisualCortex/RoverManager.h"
-#include "VisualCortex/LEDManager.h"
+#include "../PrefrontalCortex/SDManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../VisualCortex/LEDManager.h"
 #include <vector>
-#include "VisualCortex/VisualSynesthesia.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "MotorCortex/PinDefinitions.h"
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
 
 namespace AuditoryCortex
 {

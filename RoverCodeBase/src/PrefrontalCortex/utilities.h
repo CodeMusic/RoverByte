@@ -1,8 +1,8 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include "PrefrontalCortex/ProtoPerceptions.h"  // Direct include for LogLevel
-#include "../RoverConfig.h"  // For default log level
+#include "ProtoPerceptions.h"  // Direct include for LogLevel
+#include "../../RoverConfig.h"  // For default log level
 
 namespace PrefrontalCortex 
 {

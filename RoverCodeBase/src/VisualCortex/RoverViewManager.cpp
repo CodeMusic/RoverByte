@@ -21,19 +21,20 @@
  */
 
 #include "RoverViewManager.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/PowerManager.h"
-#include "DisplayConfig.h"
-#include "RoverManager.h"
-#include "PsychicCortex/NFCManager.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "VisualCortex/LEDManager.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/RoverBehaviorManager.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/PowerManager.h"
+#include "../VisualCortex/DisplayConfig.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../PsychicCortex/NFCManager.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
 #include <TFT_eSPI.h>
-#include "PrefrontalCortex/SDManager.h"
-#include "PsychicCortex/WiFiManager.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/SDManager.h"
+#include "../PsychicCortex/WiFiManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+
 
 namespace VisualCortex 
 {
@@ -129,13 +130,13 @@ namespace VisualCortex
 
     void RoverViewManager::init() 
     {
-        Utilities::LOG_SCOPE("Initializing RoverViewManager");
+        PC::Utilities::LOG_SCOPE("Initializing RoverViewManager");
         
         try 
         {
             // Initialize TFT display first
             tft.init();
-            tft.setRotation(1);  // Landscape mode
+            tft.setRotation(0);  // Landscape mode
             tft.fillScreen(TFT_BLACK);
             
             // Create sprite directly without assignment
@@ -164,33 +165,33 @@ namespace VisualCortex
         }
         catch (const std::exception& e) 
         {
-            Utilities::LOG_ERROR("RoverViewManager initialization failed: %s", e.what());
+            PC::Utilities::LOG_ERROR("RoverViewManager initialization failed: %s", e.what());
             initialized = false;
             throw;
         }
     }
 
     void RoverViewManager::setCurrentView(ViewType view) {
-        Utilities::LOG_DEBUG("Changing view to: %d", static_cast<int>(view));
+        PC::Utilities::LOG_DEBUG("Changing view to: %d", static_cast<int>(view));
         currentView = view;
     }
 
     void RoverViewManager::nextView() {
-        Utilities::LOG_DEBUG("Changing from view %d to next view", static_cast<int>(currentView));
+        PC::Utilities::LOG_DEBUG("Changing from view %d to next view", static_cast<int>(currentView));
         currentView = static_cast<ViewType>((static_cast<int>(currentView) + 1) % static_cast<int>(ViewType::NUM_VIEWS));
-        Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
+        PC::Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
         drawCurrentView();
     }
 
     void RoverViewManager::previousView() {
-        Utilities::LOG_DEBUG("Changing from view %d to previous view", static_cast<int>(currentView));
+        PC::Utilities::LOG_DEBUG("Changing from view %d to previous view", static_cast<int>(currentView));
         currentView = static_cast<ViewType>((static_cast<int>(currentView) - 1 + static_cast<int>(ViewType::NUM_VIEWS)) % static_cast<int>(ViewType::NUM_VIEWS));
-        Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
+        PC::Utilities::LOG_DEBUG("New view is %d", static_cast<int>(currentView));
         drawCurrentView();
     }
 
     void RoverViewManager::drawCurrentView() {
-        Utilities::LOG_SCOPE("Drawing current view");
+        PC::Utilities::LOG_SCOPE("Drawing current view");
         if (MenuManager::isVisible()) {
             return;
         }

@@ -13,11 +13,14 @@
 #define FASTLED_RMT_MAX_CHANNELS 2
 #define FASTLED_ESP32_FLASH_LOCK 1
 #define FASTLED_ALLOW_INTERRUPTS 0
+#define FASTLED_ESP32_SPI_BUS FSPI
+#define FASTLED_ALL_PINS_HARDWARE_SPI
+#define FASTLED_ESP32_SPI_CLOCK_DIVIDER 16
 
 #include <FastLED.h>
 #include "FastLEDHardware.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace VisualCortex 
 {

@@ -18,9 +18,11 @@
 #ifndef VISUAL_SYNESTHESIA_H
 #define VISUAL_SYNESTHESIA_H
 
+#include <Arduino.h>
 #include <FastLED.h>
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../AuditoryCortex/PitchPerception.h"
 
 namespace VisualCortex 
 {

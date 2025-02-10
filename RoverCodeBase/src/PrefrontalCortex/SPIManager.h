@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace PrefrontalCortex 
 {

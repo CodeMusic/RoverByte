@@ -9,11 +9,11 @@
  */
 
 #include "SlotsManager.h"
-#include "CorpusCallosum/SynapticPathways.h"
-#include "VisualCortex/LEDManager.h"
-#include "VisualCortex/RoverViewManager.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "SomatosensoryCortex/MenuManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../SomatosensoryCortex/MenuManager.h"
 
 namespace GameCortex
 {

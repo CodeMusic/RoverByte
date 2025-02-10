@@ -2,9 +2,9 @@
 #define FASTLED_HARDWARE_H
 
 #include <FastLED.h>
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 namespace VisualCortex 
 {
     

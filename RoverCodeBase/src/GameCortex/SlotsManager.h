@@ -9,12 +9,12 @@
  */
 
 #pragma once
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 #include <FastLED.h>
-#include "VisualCortex/LEDManager.h"
-#include "VisualCortex/RoverManager.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 
 namespace GameCortex
 {

@@ -12,11 +12,12 @@
 #ifndef TUNES_H
 #define TUNES_H
 
-#include "CorpusCallosum/SynapticPathways.h"
 #include <Arduino.h>
-#include <vector>
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "PitchPerception.h"
-#include "PrefrontalCortex/Utilities.h"
+#include <vector>
+#include "../PrefrontalCortex/Utilities.h"
 
 namespace AuditoryCortex
 {

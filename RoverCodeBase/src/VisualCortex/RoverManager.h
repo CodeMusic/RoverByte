@@ -12,7 +12,7 @@
 #pragma once
 #include <FastLED.h>
 #include "TFT_eSPI.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 
 namespace SomatosensoryCortex { class MenuManager; }  // Forward declaration
 

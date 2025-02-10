@@ -1,11 +1,11 @@
 #include "NFCManager.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "VisualCortex/LEDManager.h"
-#include "VisualCortex/RoverViewManager.h"
-#include "VisualCortex/VisualSynesthesia.h"
-#include "PrefrontalCortex/SDManager.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../PrefrontalCortex/SDManager.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include <string.h> // For strcmp

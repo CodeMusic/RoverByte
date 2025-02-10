@@ -1,8 +1,8 @@
 #include "IRManager.h"
-#include "CorpusCallosum/SynapticPathways.h"
-#include "VisualCortex/LEDManager.h"
-#include "VisualCortex/RoverViewManager.h"
-#include "SomatosensoryCortex/MenuManager.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../SomatosensoryCortex/MenuManager.h"
 
 // Forward declarations
 

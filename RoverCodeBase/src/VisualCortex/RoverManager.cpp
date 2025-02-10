@@ -17,18 +17,18 @@
  */
 
 #include <time.h>
-#include "VisualSynesthesia.h"
-#include "PrefrontalCortex/PowerManager.h"
-#include "LEDManager.h"
-#include "AuditoryCortex/SoundFxManager.h"
-#include "RoverManager.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "DisplayConfig.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "CorpusCallosum/SynapticPathways.h"
-#include "SomatosensoryCortex/MenuManager.h"
-#include "RoverViewManager.h"
+#include "../VisualCortex/VisualSynesthesia.h"
+#include "../PrefrontalCortex/PowerManager.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../AuditoryCortex/SoundFxManager.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../VisualCortex/DisplayConfig.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../SomatosensoryCortex/MenuManager.h"
+#include "../VisualCortex/RoverViewManager.h"
 
 namespace VisualCortex 
 {

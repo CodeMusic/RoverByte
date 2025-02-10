@@ -10,14 +10,15 @@
  */
 
 #include "WiFiManager.h"
-#include "PrefrontalCortex/RoverBehaviorManager.h"
-#include "VisualCortex/RoverViewManager.h"
-#include "VisualCortex/LEDManager.h"
-#include "PrefrontalCortex/PowerManager.h"
-#include "VisualCortex/RoverManager.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include "../VisualCortex/RoverViewManager.h"
+#include "../VisualCortex/LEDManager.h"
+#include "../PrefrontalCortex/PowerManager.h"
+#include "../VisualCortex/RoverManager.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../../RoverConfig.h"
 #include <WiFi.h>
 #include <time.h>
 
@@ -37,6 +38,10 @@ namespace PsychicCortex
     unsigned long WiFiManager::lastWiFiAttempt = 0;
     bool WiFiManager::timeInitialized = false;
     unsigned long WiFiManager::lastTimeCheck = 0;
+    size_t WiFiManager::currentNetwork = 0;
+    uint8_t WiFiManager::connectionAttempts = 0;
+    uint8_t WiFiManager::totalAttempts = 0;
+    constexpr const NetworkCredentials WiFiManager::AVAILABLE_NETWORKS[];
 
     /**
      * @brief Initialize WiFi hardware and prepare for connections
@@ -45,21 +50,77 @@ namespace PsychicCortex
     bool WiFiManager::init() 
     {
         bool success = false;
-        WiFi.begin(PRIMARY_NETWORK.ssid, PRIMARY_NETWORK.password);
+        static size_t currentNetwork = 0;
+        
+        WiFi.disconnect(true);
+        delay(100);
+        
+        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                   AVAILABLE_NETWORKS[currentNetwork].password);
         
         if (WiFi.waitForConnectResult() == WL_CONNECTED) 
         {
             isWiFiConnected = true;
             success = true;
-            Utilities::LOG_PROD("Connected to primary network");
+            Utilities::LOG_PROD("Connected to network: %s", AVAILABLE_NETWORKS[currentNetwork].ssid);
         } 
         else 
         {
             isWiFiConnected = false;
-            Utilities::LOG_DEBUG("Primary network connection failed");
+            currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+            Utilities::LOG_DEBUG("Network connection failed, will try next network");
         }
 
         return success;
+    }
+
+    void WiFiManager::update() 
+    {
+        static size_t currentNetwork = 0;
+        static uint8_t totalAttempts = 0;
+        static const uint8_t MAX_TOTAL_ATTEMPTS = ROVER_WIFI_MAX_ATTEMPTS;
+        
+        if (!isWiFiConnected && totalAttempts < MAX_TOTAL_ATTEMPTS) 
+        {
+            if (millis() - lastTimeCheck >= TIME_CHECK_INTERVAL) 
+            {
+                lastTimeCheck = millis();
+                
+                if (WiFi.status() != WL_CONNECTED) 
+                {
+                    if (connectionAttempts == 0) 
+                    {
+                        WiFi.disconnect(true);
+                        delay(100);
+                        
+                        Utilities::LOG_DEBUG("Attempting network: %s (Attempt %d/%d)", 
+                            AVAILABLE_NETWORKS[currentNetwork].ssid,
+                            totalAttempts + 1,
+                            MAX_TOTAL_ATTEMPTS);
+                            
+                        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                                 AVAILABLE_NETWORKS[currentNetwork].password);
+                                 
+                        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+                    }
+                    
+                    connectionAttempts++;
+                    if (connectionAttempts >= 10) 
+                    {
+                        connectionAttempts = 0;
+                        totalAttempts++;
+                    }
+                } 
+                else 
+                {
+                    isWiFiConnected = true;
+                    connectionAttempts = 0;
+                    totalAttempts = 0;
+                    Utilities::LOG_PROD("Network connection established");
+                }
+            }
+        }
+        // Rest of the update function...
     }
 
     /**
@@ -70,7 +131,7 @@ namespace PsychicCortex
     {
         static unsigned long lastTimeCheck = 0;
         static int connectionAttempts = 0;
-        static bool usingBackupNetwork = false;
+        static size_t currentNetwork = 0;
         const unsigned long CHECK_INTERVAL = 500;
 
         if (!isWiFiConnected) 
@@ -87,23 +148,19 @@ namespace PsychicCortex
                     {
                         WiFi.disconnect(true);
                         delay(100);
-                        if (!usingBackupNetwork) 
-                        {
-                            Utilities::LOG_DEBUG("Attempting primary network...");
-                            WiFi.begin(PRIMARY_NETWORK.ssid, PRIMARY_NETWORK.password);
-                        } 
-                        else 
-                        {
-                            Utilities::LOG_DEBUG("Attempting backup network...");
-                            WiFi.begin(BACKUP_NETWORK.ssid, BACKUP_NETWORK.password);
-                        }
+                        
+                        Utilities::LOG_DEBUG("Attempting network: %s", 
+                            AVAILABLE_NETWORKS[currentNetwork].ssid);
+                        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                                 AVAILABLE_NETWORKS[currentNetwork].password);
+                        
+                        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
                     }
                     
                     connectionAttempts++;
                     if (connectionAttempts >= 10) 
                     {
                         connectionAttempts = 0;
-                        usingBackupNetwork = !usingBackupNetwork;
                     }
                 } 
                 else 
@@ -155,14 +212,26 @@ namespace PsychicCortex
      */
     bool WiFiManager::connectToWiFi() 
     {
+        static size_t currentNetwork = 0;
+        static uint8_t totalAttempts = 0;
+        
         Utilities::LOG_DEBUG("Starting WiFi connection process");
-        WiFi.disconnect(true);  // Ensure clean connection attempt
+        WiFi.disconnect(true);
         delay(100);
-        WiFi.begin(PRIMARY_NETWORK.ssid, PRIMARY_NETWORK.password);
+        
+        Utilities::LOG_DEBUG("Attempting network: %s (Attempt %d/%d)", 
+            AVAILABLE_NETWORKS[currentNetwork].ssid,
+            totalAttempts + 1,
+            ROVER_WIFI_MAX_ATTEMPTS);
+            
+        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                   AVAILABLE_NETWORKS[currentNetwork].password);
+                   
+        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
         lastWiFiAttempt = millis();
-        isWiFiConnected = false;  // Reset connection state
-        checkConnection();
-        return isWiFiConnected;
+        isWiFiConnected = false;
+        
+        return true; // Connection attempt initiated
     }
 
     // Generic error handler

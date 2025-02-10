@@ -1,6 +1,6 @@
 #include "SPIManager.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "PrefrontalCortex/Utilities.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../PrefrontalCortex/Utilities.h"
 
 namespace PrefrontalCortex 
 {

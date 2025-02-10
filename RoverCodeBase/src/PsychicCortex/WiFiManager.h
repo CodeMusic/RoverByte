@@ -1,11 +1,11 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 
-#include "PrefrontalCortex/RoverBehaviorManager.h"
-#include "PrefrontalCortex/Utilities.h"
-#include "PrefrontalCortex/ProtoPerceptions.h"
-#include "MotorCortex/PinDefinitions.h"
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/RoverBehaviorManager.h"
+#include "../PrefrontalCortex/Utilities.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
+#include "../MotorCortex/PinDefinitions.h"
+#include "../CorpusCallosum/SynapticPathways.h"
 
 namespace PsychicCortex 
 {
@@ -32,6 +32,7 @@ namespace PsychicCortex
         static bool connectToWiFi();
         static bool getTimeInitialized() { return timeInitialized; }
         static bool syncTime();
+        static void update();
 
     private:
         static constexpr unsigned long WIFI_RETRY_INTERVAL = 60000;
@@ -45,18 +46,18 @@ namespace PsychicCortex
         static unsigned long lastWiFiAttempt;
         static bool timeInitialized;
         static unsigned long lastTimeCheck;
+        static size_t currentNetwork;
+        static uint8_t connectionAttempts;
+        static uint8_t totalAttempts;
 
-        static constexpr NetworkCredentials PRIMARY_NETWORK = 
-        {
-            "RevivalNetwork",
-            "xunjmq84"
+
+        static constexpr const NetworkCredentials AVAILABLE_NETWORKS[] = {
+            {"Starlink", "Country21!"},
+            {"CodeMusicai", "cnatural"},
+            {"RevivalNetwork", "xunjmq84"}
         };
-        
-        static constexpr NetworkCredentials BACKUP_NETWORK = 
-        {
-            "CodeMusicai",
-            "cnatural"
-        };
+
+        static const size_t NETWORK_COUNT = sizeof(AVAILABLE_NETWORKS) / sizeof(NetworkCredentials);
     };
 }
 

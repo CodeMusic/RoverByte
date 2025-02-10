@@ -20,8 +20,10 @@
 #ifndef DISPLAY_CONFIG_H
 #define DISPLAY_CONFIG_H
 
+#include <Arduino.h>
 #include <TFT_eSPI.h>
-#include "CorpusCallosum/SynapticPathways.h"
+#include "../CorpusCallosum/SynapticPathways.h"
+#include "../PrefrontalCortex/ProtoPerceptions.h"
 
 namespace VisualCortex 
 {
