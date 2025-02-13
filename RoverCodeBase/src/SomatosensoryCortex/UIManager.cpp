@@ -47,7 +47,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::init() 
     {
-        Utilities::LOG_SCOPE("init()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::init()");
         if (encoder != nullptr) 
         {
             delete encoder;  // Clean up if already initialized
@@ -81,7 +81,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::update() 
     {
-        Utilities::LOG_SCOPE("update()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::update()");
         if (initState != InputState::READY) 
         {
             init();
@@ -98,7 +98,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::updateEncoder() 
     {
-        Utilities::LOG_SCOPE("updateEncoder()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::updateEncoder()");
         if (!encoder) return;  // Guard against null encoder
         
         int newPos = encoder->getPosition();
@@ -159,7 +159,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::handleRotaryPress() 
     {
-        Utilities::LOG_SCOPE("handleRotaryPress()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::handleRotaryPress()");
         static bool lastButtonState = HIGH;
         bool currentButtonState = digitalRead(ENCODER_KEY);
         
@@ -188,7 +188,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::updateSideButton() 
     {
-        Utilities::LOG_SCOPE("updateSideButton()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::updateSideButton()");
         static bool lastButtonState = HIGH;
         bool currentButtonState = digitalRead(BOARD_USER_KEY);
         
@@ -222,7 +222,7 @@ namespace SomatosensoryCortex
      */
     void UIManager::resetState() 
     {
-        Utilities::LOG_SCOPE("resetState()");
+        Utilities::LOG_SCOPE("SomatosensoryCortex::UIManager::resetState()");
         initState = InputState::NOT_STARTED;
     }
 

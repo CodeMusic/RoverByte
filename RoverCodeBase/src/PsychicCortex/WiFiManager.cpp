@@ -28,6 +28,7 @@ namespace PsychicCortex
     using namespace CorpusCallosum;
     using PC::Utilities;
     using PC::NetworkTypes::NetworkCredentials;
+    using namespace NetworkConfig;  // Add this with other using statements
 
     #define WIFI_RETRY_INTERVAL 60000  // 1 minute between retry attempts
     #define TIME_CHECK_INTERVAL 500    // Time sync check interval
@@ -41,7 +42,6 @@ namespace PsychicCortex
     size_t WiFiManager::currentNetwork = 0;
     uint8_t WiFiManager::connectionAttempts = 0;
     uint8_t WiFiManager::totalAttempts = 0;
-    constexpr const NetworkCredentials WiFiManager::AVAILABLE_NETWORKS[];
 
     /**
      * @brief Initialize WiFi hardware and prepare for connections
@@ -49,26 +49,26 @@ namespace PsychicCortex
      */
     bool WiFiManager::init() 
     {
-        Utilities::LOG_SCOPE("WiFiManager::init()");
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::init()");
         bool success = false;
         static size_t currentNetwork = 0;
         
         WiFi.disconnect(true);
         delay(100);
         
-        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
-                   AVAILABLE_NETWORKS[currentNetwork].password);
+        WiFi.begin(NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                   NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].password);
         
         if (WiFi.waitForConnectResult() == WL_CONNECTED) 
         {
             isWiFiConnected = true;
             success = true;
-            Utilities::LOG_PROD("Connected to network: %s", AVAILABLE_NETWORKS[currentNetwork].ssid);
+            Utilities::LOG_PROD("Connected to network: %s", NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid);
         } 
         else 
         {
             isWiFiConnected = false;
-            currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+            currentNetwork = (currentNetwork + 1) % NetworkConfig::NETWORK_COUNT;
             Utilities::LOG_DEBUG("Network connection failed, will try next network");
         }
 
@@ -77,7 +77,7 @@ namespace PsychicCortex
 
     void WiFiManager::update() 
     {
-        Utilities::LOG_SCOPE("WiFiManager::update()");
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::update()");
         static size_t currentNetwork = 0;
         static uint8_t totalAttempts = 0;
         static const uint8_t MAX_TOTAL_ATTEMPTS = ROVER_WIFI_MAX_ATTEMPTS;
@@ -96,14 +96,14 @@ namespace PsychicCortex
                         delay(100);
                         
                         Utilities::LOG_DEBUG("Attempting network: %s (Attempt %d/%d)", 
-                            AVAILABLE_NETWORKS[currentNetwork].ssid,
+                            NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid,
                             totalAttempts + 1,
                             MAX_TOTAL_ATTEMPTS);
                             
-                        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
-                                 AVAILABLE_NETWORKS[currentNetwork].password);
+                        WiFi.begin(NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                                 NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].password);
                                  
-                        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+                        currentNetwork = (currentNetwork + 1) % NetworkConfig::NETWORK_COUNT;
                     }
                     
                     connectionAttempts++;
@@ -131,7 +131,7 @@ namespace PsychicCortex
      */
     void WiFiManager::checkConnection() 
     {
-        Utilities::LOG_SCOPE("WiFiManager::checkConnection()");
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::checkConnection()");
         static unsigned long lastTimeCheck = 0;
         static int connectionAttempts = 0;
         static size_t currentNetwork = 0;
@@ -153,11 +153,11 @@ namespace PsychicCortex
                         delay(100);
                         
                         Utilities::LOG_DEBUG("Attempting network: %s", 
-                            AVAILABLE_NETWORKS[currentNetwork].ssid);
-                        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
-                                 AVAILABLE_NETWORKS[currentNetwork].password);
+                            NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid);
+                        WiFi.begin(NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                                 NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].password);
                         
-                        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+                        currentNetwork = (currentNetwork + 1) % NetworkConfig::NETWORK_COUNT;
                     }
                     
                     connectionAttempts++;
@@ -182,7 +182,7 @@ namespace PsychicCortex
 
     bool WiFiManager::syncTime() 
     {
-        Utilities::LOG_SCOPE("WiFiManager::syncTime()");
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::syncTime()");
         static unsigned long lastTimeCheck = 0;
         static int timeAttempts = 0;
         
@@ -234,7 +234,7 @@ namespace PsychicCortex
      */
     bool WiFiManager::connectToWiFi() 
     {
-        Utilities::LOG_SCOPE("WiFiManager::connectToWiFi()");
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::connectToWiFi()");
         static size_t currentNetwork = 0;
         static uint8_t totalAttempts = 0;
         
@@ -243,14 +243,14 @@ namespace PsychicCortex
         delay(100);
         
         Utilities::LOG_DEBUG("Attempting network: %s (Attempt %d/%d)", 
-            AVAILABLE_NETWORKS[currentNetwork].ssid,
+            NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid,
             totalAttempts + 1,
             ROVER_WIFI_MAX_ATTEMPTS);
             
-        WiFi.begin(AVAILABLE_NETWORKS[currentNetwork].ssid, 
-                   AVAILABLE_NETWORKS[currentNetwork].password);
+        WiFi.begin(NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].ssid, 
+                   NetworkConfig::AVAILABLE_NETWORKS[currentNetwork].password);
                    
-        currentNetwork = (currentNetwork + 1) % NETWORK_COUNT;
+        currentNetwork = (currentNetwork + 1) % NetworkConfig::NETWORK_COUNT;
         lastWiFiAttempt = millis();
         isWiFiConnected = false;
         
@@ -259,12 +259,14 @@ namespace PsychicCortex
 
     // Generic error handler
     void handleError(const char* errorMessage) {
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::handleError(const char*)");
         PC::Utilities::LOG_PROD(errorMessage);
         VisualCortex::RoverManager::setTemporaryExpression(PC::Expression::LOOKING_DOWN, 1000);
     }
 
     // Example usage in various scenarios
     void processAPIRequest(bool success = false) {  // Parameter with default value
+        Utilities::LOG_SCOPE("PsychicCortex::WiFiManager::processAPIRequest(bool)");
         VisualCortex::RoverManager::setTemporaryExpression(PC::Expression::LOOKING_UP);  // Looking up while thinking
         
         if (success) {

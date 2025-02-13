@@ -131,7 +131,7 @@ namespace VisualCortex
 
     void RoverViewManager::init() 
     {
-        PC::Utilities::LOG_SCOPE("Initializing RoverViewManager");
+        PC::Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::init()");
         
         try 
         {
@@ -194,9 +194,9 @@ namespace VisualCortex
 
     void RoverViewManager::drawCurrentView() 
     {
-        Utilities::LOG_SCOPE("RoverViewManager::drawCurrentView()");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawCurrentView()");
         if (!isInitialized || !spr.created()) {
-            Utilities::LOG_ERROR("RoverViewManager not properly initialized");
+            Utilities::LOG_ERROR("VisualCortex::RoverViewManager not properly initialized");
             return;
         }
 
@@ -318,7 +318,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawFrame() {
-        Utilities::LOG_SCOPE("Drawing frame");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawFrame()");
         int frameX = (TFT_WIDTH - FRAME_WIDTH) / 2;
         int frameY = FRAME_Y;
         
@@ -332,7 +332,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawTodoList() {
-        Utilities::LOG_SCOPE("Drawing TODO list view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawTodoList()");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -349,7 +349,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawQuotes() {
-        Utilities::LOG_SCOPE("Drawing quotes view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawQuotes()");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -366,7 +366,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawWeather() {
-        Utilities::LOG_SCOPE("Drawing weather view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawWeather()");
 
         spr.setTextFont(4); // Larger font for header
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -383,7 +383,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawStats() {
-        Utilities::LOG_SCOPE("Drawing stats view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawStats()");
         
         spr.setTextFont(3);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -502,7 +502,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawChakras() {
-        Utilities::LOG_SCOPE("Drawing chakras view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawChakras()");
 
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for chakras header
@@ -528,7 +528,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawVirtues() {
-        Utilities::LOG_SCOPE("Drawing virtues view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawVirtues()");
 
         // Set unique font for the header
         spr.setTextFont(5); // Unique font for virtues header
@@ -550,7 +550,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawNextMeal() {
-        Utilities::LOG_SCOPE("Drawing recipe view");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawNextMeal()");
         
         spr.setTextFont(4);
         spr.setTextColor(TFT_BLACK, FRAME_COLOR);
@@ -626,7 +626,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawStatusBar() {
-        Utilities::LOG_SCOPE("Drawing status bar");
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawStatusBar()");
         try {
             time_t now = time(nullptr);
             if (now == -1) {
@@ -713,6 +713,7 @@ namespace VisualCortex
     }   
 
     void RoverViewManager::incrementExperience(uint16_t amount) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::incrementExperience(uint16_t)");
         experience += amount;
         
         while (experience >= 327) {
@@ -732,17 +733,20 @@ namespace VisualCortex
     }
 
     uint16_t RoverViewManager::calculateNextLevelExperience(uint8_t currentLevel) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::calculateNextLevelExperience(uint8_t)");
         // Simple exponential growth formula
         return 100 * (currentLevel + 1);
     }       
 
     void RoverViewManager::showNotification(const char* header, const char* content, const char* symbol, int duration) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::showNotification(const char*, const char*, const char*, int)");
         currentNotification = {header, content, symbol, millis(), duration};
         notificationActive = true;
         drawNotification();
     }
 
     void RoverViewManager::drawNotification() {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawNotification()");
         if (!notificationActive) return;
         
         // Fill entire screen with dark background
@@ -788,6 +792,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawSymbol(const char* symbol, int x, int y, int size) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawSymbol(const char*, int, int, int)");
         if (strcmp(symbol, "PADLOCK") == 0) {
             // Draw padlock body
             spr.fillRoundRect(x - size/3, y, size*2/3, size/2, size/8, TFT_WHITE);
@@ -813,15 +818,18 @@ namespace VisualCortex
     }
 
     void RoverViewManager::clearNotification() {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::clearNotification()");
         notificationActive = false;
         currentNotification = {"", "", "", 0, 0};
     }
 
     bool RoverViewManager::hasActiveNotification() {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::hasActiveNotification()");
         return notificationActive;
     }   
 
     void RoverViewManager::handleInput(InputType input) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::handleInput(InputType)");
         if (hasActiveNotification()) {
             clearNotification();
             return;
@@ -839,6 +847,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawWordWrappedText(const char* text, int x, int y, int maxWidth) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawWordWrappedText(const char*, int, int, int)");
         if (!text) return;
         
         const int lineHeight = 20;  // Adjust based on your font size
@@ -888,6 +897,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawFullScreenMenu(const char* title, const std::vector<SomatosensoryCortex::MenuItem>& items, int selectedIndex) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawFullScreenMenu(const char*, const std::vector<SomatosensoryCortex::MenuItem>&, int)");
         spr.fillSprite(TFT_BLACK);
         
         // Draw title - adjust position to be more centered
@@ -915,6 +925,7 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawAppSplash(const char* title, const char* description) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawAppSplash(const char*, const char*)");
         tft.fillScreen(TFT_BLACK);
 
         // Draw title near center
@@ -935,18 +946,22 @@ namespace VisualCortex
     }
 
     void RoverViewManager::drawMenuBackground() {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawMenuBackground()");
         tft.fillScreen(TFT_BLACK);
     }
 
     void RoverViewManager::setTextColor(uint16_t color) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::setTextColor(uint16_t)");
         tft.setTextColor(color);
     }
 
     void RoverViewManager::drawString(const char* str, int x, int y) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawString(const char*, int, int)");
         tft.drawString(str, x, y);
     }
 
     void RoverViewManager::updateExperienceBar(const String& expStr) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::updateExperienceBar(const String&)");
         roverExperience += expStr.toInt();
         if (roverExperience >= roverExperienceToNextLevel) {
             roverLevel++;
@@ -957,7 +972,7 @@ namespace VisualCortex
 
     void RoverViewManager::drawErrorScreen(uint32_t errorCode, const char* genericMessage, const char* detailedMessage, bool isFatal)
     {
-        Utilities::LOG_SCOPE("drawErrorScreen(uint32_t, const char*, const char*, bool)",
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::drawErrorScreen(uint32_t, const char*, const char*, bool)",
             String(errorCode),
             genericMessage,
             detailedMessage,
@@ -966,22 +981,26 @@ namespace VisualCortex
         
         spr.fillSprite(TFT_BLACK);
         
+        // Move everything right 25px and  down 20px
+        const int X_OFFSET = 45;
+        const int Y_OFFSET = 20;
+        
         // Draw ERRORBYTE text and code centered
         spr.setTextFont(2);
         spr.setTextColor(TFT_RED);  // ERRORBYTE always red
-        spr.drawCentreString("ERRORBYTE", DisplayConfig::SCREEN_CENTER_X - 40, 20, 2);
+        spr.drawCentreString("ERRORBYTE", DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 20 + Y_OFFSET, 2);
         
         char errorCodeStr[32];
         sprintf(errorCodeStr, "0x%08X", (uint8_t)errorCode);
         spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-        spr.drawCentreString(errorCodeStr, DisplayConfig::SCREEN_CENTER_X - 40, 40, 2);
+        spr.drawCentreString(errorCodeStr, DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 40 + Y_OFFSET, 2);
         
         // Define scale first
-        static const float scale = 0.8f;  // Make it static const
+        static const float scale = 0.8f;
         
-        // Center all rover graphics
-        const int roverY = 80;
-        const int roverX = DisplayConfig::SCREEN_CENTER_X - (int)(90*scale/2) - 35;  // Cast to int
+        // Center all rover graphics with new offset
+        const int roverY = 80 + Y_OFFSET;
+        const int roverX = DisplayConfig::SCREEN_CENTER_X - (int)(90*scale/2) - 35 + X_OFFSET;
         
         // Body and ears - wider body
         spr.fillRect(roverX, roverY, 90*scale, 76*scale, TFT_WHITE);
@@ -1031,27 +1050,29 @@ namespace VisualCortex
         // Draw generic error message
         spr.setTextFont(2);
         spr.setTextColor(isFatal ? TFT_RED : TFT_YELLOW);
-        spr.drawCentreString(genericMessage, DisplayConfig::SCREEN_CENTER_X - 40, 160, 2);
+        spr.drawCentreString(genericMessage, DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 160 + Y_OFFSET, 2);
         
         // Draw detailed message in smaller font below
         spr.setTextFont(1);
         spr.setTextColor(TFT_WHITE);
-        spr.drawCentreString(detailedMessage, DisplayConfig::SCREEN_CENTER_X - 40, 180, 1);
+        spr.drawCentreString(detailedMessage, DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 180 + Y_OFFSET, 1);
         
-        // For warnings, show countdown on separate line in white
-        if (!isFatal && PC::RoverBehaviorManager::isWarningCountdownActive()) {
+        // For warnings, show countdown on separate line in white (moved down 20px)
+        if (!isFatal && PC::RoverBehaviorManager::isWarningCountdownActive()) 
+        {
             spr.setTextColor(TFT_WHITE);
             char countdownStr[32];
             int remainingSeconds = PC::RoverBehaviorManager::getRemainingWarningSeconds();
             sprintf(countdownStr, "Clearing in %d...", remainingSeconds);
-            spr.drawCentreString(countdownStr, DisplayConfig::SCREEN_CENTER_X - 40, 180, 2);
+            spr.drawCentreString(countdownStr, DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 220 + Y_OFFSET, 2);
         }
         
         // Show reboot instruction ONLY for fatal errors
-        if (isFatal) {
+        if (isFatal) 
+        {
             spr.setTextFont(1);
             spr.setTextColor(TFT_YELLOW);
-            spr.drawCentreString("Press Rotary to REBOOT", DisplayConfig::SCREEN_CENTER_X - 40, 225, 1);
+            spr.drawCentreString("Press Rotary to REBOOT", DisplayConfig::SCREEN_CENTER_X - 40 + X_OFFSET, 225 + Y_OFFSET, 1);
         }
         
         spr.pushSprite(0, 0);
@@ -1059,6 +1080,7 @@ namespace VisualCortex
     }
 
     String RoverViewManager::wordWrap(String text, int maxWidth) {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::wordWrap(String, int)");
         String wrappedText;
         int lastSpace = -1;
         int lineLength = 0;
@@ -1088,12 +1110,14 @@ namespace VisualCortex
 
     void RoverViewManager::clearSprite() 
     {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::clearSprite()");
         spr.fillSprite(TFT_BLACK);
         spr.pushSprite(0, 0);
     }
 
     void RoverViewManager::pushSprite() 
     {
+        Utilities::LOG_SCOPE("VisualCortex::RoverViewManager::pushSprite()");
         spr.pushSprite(0, 0);
     }
 

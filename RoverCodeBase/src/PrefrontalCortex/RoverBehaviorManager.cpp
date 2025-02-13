@@ -49,7 +49,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::init() 
     {
-        Utilities::LOG_SCOPE("init()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::init()");
         try 
         {
             Utilities::LOG_DEBUG("Starting RoverBehaviorManager initialization...");
@@ -82,7 +82,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::setState(RoverTypes::BehaviorState newState) 
     {
-        Utilities::LOG_SCOPE("setState(<BehaviorState>)", String(static_cast<int>(newState)));
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::setState(<BehaviorState>)", String(static_cast<int>(newState)));
         if (currentState == newState) return;
 
         currentState = newState;
@@ -105,14 +105,14 @@ namespace PrefrontalCortex
 
     bool RoverBehaviorManager::isInitialized() 
     {
-        Utilities::LOG_SCOPE("isInitialized()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::isInitialized()");
         return initialized;
     }
 
 
     void RoverBehaviorManager::update() 
     {
-        Utilities::LOG_SCOPE("update()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::update()");
         switch (currentState) 
         {
             case RoverTypes::BehaviorState::LOADING:
@@ -186,13 +186,13 @@ namespace PrefrontalCortex
 
     RoverTypes::BehaviorState RoverBehaviorManager::getCurrentState() 
     {
-        Utilities::LOG_SCOPE("getCurrentState()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getCurrentState()");
         return currentState;
     }
 
     void RoverBehaviorManager::handleLoading() 
     {
-        Utilities::LOG_SCOPE("handleLoading()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleLoading()");
         LEDManager::updateLoadingAnimation();
 
         switch (loadingPhase) 
@@ -211,7 +211,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleHome() 
     {
-        Utilities::LOG_SCOPE("handleHome()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleHome()");
         // Basic updates in home state
         LEDManager::updateLoadingAnimation();
         RoverManager::updateHoverAnimation();
@@ -219,13 +219,13 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleMenu() 
     {
-        Utilities::LOG_SCOPE("handleMenu()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleMenu()");
         // The menu system manages its own logic
     }
 
     void RoverBehaviorManager::handleApp() 
     {
-        Utilities::LOG_SCOPE("handleApp()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleApp()");
         if (!AppManager::isAppActive()) {
             setState(RoverTypes::BehaviorState::HOME);
         }
@@ -233,7 +233,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleError() 
     {
-        Utilities::LOG_SCOPE("handleError()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleError()");
         // Remove auto-reboot completely
         static bool inError = false;
         if (!inError) {
@@ -244,7 +244,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleFatalError() 
     {
-        Utilities::LOG_SCOPE("handleFatalError()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleFatalError()");
         if (!RoverViewManager::isFatalError) return;
         
         // Only check for manual reboot via button press, but don't actually reboot
@@ -255,7 +255,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::updateWarningCountdown() 
     {
-        Utilities::LOG_SCOPE("updateWarningCountdown()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::updateWarningCountdown()");
         if (!isCountingDown && !isFatalError) return;
         
         unsigned long elapsed;
@@ -290,7 +290,7 @@ namespace PrefrontalCortex
     //----- Sub-phase Handlers for LOADING -----
     void RoverBehaviorManager::handleBooting() 
     {
-        Utilities::LOG_SCOPE("handleBooting()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleBooting()");
         static unsigned long lastMsgChange = 0;
         static int step = 0;
         const unsigned long stepDelay = 800;
@@ -359,7 +359,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleWiFiConnection() 
     {
-        Utilities::LOG_SCOPE("handleWiFiConnection()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleWiFiConnection()");
         static unsigned long startAttempt = millis();
         static bool timeoutWarningShown = false;
         const unsigned long WIFI_TIMEOUT = 20000;
@@ -391,7 +391,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::handleTimeSync() 
     {
-        Utilities::LOG_SCOPE("RoverBehaviorManager::handleTimeSync()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::handleTimeSync()");
         static int retryCount = 0;
         const int MAX_RETRIES = 3;
         
@@ -400,11 +400,12 @@ namespace PrefrontalCortex
             if (retryCount >= MAX_RETRIES) 
             {
                 triggerError(
-                    static_cast<uint32_t>(RoverTypes::StartupErrorCode::TIME_SYNC_FAILED),
-                    "Failed to sync time",
+                    static_cast<uint32_t>(PC::StartupErrorCode::WIFI_TIMEOUT),
+                    "WiFi Connection Timeout",
                     ErrorType::WARNING
                 );
                 setState(RoverTypes::BehaviorState::HOME);
+                retryCount = 0;
                 return;
             }
             PSY::WiFiManager::syncTime();
@@ -419,7 +420,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::triggerFatalError(uint32_t errorCode, const char* errorMessage) 
     {
-        Utilities::LOG_SCOPE("triggerFatalError(uint32_t, const char*)", 
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::triggerFatalError(uint32_t, const char*)", 
             String(errorCode), 
             errorMessage
         );
@@ -436,7 +437,7 @@ namespace PrefrontalCortex
 
     void RoverBehaviorManager::triggerError(uint32_t errorCode, const char* errorMessage, ErrorType type) 
     {
-        Utilities::LOG_SCOPE("triggerError(uint32_t, const char*, ErrorType)", 
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::triggerError(uint32_t, const char*, ErrorType)", 
             String(errorCode), 
             errorMessage, 
             String(static_cast<int>(type))
@@ -485,13 +486,13 @@ namespace PrefrontalCortex
 
     int RoverBehaviorManager::getCurrentBootStep() 
     {
-        Utilities::LOG_SCOPE("getCurrentBootStep()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getCurrentBootStep()");
         return currentBootStep;
     }
 
     void RoverBehaviorManager::setLoadingPhase(RoverTypes::LoadingPhase phase) 
     {
-        Utilities::LOG_SCOPE("setLoadingPhase(<LoadingPhase>)", 
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::setLoadingPhase(<LoadingPhase>)", 
             String(static_cast<int>(phase))
         );
         loadingPhase = phase;
@@ -512,19 +513,19 @@ namespace PrefrontalCortex
 
     RoverTypes::LoadingPhase RoverBehaviorManager::getLoadingPhase() 
     {
-        Utilities::LOG_SCOPE("getLoadingPhase()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getLoadingPhase()");
         return loadingPhase;
     }
 
     const char* RoverBehaviorManager::getStatusMessage() 
     {
-        Utilities::LOG_SCOPE("getStatusMessage()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getStatusMessage()");
         return currentStatusMessage;
     }
 
     int RoverBehaviorManager::getRemainingWarningSeconds() 
     {
-        Utilities::LOG_SCOPE("getRemainingWarningSeconds()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getRemainingWarningSeconds()");
         if (!isCountingDown || isFatalError) {
             return 0;
         }
@@ -535,25 +536,25 @@ namespace PrefrontalCortex
 
     bool RoverBehaviorManager::isWarningCountdownActive()
     {
-        Utilities::LOG_SCOPE("RoverBehaviorManager::isWarningCountdownActive()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::isWarningCountdownActive()");
         return isCountingDown && !isFatalError;
     }
 
     unsigned long RoverBehaviorManager::getWarningStartTime() 
     {
-        Utilities::LOG_SCOPE("RoverBehaviorManager::getWarningStartTime()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::getWarningStartTime()");
         return warningStartTime;
     }
 
     void RoverBehaviorManager::attemptRecovery() {
         // Basic recovery attempt
-        Utilities::LOG_DEBUG("Attempting system recovery...");
+        Utilities::LOG_DEBUG("PrefrontalCortex::RoverBehaviorManager::attemptRecovery()");
         delay(100);
     }
 
 
     bool RoverBehaviorManager::isValid() {
-        Utilities::LOG_SCOPE("RoverBehaviorManager::isValid()");
+        Utilities::LOG_SCOPE("PrefrontalCortex::RoverBehaviorManager::isValid()");
         return isInitialized();
 
     }

@@ -115,7 +115,7 @@ void loop();
 
 // Implementation
 void setup() {
-    Utilities::LOG_SCOPE("setup()");
+    Utilities::LOG_SCOPE("Main::setup()");
     Serial.begin(115200);
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     Utilities::LOG_DEBUG("Starting with verbose logging...");
@@ -189,7 +189,7 @@ void setup() {
 }
 
 void loop() {
-    //Utilities::LOG_SCOPE("Main::loop()");
+    Utilities::LOG_SCOPE("Main::loop()");
     static unsigned long lastDraw = 0;
     const unsigned long DRAW_INTERVAL = 50;  // 20fps
     static bool soundStarted = false;

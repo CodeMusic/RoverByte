@@ -6,6 +6,7 @@
 #include "../PrefrontalCortex/ProtoPerceptions.h"
 #include "../MotorCortex/PinDefinitions.h"
 #include "../CorpusCallosum/SynapticPathways.h"
+#include "../../RoverConfig.h"
 
 namespace PsychicCortex 
 {
@@ -49,15 +50,6 @@ namespace PsychicCortex
         static size_t currentNetwork;
         static uint8_t connectionAttempts;
         static uint8_t totalAttempts;
-
-
-        static constexpr const NetworkCredentials AVAILABLE_NETWORKS[] = {
-            {"Starlink", "Country21!"},
-            {"CodeMusicai", "cnatural"},
-            {"RevivalNetwork", "xunjmq84"}
-        };
-
-        static const size_t NETWORK_COUNT = sizeof(AVAILABLE_NETWORKS) / sizeof(NetworkCredentials);
     };
 }
 

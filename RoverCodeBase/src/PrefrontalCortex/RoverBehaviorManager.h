@@ -22,7 +22,7 @@ namespace PrefrontalCortex
     {
     public:
         // Temporal processing constants
-        static constexpr unsigned long WARNING_DURATION = 120000;  // 2 minutes
+        static constexpr unsigned long WARNING_DURATION = 30000;  // 1 minute
         static constexpr unsigned long FATAL_REBOOT_DELAY = 60000;  // 1 minute
 
         // Core cognitive functions

@@ -144,7 +144,7 @@ namespace VisualCortex
      * Sets up LED hardware and initial perceptual state
      */
     void LEDManager::init() {
-        Utilities::LOG_SCOPE("init()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::init()");
         Utilities::LOG_DEBUG("Starting LED Manager initialization...");
         
         try {
@@ -175,7 +175,7 @@ namespace VisualCortex
 
     void LEDManager::runInitializationTest()
     {
-        Utilities::LOG_SCOPE("runInitializationTest()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::runInitializationTest()");
         fill_solid(leds, MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS, HARDWARE_INIT_COLOR);
         FastLED.show();
         delay(100);
@@ -184,7 +184,7 @@ namespace VisualCortex
 
     void LEDManager::stopLoadingAnimation() 
     {
-        Utilities::LOG_SCOPE("stopLoadingAnimation()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::stopLoadingAnimation()");
         if (!isLoading) return;
         
         isLoading = false;
@@ -206,7 +206,7 @@ namespace VisualCortex
      * Updates LED states based on current cognitive state
      */
     void LEDManager::updateLEDs() {
-        Utilities::LOG_SCOPE("updateLEDs()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateLEDs()");
         if (GC::AppManager::isAppActive()) {
             switch (currentPattern) {  // Using class member variable
                 case PC::VisualTypes::VisualPattern::SLOTS_GAME:
@@ -260,21 +260,21 @@ namespace VisualCortex
     }
 
     void LEDManager::setMode(VisualMode newMode) {
-        Utilities::LOG_SCOPE("setMode(VisualMode)", String(static_cast<int>(newMode)));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setMode(VisualMode)", String(static_cast<int>(newMode)));
         currentMode = newMode;
         FastLED.clear();
         updateLEDs();
     }
 
     void LEDManager::nextMode() {
-        Utilities::LOG_SCOPE("nextMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::nextMode()");
         currentMode = static_cast<VisualMode>((static_cast<int>(currentMode) + 1) % VisualConstants::LED_NUM_MODES);
         FastLED.clear();
         updateLEDs();
     }
 
     void LEDManager::updateFullMode() {
-        Utilities::LOG_SCOPE("updateFullMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateFullMode()");
         static unsigned long lastUpdate = 0;
         unsigned long currentTime = millis();
 
@@ -348,7 +348,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateWeekMode() {
-        Utilities::LOG_SCOPE("updateWeekMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateWeekMode()");
         time_t now = time(nullptr);
         struct tm* timeInfo = localtime(&now);
         
@@ -389,7 +389,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateTimerMode() {
-        Utilities::LOG_SCOPE("updateTimerMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateTimerMode()");
         static const CRGB timerColors[] = {
             CRGB::Red, CRGB::Orange, CRGB::Yellow, 
             CRGB::Green, CRGB::Blue, CRGB::Indigo, 
@@ -466,7 +466,7 @@ namespace VisualCortex
 
     CRGB LEDManager::getRainbowColor(uint8_t index) 
     {
-        Utilities::LOG_SCOPE("getRainbowColor(uint8_t)", String(index));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::getRainbowColor(uint8_t)", String(index));
         static const CRGB rainbowColors[] = {
             CRGB::Red,
             CRGB::Orange,
@@ -481,7 +481,7 @@ namespace VisualCortex
 
     void LEDManager::startLoadingAnimation() 
     {
-        Utilities::LOG_SCOPE("startLoadingAnimation()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::startLoadingAnimation()");
         currentColorIndex = 0;
         currentPosition = 0;
         filledPositions = 0;
@@ -493,7 +493,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateLoadingAnimation() {
-        Utilities::LOG_SCOPE("LEDManager::updateLoadingAnimation()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateLoadingAnimation()");
         if (!PC::RoverBehaviorManager::isInitialized()) {
             return;  // Add this protection
         }
@@ -537,13 +537,13 @@ namespace VisualCortex
 
     bool LEDManager::isLoadingComplete() 
     {
-        Utilities::LOG_SCOPE("isLoadingComplete()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::isLoadingComplete()");
         return completedCycles >= MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS;
     }
 
     void LEDManager::setLED(int index, CRGB color) 
     {
-        Utilities::LOG_SCOPE("setLED(int, CRGB)", String(index));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setLED(int, CRGB)", String(index));
         if (index >= 0 && index < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS) {
             leds[index] = color;
         }
@@ -551,13 +551,13 @@ namespace VisualCortex
 
     void LEDManager::showLEDs() 
     {
-        Utilities::LOG_SCOPE("showLEDs()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::showLEDs()");
         FastLED.show();
     }
 
     void LEDManager::scaleLED(int index, uint8_t scale) 
     {
-        Utilities::LOG_SCOPE("scaleLED(int, uint8_t)", 
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::scaleLED(int, uint8_t)", 
             String(index),
             String(scale)
         );
@@ -568,7 +568,7 @@ namespace VisualCortex
 
     void LEDManager::flashSuccess() 
     {
-        Utilities::LOG_SCOPE("flashSuccess()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::flashSuccess()");
         // Save current LED state
         CRGB savedState[MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS];
         memcpy(savedState, leds, sizeof(CRGB) * MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS);
@@ -585,7 +585,7 @@ namespace VisualCortex
 
     void LEDManager::flashLevelUp() 
     {
-        Utilities::LOG_SCOPE("flashLevelUp()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::flashLevelUp()");
         // First pass - clockwise light up in gold/yellow
         for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             leds[i] = CRGB::Gold;
@@ -623,7 +623,7 @@ namespace VisualCortex
 
     void LEDManager::displayCardPattern(const uint8_t* uid, uint8_t length) 
     {
-        Utilities::LOG_SCOPE("displayCardPattern(uint8_t*, uint8_t)", String(length));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::displayCardPattern(uint8_t*, uint8_t)", String(length));
         static unsigned long lastUpdate = 0;
         static uint8_t step = 0;
         
@@ -642,7 +642,7 @@ namespace VisualCortex
 
     void LEDManager::syncLEDsForDay() 
     {
-        Utilities::LOG_SCOPE("LEDManager::syncLEDsForDay()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::syncLEDsForDay()");
         time_t now = time(nullptr);
         struct tm* timeInfo = localtime(&now);
         int currentDay = timeInfo->tm_wday;
@@ -668,7 +668,7 @@ namespace VisualCortex
     }
 
     void LEDManager::update() {
-        Utilities::LOG_SCOPE("LEDManager::update()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::update()");
         // Check and set festive mode based on the current date
         LEDManager::checkAndSetFestiveMode();
 
@@ -711,7 +711,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateMenuMode() {
-        Utilities::LOG_SCOPE("updateMenuMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateMenuMode()");
         int selectedIndex = SC::MenuManager::getSelectedIndex();
         for (int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) {
             if (i <= selectedIndex) {
@@ -727,14 +727,14 @@ namespace VisualCortex
 
     void LEDManager::updateRoverEmotionMode() 
     {
-        Utilities::LOG_SCOPE("updateRoverEmotionMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateRoverEmotionMode()");
         Utilities::LOG_DEBUG("< Pending Implementation // updateRoverEmotionMode() >");
         // TODO: Implement rover emotion mode
     }
 
     unsigned long tickTalkTime = 0;
     void LEDManager::updateCustomMode() {
-        Utilities::LOG_SCOPE("updateCustomMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateCustomMode()");
         unsigned long currentTime = millis();
 
         if (currentTime - tickTalkTime >= 10000) {
@@ -767,7 +767,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateFestiveMode() {
-        Utilities::LOG_SCOPE("updateFestiveMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateFestiveMode()");
         unsigned long currentTime = millis();
         if (currentTime - lastStepTime >= 50) {  // 50ms animation interval
             lastStepTime = currentTime;
@@ -933,7 +933,7 @@ namespace VisualCortex
 
     void LEDManager::setFestiveTheme(FestiveTheme theme) 
     {
-        Utilities::LOG_SCOPE("setFestiveTheme(FestiveTheme)", String(static_cast<int>(theme)));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setFestiveTheme(FestiveTheme)", String(static_cast<int>(theme)));
         currentTheme = theme;
         currentMode = VisualMode::FESTIVE_MODE;
         FastLED.clear();
@@ -941,7 +941,7 @@ namespace VisualCortex
     }
 
     void LEDManager::updateIRBlastPattern() {
-        Utilities::LOG_SCOPE("updateIRBlastPattern()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateIRBlastPattern()");
         static uint8_t currentLEDPosition = 0;
         static bool animationDirection = true;
         
@@ -979,13 +979,13 @@ namespace VisualCortex
     }
 
     void LEDManager::updateSlotsPattern() {
-        Utilities::LOG_SCOPE("updateSlotsPattern()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateSlotsPattern()");
         // Move slots LED code from SlotsManager
         // But keep using LEDManager's methods
     }
 
     void LEDManager::updateNFCScanPattern() {
-        Utilities::LOG_SCOPE("updateNFCScanPattern()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateNFCScanPattern()");
         if (millis() - lastUpdate < AnimationTiming::LOADING_DELAY) return;
         lastUpdate = millis();
 
@@ -1019,13 +1019,13 @@ namespace VisualCortex
 
     void LEDManager::setPattern(PC::VisualPattern pattern) 
     {
-        Utilities::LOG_SCOPE("setPattern(VisualPattern)", String(static_cast<int>(pattern)));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setPattern(VisualPattern)", String(static_cast<int>(pattern)));
         currentPattern = pattern;
     }
 
     void LEDManager::handleMessage(PC::VisualMessage message) 
     {
-        Utilities::LOG_SCOPE("handleMessage(VisualMessage)", String(static_cast<int>(message)));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::handleMessage(VisualMessage)", String(static_cast<int>(message)));
         switch(message) 
         {
             case PC::VisualMessage::SLOTS_WIN:
@@ -1113,12 +1113,12 @@ namespace VisualCortex
 
     CRGB LEDManager::getNoteColor(uint16_t frequency) 
     {
-        Utilities::LOG_SCOPE("getNoteColor(uint16_t)", String(frequency));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::getNoteColor(uint16_t)", String(frequency));
         return VisualSynesthesia::getColorForFrequency(frequency);
     }
 
     void LEDManager::displayNote(uint16_t frequency, uint8_t position) {
-        Utilities::LOG_SCOPE("displayNote(uint16_t, uint8_t)", 
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::displayNote(uint16_t, uint8_t)", 
             String(frequency),
             String(position)
         );
@@ -1147,7 +1147,7 @@ namespace VisualCortex
 
     void LEDManager::setErrorLED(bool state) 
     {
-        Utilities::LOG_SCOPE("setErrorLED(bool)", String(state));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setErrorLED(bool)", String(state));
         if (state) {
             leds[ERROR_LED_INDEX] = CRGB::Red;
         } else {
@@ -1158,7 +1158,7 @@ namespace VisualCortex
 
     void LEDManager::setErrorPattern(uint32_t errorCode, bool isFatal) 
     {
-        Utilities::LOG_SCOPE("setErrorPattern(uint32_t, bool)", 
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setErrorPattern(uint32_t, bool)", 
             String(errorCode),
             String(isFatal)
         );
@@ -1188,14 +1188,14 @@ namespace VisualCortex
     }
 
     void LEDManager::clearErrorPattern() {
-        Utilities::LOG_SCOPE("clearErrorPattern()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::clearErrorPattern()");
         // Clear error LEDs
         fill_solid(leds + ERROR_LED_INDEX, ERROR_LED_COUNT * 2, CRGB::Black);
         FastLED.show();
     }
 
     void LEDManager::updateErrorPattern() {
-        Utilities::LOG_SCOPE("updateErrorPattern()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::updateErrorPattern()");
         // Only update for fatal errors (pulsing effect)
         if (RoverViewManager::isFatalError) {
             // Update fade value
@@ -1221,7 +1221,7 @@ namespace VisualCortex
     }
 
     void LEDManager::checkAndSetFestiveMode() {
-        Utilities::LOG_SCOPE("checkAndSetFestiveMode()");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::checkAndSetFestiveMode()");
         time_t now = time(nullptr);
         struct tm* timeInfo = localtime(&now);
 
@@ -1242,7 +1242,7 @@ namespace VisualCortex
     }
 
     void LEDManager::setEncodingMode(EncodingModes mode) {
-        Utilities::LOG_SCOPE("setEncodingMode(EncodingModes)", String(static_cast<int>(mode)));
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::setEncodingMode(EncodingModes)", String(static_cast<int>(mode)));
         currentMode = VisualMode::ENCODING_MODE; // Set the main mode to ENCODING_MODE
         currentEncodingMode = mode; // Set the specific encoding mode
         // Additional logic to handle the encoding mode can be added here
@@ -1254,7 +1254,7 @@ namespace VisualCortex
      */
     void LEDManager::displayChromatic(const PC::ColorPerceptionTypes::ChromaticContext& context) 
     {
-        Utilities::LOG_SCOPE("displayChromatic(ChromaticContext)");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::displayChromatic(ChromaticContext)");
         // Set primary color on odd LEDs
         for(int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i += 2) 
         {
@@ -1274,7 +1274,7 @@ namespace VisualCortex
 
     void LEDManager::displayEmotional(const PC::ColorPerceptionTypes::EmotionalColor& emotion) 
     {
-        Utilities::LOG_SCOPE("displayEmotional(EmotionalColor)");
+        Utilities::LOG_SCOPE("VisualCortex::LEDManager::displayEmotional(EmotionalColor)");
         // Alternate between primary and accent colors
         for(int i = 0; i < MC::PinDefinitions::VisualPathways::WS2812_NUM_LEDS; i++) 
         {

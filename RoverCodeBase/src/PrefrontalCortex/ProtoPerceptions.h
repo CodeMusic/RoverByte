@@ -354,7 +354,13 @@ namespace PrefrontalCortex
             DISPLAY_INIT_FAILED,
             UI_INIT_FAILED,
             APP_INIT_FAILED,
-            CORE_INIT_FAILED
+            CORE_INIT_FAILED,
+            WIFI_TIMEOUT,
+            TIMEOUT,
+            SD_CARD_ERROR,
+            DISPLAY_ERROR,
+            UI_ERROR,
+            APP_ERROR,
         };
 
         struct ErrorInfo 
