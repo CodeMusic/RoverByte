@@ -1,3 +1,5 @@
+( Note, for the RoverAI, I will be developing it in the PenphinOS repository. 
+Currently in this project, I am getting the home base (roverseer) working which will feature RoverAI, and Redmine. )
 
 # 🏁 Rover: The AI-Driven Ecosystem for Robotics, Automation, and Life Management  
 ![Rover](https://github.com/CodeMusic/RoverByte/blob/main/roverbanner.jpg?raw=true)  
