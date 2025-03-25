@@ -1,14 +1,12 @@
-( Note, for the RoverAI, I will be developing it in the PenphinOS repository. 
-Currently in this project, I am getting the home base (roverseer) working which will feature RoverAI, and Redmine. )
-
 # 🏁 Rover: The AI-Driven Ecosystem for Robotics, Automation, and Life Management  
 ![Rover](https://github.com/CodeMusic/RoverByte/blob/main/roverbanner.jpg?raw=true)  
 **Building an interconnected AI ecosystem—one Rover at a time.** 
 
 ---
+
 ## 🌍 What is RoverByte?  
 
-RoverByte, or Rover for short, is an **AI-driven, multi-project ecosystem** that blends robotics, task management, and real-world interaction into a **seamless intelligent assistant**.  
+RoverByte, or **Rover** for short, is an **AI-driven, multi-project ecosystem** that blends robotics, task management, and real-world interaction into a **seamless intelligent assistant**.  
 From **RoverRadio** (RF-based task automation) to **RoverByte** (your quadrupedal robotic companion), Rover is more than just a collection of gadgets—it's a **networked intelligence** designed to **help, adapt, and grow with you**.  
 
 **Core Functions:**  
@@ -26,7 +24,7 @@ RoverByte evolves with **three core priorities:**
 
 ## 📡 Active Projects  
 
-### 🚀 **1. RoverRadio** (Current Focus)  
+### 🚀 **1. RoverRadio** (Nearling initial Release)  
 📌 **Status:** **Prototype in Progress**  
 RoverRadio is a **handheld interface** that acts as a **portable assistant**, leveraging **RF communication (CC1101), NFC, and AI task automation**.  
 🔹 **Tamagotchi Mode** → Fun, interactive daily engagement.  
@@ -35,7 +33,7 @@ RoverRadio is a **handheld interface** that acts as a **portable assistant**, le
 
 ---
 
-### 🏠 **2. RoverSeer** (Next Development Phase)  
+### 🏠 **2. RoverSeer** (Prototype Nearing Completion)  
 📌 **Status:** **Foundation Work**  
 RoverSeer is the **Redmine-powered** central hub that organizes all Rover activities.  
 🔹 **AI-Assisted Task Management** → Uses Redmine tickets for structured memory.  
@@ -44,7 +42,7 @@ RoverSeer is the **Redmine-powered** central hub that organizes all Rover activi
 
 ---
 
-### 🐶 **3. RoverByte (Future Goal)**  
+### 🐶 **3. RoverByte (Nearing Development)**  
 📌 **Status:** **Early Prototyping**  
 RoverByte is an AI-powered **quadrupedal robotic companion** that integrates into the Rover ecosystem.  
 🔹 **Personality & Learning** → Adapts to user behavior over time.  
@@ -52,9 +50,22 @@ RoverByte is an AI-powered **quadrupedal robotic companion** that integrates int
 🔹 **Seamless AI Integration** → Works directly with RoverSeer & RoverRadio.  
 
 ---
+
+## 🚀 PenphinMind: The AI Behind Rover
+
+The AI that powers Rover, **RoverAI**, is nearing completion and is currently being developed under the **PenphinMind** branch. This AI framework integrates cognition, decision-making, sensory processing, motor control, and emotional intelligence to bring Rover to life. 
+
+The **PenphinMind** system is built to integrate seamlessly into Rover, creating an intelligent, adaptable, and evolving companion.
+
+You can explore the development of **RoverAI** in the **PenphinMind branch**:
+- **[PenphinMind Branch](https://github.com/yourusername/RepositoryName/tree/penphinmind)**  
+- **[PenphinMind Whitepapers](whitepapers/)**
+
+---
+
 ### 🔗 Project-Specific Documentation  
 
-#### 📂 Rover Modules  <DOCUMENTATION COMING SOON>
+#### 📂 Rover Modules  
 
 [wip] - **[RoverCodeBase README](./RoverCodeBase/README.md)** – Learn more about **RoverRadio** and its RF-based automation.  
 [wip] - **[RoverSeer README](./RoverSeer/README.md)** – Redmine-based task automation & AI memory.  
@@ -70,6 +81,7 @@ Inside **RoverCodeBase/documentation/**, you’ll find additional technical deta
 - **[RoverByte_Overview.md](./RoverCodeBase/documentation/RoverByte_Overview.md)** – High-level summary of the RoverByte system.  
 
 For further details, check the **README.md** and documentation files in each respective folder. 🚀  
+
 ---
 
 ## 🎮 Rover's Gamified Economy & Engagement  
@@ -132,14 +144,17 @@ RoverAI is **not just another chatbot or automation system**—it is a **learnin
 git clone https://github.com/CodeMusic/RoverByte.git
 cd RoverByte'
 
-### 2️⃣ **Explore Individual Rover Modules**  
-The Rover ecosystem consists of multiple interconnected projects, each focusing on a specific function. Navigate to the directory of the project you're interested in:  
+2️⃣ Explore Individual Rover Modules
 
-```bash
+The Rover ecosystem consists of multiple interconnected projects, each focusing on a specific function. Navigate to the directory of the project you’re interested in:
+
 cd RoverCodeBase   # RoverRadio RF communication  
 cd RoverSeer       # Redmine task automation & AI memory  
 cd RoverByte       # Quadrupedal AI companion  
 cd TheRoverVerse   # Experimental prototypes & emerging Rover systems  
-'
 
 Each project contains its own README.md with setup instructions, dependencies, and usage guidelines to help you get started quickly. 🚀
+
+### Key Updates:
+- **PenphinMind Integration**: The **PenphinMind** branch is referenced for the development of **RoverAI**. It is where all AI systems, including cognition, sensory processing, and behavior regulation, are being built.
+- **Updated Rover Modules**: Additional details about the **RoverAI** system, including new AI-driven features like learning from interaction, decision-making, and sensory processing.
