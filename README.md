@@ -26,7 +26,7 @@ RoverByte evolves with **three core priorities:**
 
 ## 📡 Active Projects  
 
-### 🚀 **1. RoverRadio** (Current Focus)  
+### 🚀 **1. RoverRadio** (Pause)  
 📌 **Status:** **Prototype in Progress**  
 RoverRadio is a **handheld interface** that acts as a **portable assistant**, leveraging **RF communication (CC1101), NFC, and AI task automation**.  
 🔹 **Tamagotchi Mode** → Fun, interactive daily engagement.  
@@ -35,7 +35,7 @@ RoverRadio is a **handheld interface** that acts as a **portable assistant**, le
 
 ---
 
-### 🏠 **2. RoverSeer** (Next Development Phase)  
+### 🏠 **2. RoverSeer** (In Developerment)  
 📌 **Status:** **Foundation Work**  
 RoverSeer is the **Redmine-powered** central hub that organizes all Rover activities.  
 🔹 **AI-Assisted Task Management** → Uses Redmine tickets for structured memory.  
